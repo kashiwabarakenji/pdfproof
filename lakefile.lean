@@ -11,14 +11,11 @@ package "pdfproof" where
     "-lctranslate2"
   ]
 
-  -- add any additional package configuration options here
+-- add any additional package configuration options here
 
---require "leanprover-community" / "mathlib" @ "git#20c73142afa995ac9c8fb80a9bb585a55ca38308"
 require "leanprover-community" / "mathlib" @  "git#v4.11.0"
 
---require LeanCopilot from git "https://github.com/lean-dojo/LeanCopilot.git" @ "v1.6.0"
-
-require llmlean from git "https://github.com/cmu-l3/llmlean.git" @"main"
+require LeanCopilot from git "https://github.com/lean-dojo/LeanCopilot.git" @ "v1.6.0"
 
 @[default_target]
 lean_lib «Pdfproof» where

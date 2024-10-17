@@ -1,6 +1,5 @@
 --pdf proof by Lean
-import LeanCopilot
---import LLMlean
+--import LeanCopilot
 import Mathlib.Data.Real.Basic
 --import Mathlib.Data.Set.Basic
 --import Mathlib.Tactic.ByContra
@@ -1312,3 +1311,115 @@ by
       use ⟨x, hxX, rfl⟩
       -- `x` が `{z | R z x}` に属することを示す
       exact hR.refl x
+
+--2項関係と順序 練習4
+-- 整数全体の集合での同値関係を定義
+def equiv_rel (n : ℤ) (x y : ℤ) : Prop :=
+  ∃ k : ℤ, x - y = n * k
+
+-- 反射性の証明
+theorem my_refl (n : ℤ) : ∀ x : ℤ, equiv_rel n x x :=
+by
+  intro x
+  use 0
+  rw [mul_zero, sub_self]
+
+-- 対称性の証明
+theorem my_symm (n : ℤ) : ∀ x y : ℤ, equiv_rel n x y → equiv_rel n y x :=
+by
+  intro x y h
+  rcases h with ⟨k, hk⟩
+  use -k
+  rw [mul_neg, ←hk, sub_eq_add_neg, add_comm]
+  omega
+
+-- 推移性の証明
+theorem my_trans (n : ℤ) : ∀ x y z : ℤ, equiv_rel n x y → equiv_rel n y z → equiv_rel n x z :=
+by
+  intro x y z h1 h2
+  rcases h1 with ⟨k1, hk1⟩
+  rcases h2 with ⟨k2, hk2⟩
+  use k1 + k2
+  rw [←sub_add_sub_cancel x y z, hk1, hk2, Int.mul_add]
+
+-- 同値関係の証明
+theorem equiv_is_equiv (n : ℤ) : Equivalence (equiv_rel n) :=
+⟨my_refl n, @my_symm n, @my_trans n⟩
+
+--------------------
+--2項関係と順序 練習5--
+--------------------
+
+-- X の上の関係を定義
+variable {X : Type} (R : X → X → Prop)
+
+-- Q の定義
+def Q (x y : X) : Prop := R x y ∨ x = y
+
+-- 関係 R が推移的であること
+variable (trans_R : ∀ ⦃x y z : X⦄, R x y → R y z → R x z)
+
+-- 関係 R が反射的でないこと
+variable (not_refl_R : ∀ x : X, ¬R x x)
+
+-- 反射性の証明 (Qは反射的)
+theorem Q_refl : ∀ x : X, Q R x x :=
+by
+  intro x
+  -- Q の定義によって、x = x が成立するため反射性が成立
+  right
+  rfl
+
+-- 反対称性の証明 (Qは反対称的)
+theorem Q_antisymm (trans_R : ∀ ⦃x y z : X⦄, R x y → R y z → R x z) (not_refl_R : ∀ x : X, ¬R x x) : ∀ {x y : X}, Q R x y → Q R y x → x = y :=
+by
+  intros x y hxy hyx
+  cases hxy with
+  | inl rxy =>
+    -- xRy が成立する場合
+    cases hyx with
+    | inl ryx =>
+      -- yRx が成立する場合は矛盾
+      exfalso
+
+      have := not_refl_R x
+      exact this (trans_R rxy ryx)
+    | inr rfl =>
+      -- y = x が成立する場合は x = y
+      subst rfl
+      simp_all only
+  | inr rfl =>
+    -- x = y が成立する場合は x = y
+    subst rfl
+    simp_all only
+
+-- 推移性の証明 (Qは推移的)
+theorem Q_trans (trans_R : ∀ ⦃x y z : X⦄, R x y → R y z → R x z) : ∀ {x y z : X}, Q R x y → Q R y z → Q R x z :=
+by
+  intros x y z hxy hyz
+  cases hxy with
+  | inl rxy =>
+    -- xRy が成立する場合
+    cases hyz with
+    | inl ryz =>
+      -- yRz が成立する場合、R の推移性により xRz が成立
+      left
+      exact trans_R rxy ryz
+    | inr rfl =>
+      -- y = z の場合、xRz が成立
+      left
+      subst rfl
+      simp_all only
+  | inr rfl =>
+    -- x = y の場合、Q(y, z) の結果は Q(x, z) に対応する
+    subst rfl
+    simp_all only
+
+-- Qが半順序関係であることの証明
+instance Q_is_partial_order : PartialOrder X :=
+{
+  le := Q R,
+  le_refl := Q_refl R,
+  le_antisymm := @Q_antisymm X R trans_R not_refl_R,
+  le_trans := @Q_trans X R trans_R
+}

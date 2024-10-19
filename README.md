@@ -21,3 +21,11 @@ git clone https://github.com/kashiwabarakenji/pdfproof.git
 
 - **Lean CopilotはWindowsでは基本的にサポートされていません**。そのため、Windows環境でリポジトリを開いてLean 4のコードを検証する場合、`lakefile.lean`の設定を変更する必要があります。
 - MacやLinux環境では、現在の設定でLean Copilotが利用できますが、Windowsユーザーの方は`lakefile.lean`の書き換えを行ってください。import LeanCopilotの部分もコメントアウトするとよいでしょう。
+
+##Leanに関する有用なリンク集
+
+Lean by Example 日本語の情報いろいろ https://lean-ja.github.io/lean-by-example/
+Lean 定理の検索 Search https://leansearch.net/
+Moogle 定理の検索 https://www.moogle.ai
+Lean 4 Web ウェブインターフェース https://live.lean-lang.org
+Lean Copilot https://github.com/lean-dojo/LeanCopilot

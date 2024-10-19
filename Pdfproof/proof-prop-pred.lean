@@ -17,12 +17,25 @@ example {A:Prop} {B:Prop} {C:Prop} : (A → (B → C)) → (B → (A → C)) :=
     intro hA --goal : C
     exact (hAB hA) hB --カッコはなくても同じ
 
+--例1 ラムダ式を使った場合の証明
+example {A B C : Prop} : (A → (B → C)) → (B → (A → C)) :=
+  fun h =>        -- まず、(A → (B → C))という関数 h を受け取る
+    fun b =>            -- 次に、B を受け取る
+      fun a =>          -- その後に、A を受け取る
+         h a b          -- h に a を適用して B → C を得て、次に b を適用して C を得る
+
 --命題論理 練習1
 example {A:Prop} {B:Prop} : A → ((A → B) → B) :=
   by
     intro hA --goal : (A → B) → B
     intro hAB --goal : B
     exact hAB hA
+
+--ラムダ式を使った場合の証明
+example {A B : Prop} : A → ((A → B) → B) :=
+  fun a =>       -- A が真であることを仮定して a : A を受け取る
+    fun f =>     -- 次に、A → B という関数 f を受け取る
+      f a        -- f に a を適用して B を得る
 
 --命題論理 練習2
 example {A:Prop} {B:Prop} : (A → (A → B)) → (A → B) :=
@@ -295,7 +308,7 @@ example {α : Type} {P: α → Prop} {Q: α → Prop}: (∀x,(P x → Q x)) → 
     intro a a_1 --a : ∀ (x : α), P x → Q x, a_1 : ∃ (x : α), P x
     obtain ⟨w, h⟩ := a_1 --a1の中身をwとhに分解 a1 : ∃ (x : α), P x , w : α, h : P w
     use w -- exists　xとしてwを使う。
-    exact a w h --a wは、P w → Q w
+    exact (a w) h --a wは、P w → Q w
 
 --述語論理 例4
 --スライドのuseを使う例。existsの中身を与える。
@@ -323,6 +336,15 @@ example {α : Type} {P: α → Prop}: ¬(∃x, P x) → ∀x,¬(P x) :=
     intro a x
     rw [not_exists] at a  --そのまま利用しているのでずるいかも。
     exact a x
+
+--例5を定理を使わずに証明。
+example {α : Type} {P : α → Prop} : ¬(∃ x, P x) → ∀ x, ¬(P x) :=
+by
+  intro h
+  intro x --ここでゴールは、¬P x
+  intro px --px：P xとなり、goalがFalseになる。
+  have ex : ∃ x, P x := ⟨x, px⟩ --補題を証明してexと命名
+  exact h ex -- ¬A A  の順で並べることで矛盾Falseが得られる。
 
 --述語論理 練習8
 example {α : Type} {P: α → Prop}: (∀x, ¬P x) → (¬∃x, P x) :=

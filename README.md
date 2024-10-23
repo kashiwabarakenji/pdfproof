@@ -5,14 +5,15 @@
 ## 配布ファイル
 
 pdfproofのフォルダの下にLeanのコードがあります。いくつかのテーマごとに分けました。
+lakefile.leanやlean-toolchainも含まれています。
 
 ## Lean Copilotの使用について
 
-本リポジトリでは、**Lean Copilot**を使用するために、Lean 4.11の環境で実行できるように`lakefile.lean`と`lean-toolchain`が設定されています。Lean Copilotを利用することで、より効率的にLeanのコードを書くことが可能です。
+本リポジトリでは、**Lean Copilot**を使用するために、Lean 4.11.0の環境で実行できるように`lakefile.lean`と`lean-toolchain`が設定されています。Lean Copilotを利用することで、より効率的にLeanのコードを書くことが可能です。
 
 ## プロジェクトのセットアップ
 
-1. 自分のパソコンに直接tpリコみたい場合は。ターミナル上でリポジトリをクローンします。GitHUBのアカウントがなくてもクローンはできます。
+1. 自分のパソコンに直接とりこみたい場合は。ターミナル上でリポジトリをクローンします。GitHUBのアカウントがなくてもクローンはできます。
 
 ```bash
 git clone https://github.com/kashiwabarakenji/pdfproof.git

@@ -12,7 +12,7 @@ import Mathlib.Data.Real.Basic
 --命題論理 例1
 example {A:Prop} {B:Prop} {C:Prop} : (A → (B → C)) → (B → (A → C)) :=
   by
-    intro hAB --goal : A → B → C
+    intro hAB --goal : B → (A → C)
     intro hB --goal : A → C
     intro hA --goal : C
     exact (hAB hA) hB --カッコはなくても同じ
@@ -353,6 +353,13 @@ example {α : Type} {P: α → Prop}: (∀x, ¬P x) → (¬∃x, P x) :=
     rw [not_exists]
     exact a
 
+example {α : Type} {P : α → Prop} : (∀x, ¬P x) → (¬∃x, P x) :=
+by
+  intro h -- Introduce the hypothesis that ∀x, ¬P x.
+  intro hp -- Introduce a new hypothesis for the negation of the existential quantifier.
+  obtain ⟨x, px⟩ := hp -- Extract the witness `x` and `P x` from the existential statement.
+  exact h x px -- Apply the universally quantified `h` to `x` and `P x` to reach a contradiction.
+
 --述語論理 練習9
 example {α : Type} {P: α → Prop}: (¬∀x,P x) → ∃x,¬P x :=
   by
@@ -367,6 +374,13 @@ example {α : Type} {P: α → Prop}: (∃x,¬P x) → ¬∀x, P x :=
     rw [not_forall]
     exact a
 
+example {α : Type} {P : α → Prop} : (∃x, ¬P x) → ¬(∀x, P x) :=
+by
+  intro h -- Introduce the hypothesis that ∃x, ¬P x.
+  by_contra h1 -- Assume the opposite (that ∀x, P x).
+  obtain ⟨x, px⟩ := h -- Extract the witness `x` and `¬P x`.
+  exact px (h1 x) -- Apply `h1` (∀x, P x) to this specific `x`, reaching a contradiction.
+
 --述語論理 練習11
 example (P Q : α → Prop) : (∀ x, P x ∧ Q x) → (∀ x, P x) ∧ (∀ x, Q x) := by
   intro h
@@ -380,3 +394,25 @@ example (P Q : α → Prop) : (∀ x, P x ∧ Q x) → (∀ x, P x) ∧ (∀ x, 
 example (P Q : α → Prop) : (∀ x, P x) ∧ (∀ x, Q x) → (∀ x, P x ∧ Q x)  := by
   intro a x
   exact ⟨a.1 x, a.2 x⟩
+
+--述語論理 練習13
+example (P Q : α→Prop) :(∀x, P x) ∨ (∀x, Q x) → (∀x, P x ∨ Q x) :=
+by
+ intro h
+ intro x
+ cases h with
+ | inl h1 =>
+   exact Or.inl (h1 x)
+ | inr h2 =>
+   exact Or.inr (h2 x)
+
+example{α:Type}{P Q:α→Prop}:(∀x:α,P x)∨(∀x:α,Q x)→(∀x:α,P x ∨ Q x):=
+by
+  intro h --ゴールが∀x:α,P x ∨ Q xの構成になり、項 h:(∀x:α,P x)∨(∀x:α,Qx)が作られる
+  cases h with --h:(∀x:α,P x)∨(∀x:α,Q x)で場合分け
+  | inl hP => --hP:∀x:α,P x
+    intro x --ゴールが P x ∨ Q xの構成になり、項 x:αが作られる
+    exact Or.inl (hP x) --hP xで P xが作られ、Orの導入でゴールを作れるので証明終了
+  | inr hQ => --hQ:∀x:α,Q x
+    intro x --ゴールが P x ∨ Q xの構成になり、項 x:αが作られる
+    exact Or.inr (hQ x)

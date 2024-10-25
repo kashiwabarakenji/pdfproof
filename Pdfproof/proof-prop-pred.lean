@@ -406,6 +406,7 @@ by
  | inr h2 =>
    exact Or.inr (h2 x)
 
+--述語論理 練習13
 example{α:Type}{P Q:α→Prop}:(∀x:α,P x)∨(∀x:α,Q x)→(∀x:α,P x ∨ Q x):=
 by
   intro h --ゴールが∀x:α,P x ∨ Q xの構成になり、項 h:(∀x:α,P x)∨(∀x:α,Qx)が作られる

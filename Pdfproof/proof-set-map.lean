@@ -730,3 +730,39 @@ by
     | intro x hx =>
       obtain ⟨hB, rfl⟩ := hx
       exact ⟨hB, ⟨x, ⟨Set.mem_univ x, rfl⟩⟩⟩
+
+--写像 練習13
+--写像 f : X → Y が与えられたとき、Xの部分集合AとYの部分集合Bに対して、
+-- f '' (A ∩ f ⁻¹' B) = f '' A ∩ B が成り⽴つことを⽰す。
+theorem image_inter_preimage_eq {X Y : Type} (f : X → Y) (A : Set X) (B : Set Y): f '' (A ∩ f ⁻¹' B) = (f '' A) ∩ B :=
+by
+  ext y
+  simp only [Set.mem_image, Set.mem_inter_iff, Set.mem_preimage]
+  apply Iff.intro
+  · -- y ∈ f '' (A ∩ f ⁻¹' B) → y ∈ f '' A ∩ B
+    intro h
+    cases h with
+    | intro x hx =>
+      obtain ⟨left, right⟩ := hx
+      obtain ⟨left, right_1⟩ := left
+      subst right
+      simp_all only [and_true]
+      exact ⟨x, left, rfl⟩
+  · -- y ∈ f '' A ∩ B → y ∈ f '' (A ∩ f ⁻¹' B)
+    rintro ⟨⟨x, hx, rfl⟩, hy⟩
+    constructor
+    apply And.intro
+    on_goal 2 => {rfl}
+    · simp_all only [and_self]
+
+--写像 練習13の別証明
+theorem image_inter_preimage_eq2 {X Y : Type} (f : X → Y) (A : Set X) (B : Set Y) :
+  f '' (A ∩ f ⁻¹' B) = (f '' A) ∩ B := by
+  ext y
+  simp only [Set.mem_image, Set.mem_inter_iff, Set.mem_preimage]
+  --goal ∃ x, (x ∈ A ∧ f x ∈ B) ∧ f x = y) ↔ (∃ x ∈ A, f x = y) ∧ y ∈ B
+  constructor
+  · rintro ⟨x, ⟨hxA, hxB⟩, rfl⟩ --hxA : x ∈ A   hxB : f x ∈ B
+    exact ⟨⟨x, hxA, rfl⟩, hxB⟩
+  · rintro ⟨⟨x, hxA, rfl⟩, hyB⟩ --hxA : x ∈ A   hyB : f x ∈ B
+    exact ⟨x, ⟨hxA, hyB⟩, rfl⟩

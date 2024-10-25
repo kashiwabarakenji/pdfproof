@@ -300,7 +300,7 @@ example {α : Type} (A B C: Set α) : (A ∆ B) ∆ C= A ∆ (B ∆ C) :=
         simp_all only [false_and, not_false_eq_true, and_true, false_or, false_implies, imp_false, true_and]
 
 
--- 証明
+-- 集合 練習11
 example {α : Type} (A B C: Set α) : A ∩ (B ∆ C) = (A ∩ B) ∆ (A ∩ C) := by
   ext x
   -- 左側の定義を展開
@@ -705,15 +705,14 @@ example {A B C : Type} (f : A → B) (g : B → C)
   use a
   rw [Function.comp_apply, ha, hb]
 
-variable {X Y : Type}
-variable (f : X → Y)
-variable (A : Set X)
-lemma subset_preimage_image : A ⊆ f ⁻¹' (f '' A) :=
+--写像 練習11
+lemma subset_preimage_image {X Y : Type}(f : X → Y)(A : Set X): A ⊆ f ⁻¹' (f '' A) :=
 by
   intro x hx
   simp only [Set.mem_preimage, Set.mem_image]
   use x, hx
 
+--写像 練習12
 example {X Y : Type} (f : X → Y) (B : Set Y) : B ∩ f '' Set.univ = f '' (f ⁻¹' B) :=
 by
   apply Set.ext

@@ -298,6 +298,40 @@ example {α : Type} (A B C: Set α) : (A ∆ B) ∆ C= A ∆ (B ∆ C) :=
       | inr h_1 =>
         simp_all only [false_and, not_false_eq_true, and_true, false_or, false_implies, imp_false, true_and]
 
+--集合 練習14 デカルト積 productを使ってみた。
+example {α: Type} (A B C: Set α): (A ∪ B) ×ˢ C = (A ×ˢ C) ∪ (B ×ˢ C) :=
+  by
+    apply Set.ext
+    intro x
+    apply Iff.intro
+    -- x ∈ (A ∪ B) ×ˢ C -> x ∈ (A ×ˢ C) ∪ (B ×ˢ C)
+    intro hABC
+    obtain ⟨hAB, hC⟩ := hABC
+    cases hAB with
+    | inl hA =>
+      apply Or.inl
+      constructor
+      exact hA
+      exact hC
+    | inr hB =>
+      apply Or.inr
+      constructor
+      exact hB
+      exact hC
+    -- x ∈ (A ×ˢ C) ∪ (B ×ˢ C) -> x ∈ (A ∪ B) ×ˢ C
+    intro hACBC
+    cases hACBC with
+    | inl hAC =>
+      obtain ⟨hA, hC⟩ := hAC
+      constructor
+      exact Or.inl hA
+      exact hC
+    | inr hBC =>
+      obtain ⟨hB, hC⟩ := hBC
+      constructor
+      exact Or.inr hB
+      exact hC
+
 -------------
 ---- 写像 ----
 -------------

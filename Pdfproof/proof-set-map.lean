@@ -1,4 +1,5 @@
 import LeanCopilot
+--import Mathlib.Init.Logic
 import Mathlib.Data.Set.Basic
 import Mathlib.Data.Set.Function
 import Mathlib.Order.SymmDiff
@@ -298,6 +299,15 @@ example {α : Type} (A B C: Set α) : (A ∆ B) ∆ C= A ∆ (B ∆ C) :=
       | inr h_1 =>
         simp_all only [false_and, not_false_eq_true, and_true, false_or, false_implies, imp_false, true_and]
 
+
+-- 集合 練習11
+example {α : Type} (A B C: Set α) : A ∩ (B ∆ C) = (A ∩ B) ∆ (A ∩ C) := by
+  ext x
+  -- 左側の定義を展開
+  simp [symmDiff, Set.mem_inter_iff, Set.mem_union, Set.mem_diff]
+  -- 場合分けをする
+  tauto
+
 --集合 練習14 デカルト積 productを使ってみた。
 example {α: Type} (A B C: Set α): (A ∪ B) ×ˢ C = (A ×ˢ C) ∪ (B ×ˢ C) :=
   by
@@ -586,6 +596,7 @@ example {α β : Type}  (f : α → β) :
       by_contra hns
       push_neg at hns
       obtain ⟨y, hy⟩ := hns
+
       have h1 : y ∈ (f '' Set.univ)ᶜ := by
         simp_all only [Set.image_subset_iff, Set.preimage_compl, Set.compl_subset_compl, ne_eq, Set.image_univ,
           Set.mem_compl_iff, Set.mem_range, exists_false, not_false_eq_true]
@@ -727,3 +738,65 @@ example {A B C : Type} (f : A → B) (g : B → C)
   -- 合成関数の値 g(f(a)) = c となる
   use a
   rw [Function.comp_apply, ha, hb]
+
+--写像 練習11
+lemma subset_preimage_image {X Y : Type}(f : X → Y)(A : Set X): A ⊆ f ⁻¹' (f '' A) :=
+by
+  intro x hx
+  simp only [Set.mem_preimage, Set.mem_image]
+  use x, hx
+
+--写像 練習12
+example {X Y : Type} (f : X → Y) (B : Set Y) : B ∩ f '' Set.univ = f '' (f ⁻¹' B) :=
+by
+  apply Set.ext
+  intro y
+  apply Iff.intro
+  -- B ∩ f(X) ⊆ f(f⁻¹(B))
+  · intro h
+    cases h with
+    | intro hB hfX =>
+      obtain ⟨x, _, rfl⟩ := hfX
+      exact ⟨x, ⟨hB, rfl⟩⟩
+  -- f(f⁻¹(B)) ⊆ B ∩ f(X)
+  · intro h
+    cases h with
+    | intro x hx =>
+      obtain ⟨hB, rfl⟩ := hx
+      exact ⟨hB, ⟨x, ⟨Set.mem_univ x, rfl⟩⟩⟩
+
+--写像 練習13
+--写像 f : X → Y が与えられたとき、Xの部分集合AとYの部分集合Bに対して、
+-- f '' (A ∩ f ⁻¹' B) = f '' A ∩ B が成り⽴つことを⽰す。
+theorem image_inter_preimage_eq {X Y : Type} (f : X → Y) (A : Set X) (B : Set Y): f '' (A ∩ f ⁻¹' B) = (f '' A) ∩ B :=
+by
+  ext y
+  simp only [Set.mem_image, Set.mem_inter_iff, Set.mem_preimage]
+  apply Iff.intro
+  · -- y ∈ f '' (A ∩ f ⁻¹' B) → y ∈ f '' A ∩ B
+    intro h
+    cases h with
+    | intro x hx =>
+      obtain ⟨left, right⟩ := hx
+      obtain ⟨left, right_1⟩ := left
+      subst right
+      simp_all only [and_true]
+      exact ⟨x, left, rfl⟩
+  · -- y ∈ f '' A ∩ B → y ∈ f '' (A ∩ f ⁻¹' B)
+    rintro ⟨⟨x, hx, rfl⟩, hy⟩
+    constructor
+    apply And.intro
+    on_goal 2 => {rfl}
+    · simp_all only [and_self]
+
+--写像 練習13の別証明
+theorem image_inter_preimage_eq2 {X Y : Type} (f : X → Y) (A : Set X) (B : Set Y) :
+  f '' (A ∩ f ⁻¹' B) = (f '' A) ∩ B := by
+  ext y
+  simp only [Set.mem_image, Set.mem_inter_iff, Set.mem_preimage]
+  --goal ∃ x, (x ∈ A ∧ f x ∈ B) ∧ f x = y) ↔ (∃ x ∈ A, f x = y) ∧ y ∈ B
+  constructor
+  · rintro ⟨x, ⟨hxA, hxB⟩, rfl⟩ --hxA : x ∈ A   hxB : f x ∈ B
+    exact ⟨⟨x, hxA, rfl⟩, hxB⟩
+  · rintro ⟨⟨x, hxA, rfl⟩, hyB⟩ --hxA : x ∈ A   hyB : f x ∈ B
+    exact ⟨x, ⟨hxA, hyB⟩, rfl⟩

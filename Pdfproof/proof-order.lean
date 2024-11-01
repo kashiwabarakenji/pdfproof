@@ -18,7 +18,7 @@ variable {X Y : Type}
 variable (f : X → Y)
 
 -- 同値関係を定義します: x ~ y は f(x) = f(y) とする
-def rel (x y : X) : Prop := f x = f y
+def rel (f :X → Y) (x y : X) : Prop := f x = f y
 
 --2項関係と順序 練習1
 -- 同値関係であることの証明
@@ -307,7 +307,251 @@ by
 -- 同値関係の証明
 theorem equiv_is_equiv (n : ℤ) : Equivalence (equiv_rel n) :=
 ⟨my_refl n, @my_symm n, @my_trans n⟩
+--------------------------------
+--namespace MyNat
 
+--プリントにはないが練習
+--自然数にはすでにPartialOrderの構造が入っているので
+-- PartialOrder Nat としてPartialOrderを定義するとエラーになる。
+--#check PartialOrder Nat
+-- 自然数をラップする新しい型 MyNat を定義する。
+structure MyNat where
+  val : Nat
+  deriving DecidableEq, Repr
+/-
+-- 自然数における「小なりイコール」(≤) 関係を定義します。
+instance natPartialOrder : PartialOrder MyNat where
+  -- 順序関係として ≤ を設定します。
+  le := fun a b => a.val ≤ b.val
+
+  -- 反射律: 任意の自然数 a に対して a ≤ a が成り立つことを示します。
+  le_refl := fun a => Nat.le_refl a.val
+
+  -- 推移律: a ≤ b かつ b ≤ c ならば a ≤ c であることを示します。
+  le_trans := fun a b c hab hbc => Nat.le_trans hab hbc
+
+  -- 反対称律: a ≤ b かつ b ≤ a ならば a = b であることを示します。
+  le_antisymm := fun a b hab hba => congrArg MyNat.mk (Nat.le_antisymm hab hba)
+
+-/
+
+--練習4
+theorem mul_eq_one_of_ge_one {a b : Nat} (h : a * b = 1) : a = 1 ∧ b = 1 := by
+  have a_eq_one : a = 1 := by
+    simp_all only [ge_iff_le, mul_eq_one, ne_eq, one_ne_zero, not_false_eq_true, le_refl]
+
+  have b_eq_one : b = 1 := by
+    simp_all only [ge_iff_le, mul_eq_one, ne_eq, one_ne_zero, not_false_eq_true, le_refl]
+  -- 結論として、a = 1 かつ b = 1 である
+  exact ⟨a_eq_one, b_eq_one⟩
+
+-- Nat から MyNat への変換関数
+def ofNat (n : Nat) : MyNat := ⟨n⟩
+
+-- MyNat から Nat への変換関数
+def toNat (a : MyNat) : Nat := a.val
+
+-- Nat から MyNat への自動変換を定義します。
+instance : Coe Nat MyNat where
+  coe := ofNat
+
+-- MyNat に対する割り切る関係を定義します。
+def Mydvd (a b : MyNat) : Prop := ∃ k : Nat, b.val = a.val * k
+
+-- MyNat に対する PartialOrder のインスタンスを定義します。
+instance myNatPartialOrder : PartialOrder MyNat where
+  -- 順序関係として dvd を設定します。
+  le := Mydvd
+
+  -- 反射律: 任意の MyNat a に対して a ≤ a が成り立つことを示します。
+  le_refl := fun a =>
+    ⟨1, (Nat.mul_one a.val).symm⟩
+
+  -- 推移律: a ≤ b かつ b ≤ c ならば a ≤ c であることを示します。
+  le_trans := fun a b c hab hbc =>
+    match hab, hbc with
+    | ⟨k, hk⟩, ⟨l, hl⟩ =>
+      ⟨k * l, by
+        rw [hl, hk]
+        rw [Nat.mul_assoc]
+      ⟩
+
+  -- 反対称律: a ≤ b かつ b ≤ a ならば a = b であることを示します。
+  le_antisymm := fun a b hab hba =>
+    by
+      -- hab: ∃ k, b.val = a.val * k
+      -- hba: ∃ l, a.val = b.val * l
+      obtain ⟨k, hk⟩ := hab
+      obtain ⟨l, hl⟩ := hba
+
+      -- b.val = a.val * k かつ a.val = b.val * l から a.val = a.val * k * l
+      --rw [hk] at hl
+
+      -- a.val * (k * l) = a.val
+      -- ここで、a.val ≠ 0 または a.val = 0 の場合を分ける
+      by_cases aval: a.val = 0
+      case pos =>
+        -- a.val = 0 ならば b.val = 0 も同様
+        rw [aval] at hk
+        have : b.val = 0 := by
+          simp_all only [zero_mul]
+        simp_all only [zero_mul]
+        cases a
+        simp_all only
+        subst aval
+        simp [this.symm]
+      case neg =>
+        have canc: a.val * (l * k) = a.val := by
+            rw [Nat.mul_comm l k]
+            rw [←Nat.mul_assoc]
+            rw [←hk]
+            exact hl.symm
+        have canc2: a.val * (l * k) = a.val*1 := by
+          simp
+          exact canc
+        -- a.val > 0 ならば k * l = 1 でなければならない
+        have kl_eq_one : k * l = 1 := by
+          let natv := (Nat.pos_of_ne_zero aval)
+          let natv2 := Nat.eq_of_mul_eq_mul_left natv canc2
+          rw [mul_comm]
+          apply natv2
+
+        -- 自然数において k * l = 1 ならば k = 1 かつ l = 1
+        have k_eq_one : k = 1 := by
+          exact (mul_eq_one_of_ge_one kl_eq_one).1
+
+        have l_eq_one : l = 1 := by
+          --rw [k_eq_one] at kl_eq_one
+          exact (mul_eq_one_of_ge_one kl_eq_one).2
+
+        -- したがって, b.val = a.val * 1 = a.val
+        rw [k_eq_one] at hk
+        simp at hk
+        exact congrArg MyNat.mk hk.symm
+
+--end MyNat
+/-
+section MyPartialOrder
+--NにはすでにPartialOrderの構造が入っているので
+--   PartialOrder Nat のインスタンスとしてPartialOrderを定義するとエラーになる。
+-- dvd (divides) 関係を定義します。
+def dvd (a b : Nat) : Prop := ∃ k:Nat, b = a * k
+
+-- dvd 関係が部分順序を満たすことを証明し、Nat に PartialOrder インスタンスを与えます。
+local instance dvdPartialOrder : PartialOrder Nat := by
+
+{
+  -- 部分順序の順序関係を dvd に設定します。
+  le := dvd
+
+  -- 反射律: 任意の自然数 a に対して a divides a であることを示します。
+  le_refl := by
+    intro a
+    use 1
+    rw [Nat.mul_one]
+
+  -- 推移律: a divides b かつ b divides c ならば a divides c であることを示します。
+  le_trans := by
+    intros a b c hab hbc
+    simp_all only
+    exact dvd_trans hab hbc
+
+  -- 反対称律: a divides b かつ b divides a ならば a = b であることを示します。
+  le_antisymm := by
+    intros a b hab hba
+    obtain ⟨k, hk⟩ := hab
+    obtain ⟨l, hl⟩ := hba
+    -- b = a * k かつ a = b * l から a = a * k * l となる
+    --rw [hk, hl] at *
+    -- よって、a * (k * l) = a
+    have h_eq : a * (k * l) = a := by
+      rw [←Nat.mul_assoc]
+      rw [←hk]
+      exact hl.symm
+    have h_eq2: a * (k * l) = a*1 := by
+      simp
+      exact h_eq
+
+    -- a が 0 の場合
+    by_cases ha: a = 0
+    case pos =>
+      -- a = 0 ならば b = 0 である
+      subst hl
+      simp_all only [zero_mul, mul_one]
+    case neg =>
+      -- a が正の場合、k * l = 1 でなければならない
+      have kl_eq_one : k * l = 1 := by
+        exact Nat.eq_of_mul_eq_mul_left (Nat.pos_of_ne_zero ha) h_eq2
+
+      have k_eq_one: k = 1 := by
+        exact (mul_eq_one_of_ge_one kl_eq_one).1
+
+      rw [k_eq_one] at hk
+      simp at hk
+      exact hk.symm
+}
+-/
+/-
+local instance dvdPreorder : PartialOrder Nat :=
+{
+  le := dvd,
+  le_refl := by
+    intro a
+    use 1
+    simp_all only [mul_one],
+  le_trans := by
+    intro a b c hab hbc
+    cases hab with
+    | intro k hk =>
+      cases hbc with
+      | intro l hl =>
+        use k * l -- a | c は k * l の形で成り⽴つ
+        rw [←Nat.mul_assoc]
+        subst hl hk
+        simp_all only,
+
+  le_antisymm := by
+    intro a b hab hba
+    cases hab with
+    | intro k hk =>
+      cases hba with
+      | intro l hl =>
+        have canc: a * (l * k) = a := by
+          rw [Nat.mul_comm l k]
+          rw [←Nat.mul_assoc]
+          rw [←hk]
+          exact hl.symm
+        have canc2: a * (l * k) = a*1 := by
+          simp
+          exact canc
+        by_cases aa: a = 0
+        case pos =>
+          have : b = 0 := by
+             rw [aa] at hk
+             simp at hk
+            exact congrArg MyNat.mk hk.symm
+          subst this
+          rw [aa]
+
+        case neg =>
+          have : l * k = 1 := by
+            let natv := (Nat.pos_of_ne_zero aa)
+            let natv2 := Nat.eq_of_mul_eq_mul_left natv canc2
+            apply natv2
+
+          cases l with
+          | zero => contradiction
+          | succ l' =>
+            cases k with
+            | zero => contradiction
+            | succ k' =>
+              simp at this
+              rw [this.1] at hl
+              simp at hl
+              exact hl
+}
+
+-/
 --------------------
 --2項関係と順序 練習5--
 --------------------
@@ -395,8 +639,8 @@ variable {α : Type}
 
 -- 部分集合族 2^α はセット型 `Set α` で表現される
 
--- 部分集合間の包含関係を定義
-instance : PartialOrder (Set α) where
+-- 部分集合間の包含関係を定義。Fは証明に使ってないが、F上の部分集合として定義
+instance (F : Set (Set α)): PartialOrder (Set α) where
   le := Set.Subset
   le_refl := fun A => Set.Subset.refl A
   le_trans := fun A B C hab Hbc => Set.Subset.trans hab Hbc
@@ -418,12 +662,13 @@ A ⊆ A が成り立ちます。
 以上より、Set α における包含関係は部分順序関係を定めます。
 -/
 
--- 実際に 2^X が部分順序集合であることの例
-example (X : Type) : PartialOrder (Set X) :=
+-- 2^X が部分順序集合であるこ
+example (X : Type)  : PartialOrder (Set X) :=
   { le := Set.Subset
     le_refl := Set.Subset.refl
     le_trans := fun A B C hab hbc => Set.Subset.trans hab hbc
-    le_antisymm := fun A B hab Hba => Set.Subset.antisymm hab Hba }
+    le_antisymm := fun A B hab Hba => Set.Subset.antisymm hab Hba
+    }
 
 
 --------------------
@@ -470,5 +715,35 @@ instance : ToString Divides where
 def example1 : Divides := mkDivides 6
 def example2 : Divides := mkDivides 12
 
-#eval example1 ≤ example2  -- 結果: true （6 | 12）
-#eval example2 ≤ example1  -- 結果: false （12 ∣ 6 は偽）
+--#eval example1 ≤ example2  -- 結果: true （6 | 12）
+--#eval example2 ≤ example1  -- 結果: false （12 ∣ 6 は偽）
+-----------
+
+variable {Q : Type*} [PartialOrder Q]
+
+-- 練習10 x が最小元ならば極小元であることを証明
+lemma min_imp_minimal {x : Q} (h_min : ∀ y : Q, x ≤ y) :
+  ∀ y : Q, y ≤ x → y = x :=
+by
+  -- 任意の y が x 以下であると仮定する
+  intro y h_le
+  -- すでに x は最小元なので x ≤ y
+  have h_ge : x ≤ y := h_min y
+  -- 反対称性により、y = x
+  exact le_antisymm h_le h_ge
+
+--練習12:
+
+-- Q を部分順序集合と仮定
+variable {Q : Type*} [PartialOrder Q]
+
+-- 最小元が存在すれば一意であることを証明
+lemma unique_minimum {x y : Q} (h_min_x : ∀ z : Q, x ≤ z)
+  (h_min_y : ∀ z : Q, y ≤ z) : x = y :=
+by
+  -- h_min_x により x ≤ y
+  have hxy : x ≤ y := h_min_x y
+  -- h_min_y により y ≤ x
+  have hyx : y ≤ x := h_min_y x
+  -- 反対称性により x = y
+  exact le_antisymm hxy hyx

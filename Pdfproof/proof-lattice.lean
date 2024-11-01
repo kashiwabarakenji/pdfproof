@@ -1,7 +1,7 @@
 import LeanCopilot
 import Mathlib.Data.Set.Basic
 import Mathlib.Data.Set.Function
-import Mathlib.Init.Data.Nat.Lemmas
+--import Mathlib.Init.Data.Nat.Lemmas
 import Mathlib.Data.Real.Basic
 import Mathlib.Order.Basic
 import Mathlib.Order.Defs

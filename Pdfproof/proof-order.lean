@@ -11,12 +11,7 @@ import Mathlib.Order.Defs
 ----------------------
 
 --2項関係と順序　練習1
--- 任意の型 X と Y を宣言します
-variable {X Y : Type}
-
--- f: X → Y の写像を仮定します
-variable (f : X → Y)
-
+--variable {X Y : Type}
 -- 同値関係を定義します: x ~ y は f(x) = f(y) とする
 def rel (f :X → Y) (x y : X) : Prop := f x = f y
 
@@ -51,9 +46,8 @@ by
   · intro x y z hxy hyz
     exact hxy.trans hyz
 
+--------------------
 --2項関係と順序　練習２
--- 型 α を任意の型とします
-variable {α : Type}
 
 -- M を α の部分集合の集合として定義
 variable (M : Set (Set α))
@@ -121,7 +115,10 @@ example (hM : is_partition M) : Equivalence (RR M):=
         · simp_all only
 }
 
+------------------
 --2項関係と順序　練習3
+------------------
+
 example {α : Type}
   (X : Set α) (_ : X.Nonempty)
   (R : α → α → Prop) (hR : Equivalence R) :
@@ -188,29 +185,21 @@ by
 
 /-- 練習3をAIにリファクタリングしてもらったもの。わかりやすくなったかは微妙。
 # 同値関係からの分割の証明
-
 非空な集合 `X` 上の同値関係 `R` が与えられたとき、集合 `M` を以下のように定義します。
-
 \[ M = \{ [y] \mid y \in X \} \]
-
 ここで、\([y] = \{ x \in X \mid R(x, y) \}\) は元 `y` に対応する同値類（同値クラス）です。
-
 本定理では、集合 `M` が集合 `X` の分割（パーティション）を形成することを示します。分割の条件は以下の三つです：
-
 1. **非空性:** 各部分集合は非空である。
 2. **互いに素:** 異なる部分集合は互いに交わらない。
 3. **全体覆い:** 全ての元が少なくとも一つの部分集合に含まれる。
-
 ## 定理の宣言
-
 以下の定理 `equivalenceRelationPartition` は、上述の条件を満たすことを証明します。
-
 - `α` : 任意の型。
 - `X` : 非空な `α` 型の集合。
 - `R` : `α` 型の元同士の同値関係。
 - `hR` : `R` が同値関係であることの証明。
-
 -/
+
 theorem equivalenceRelationPartition {α : Type}
   (X : Set α)
   (R : α → α → Prop) (hR : Equivalence R) :
@@ -274,7 +263,10 @@ by
       -- `x` が `{z | R z x}` に属することを示す
       exact hR.refl x
 
+------------------------
 --2項関係と順序 練習4
+------------------------
+
 -- 整数全体の集合での同値関係を定義
 def equiv_rel (n : ℤ) (x y : ℤ) : Prop :=
   ∃ k : ℤ, x - y = n * k
@@ -307,10 +299,9 @@ by
 -- 同値関係の証明
 theorem equiv_is_equiv (n : ℤ) : Equivalence (equiv_rel n) :=
 ⟨my_refl n, @my_symm n, @my_trans n⟩
---------------------------------
---namespace MyNat
 
---プリントにはないが練習
+--------------------------------
+
 --自然数にはすでにPartialOrderの構造が入っているので
 -- PartialOrder Nat としてPartialOrderを定義するとエラーになる。
 --#check PartialOrder Nat
@@ -319,7 +310,7 @@ structure MyNat where
   val : Nat
   deriving DecidableEq, Repr
 /-
--- 自然数における「小なりイコール」(≤) 関係を定義します。
+--プリントにはないが自然数における通常の大小関係「小なりイコール」(≤) 関係を定義してみると
 instance natPartialOrder : PartialOrder MyNat where
   -- 順序関係として ≤ を設定します。
   le := fun a b => a.val ≤ b.val
@@ -335,11 +326,11 @@ instance natPartialOrder : PartialOrder MyNat where
 
 -/
 
---練習4
-theorem mul_eq_one_of_ge_one {a b : Nat} (h : a * b = 1) : a = 1 ∧ b = 1 := by
+--練習4のinstanceバージョン
+--利用する補題
+lemma mul_eq_one_of_ge_one {a b : Nat} (h : a * b = 1) : a = 1 ∧ b = 1 := by
   have a_eq_one : a = 1 := by
     simp_all only [ge_iff_le, mul_eq_one, ne_eq, one_ne_zero, not_false_eq_true, le_refl]
-
   have b_eq_one : b = 1 := by
     simp_all only [ge_iff_le, mul_eq_one, ne_eq, one_ne_zero, not_false_eq_true, le_refl]
   -- 結論として、a = 1 かつ b = 1 である
@@ -429,16 +420,11 @@ instance myNatPartialOrder : PartialOrder MyNat where
         simp at hk
         exact congrArg MyNat.mk hk.symm
 
---end MyNat
 /-
-section MyPartialOrder
---NにはすでにPartialOrderの構造が入っているので
---   PartialOrder Nat のインスタンスとしてPartialOrderを定義するとエラーになる。
--- dvd (divides) 関係を定義します。
-def dvd (a b : Nat) : Prop := ∃ k:Nat, b = a * k
+--以下は証明はあっていると思われるが、NにはすでにPartialOrderの構造が入っているので
+--PartialOrder Nat のインスタンスとしてPartialOrderを定義するとreflに関するエラーになる。
 
--- dvd 関係が部分順序を満たすことを証明し、Nat に PartialOrder インスタンスを与えます。
-local instance dvdPartialOrder : PartialOrder Nat := by
+instance dvdPartialOrder : PartialOrder Nat := by
 
 {
   -- 部分順序の順序関係を dvd に設定します。
@@ -489,66 +475,6 @@ local instance dvdPartialOrder : PartialOrder Nat := by
       rw [k_eq_one] at hk
       simp at hk
       exact hk.symm
-}
--/
-/-
-local instance dvdPreorder : PartialOrder Nat :=
-{
-  le := dvd,
-  le_refl := by
-    intro a
-    use 1
-    simp_all only [mul_one],
-  le_trans := by
-    intro a b c hab hbc
-    cases hab with
-    | intro k hk =>
-      cases hbc with
-      | intro l hl =>
-        use k * l -- a | c は k * l の形で成り⽴つ
-        rw [←Nat.mul_assoc]
-        subst hl hk
-        simp_all only,
-
-  le_antisymm := by
-    intro a b hab hba
-    cases hab with
-    | intro k hk =>
-      cases hba with
-      | intro l hl =>
-        have canc: a * (l * k) = a := by
-          rw [Nat.mul_comm l k]
-          rw [←Nat.mul_assoc]
-          rw [←hk]
-          exact hl.symm
-        have canc2: a * (l * k) = a*1 := by
-          simp
-          exact canc
-        by_cases aa: a = 0
-        case pos =>
-          have : b = 0 := by
-             rw [aa] at hk
-             simp at hk
-            exact congrArg MyNat.mk hk.symm
-          subst this
-          rw [aa]
-
-        case neg =>
-          have : l * k = 1 := by
-            let natv := (Nat.pos_of_ne_zero aa)
-            let natv2 := Nat.eq_of_mul_eq_mul_left natv canc2
-            apply natv2
-
-          cases l with
-          | zero => contradiction
-          | succ l' =>
-            cases k with
-            | zero => contradiction
-            | succ k' =>
-              simp at this
-              rw [this.1] at hl
-              simp at hl
-              exact hl
 }
 
 -/
@@ -637,39 +563,25 @@ instance Q_is_partial_order : PartialOrder X :=
 -- 任意の型 α を仮定
 variable {α : Type}
 
--- 部分集合族 2^α はセット型 `Set α` で表現される
-
--- 部分集合間の包含関係を定義。Fは証明に使ってないが、F上の部分集合として定義
+-- 部分集合間の包含関係を定義。Fは証明に使ってないが、F上の部分集合として定義。冪集合として証明されている。
 instance (F : Set (Set α)): PartialOrder (Set α) where
   le := Set.Subset
   le_refl := fun A => Set.Subset.refl A
   le_trans := fun A B C hab Hbc => Set.Subset.trans hab Hbc
   le_antisymm := fun A B hab Hba => Set.Subset.antisymm hab Hba
 
--- 以下、証明の補足説明
-
 /-
-反射律:
-任意の集合 A に対して、A は自分自身の部分集合であるため、
-A ⊆ A が成り立ちます。
-
-反対称律:
-任意の集合 A, B に対して、A ⊆ B かつ B ⊆ A ならば A = B となります。
-
-推移律:
-任意の集合 A, B, C に対して、A ⊆ B かつ B ⊆ C ならば A ⊆ C となります。
-
-以上より、Set α における包含関係は部分順序関係を定めます。
+反射律:任意の集合 A に対して、A は自分自身の部分集合であるため、A ⊆ A が成り立ちます。
+反対称律:任意の集合 A, B に対して、A ⊆ B かつ B ⊆ A ならば A = B となります。
+推移律:任意の集合 A, B, C に対して、A ⊆ B かつ B ⊆ C ならば A ⊆ C となります。
 -/
 
--- 2^X が部分順序集合であるこ
 example (X : Type)  : PartialOrder (Set X) :=
   { le := Set.Subset
     le_refl := Set.Subset.refl
     le_trans := fun A B C hab hbc => Set.Subset.trans hab hbc
     le_antisymm := fun A B hab Hba => Set.Subset.antisymm hab Hba
-    }
-
+  }
 
 --------------------
 --2項関係と順序 練習7--
@@ -715,14 +627,10 @@ instance : ToString Divides where
 def example1 : Divides := mkDivides 6
 def example2 : Divides := mkDivides 12
 
---#eval example1 ≤ example2  -- 結果: true （6 | 12）
---#eval example2 ≤ example1  -- 結果: false （12 ∣ 6 は偽）
------------
-
-variable {Q : Type*} [PartialOrder Q]
-
+-------------------------
 -- 練習10 x が最小元ならば極小元であることを証明
-lemma min_imp_minimal {x : Q} (h_min : ∀ y : Q, x ≤ y) :
+-------------------------
+lemma min_imp_minimal  {Q : Type*} [PartialOrder Q]{x : Q} (h_min : ∀ y : Q, x ≤ y) :
   ∀ y : Q, y ≤ x → y = x :=
 by
   -- 任意の y が x 以下であると仮定する
@@ -732,13 +640,11 @@ by
   -- 反対称性により、y = x
   exact le_antisymm h_le h_ge
 
---練習12:
+--------------
+--練習12:最小元が存在すれば一意であることを証明
+--------------
 
--- Q を部分順序集合と仮定
-variable {Q : Type*} [PartialOrder Q]
-
--- 最小元が存在すれば一意であることを証明
-lemma unique_minimum {x y : Q} (h_min_x : ∀ z : Q, x ≤ z)
+lemma unique_minimum {Q : Type*} [PartialOrder Q]{x y : Q} (h_min_x : ∀ z : Q, x ≤ z)
   (h_min_y : ∀ z : Q, y ≤ z) : x = y :=
 by
   -- h_min_x により x ≤ y

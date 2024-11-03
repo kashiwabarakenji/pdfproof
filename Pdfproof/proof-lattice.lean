@@ -56,6 +56,7 @@ theorem union_is_lub {α : Type*} (A B : Set α) :
   ∀ C : Set α, (A ⊆ C ∧ B ⊆ C) ↔ A ∪ B ⊆ C :=
 by
   intro C
+
   constructor
   -- (A ⊆ C ∧ B ⊆ C) → A ∪ B ⊆ C
   · intro h
@@ -80,7 +81,7 @@ by
     constructor
     simp_all only [Set.subset_inter_iff]
     simp_all only [Set.subset_inter_iff]
-
+----------
 -- 練習問題 5
 -- x以上かつ、y以上の自然集全体の最小なものが、xとyの最小公倍数であることを示す。
 -- 自然数 x と y の最小公倍数が、x以上かつy以上の自然数全体の最小のものであることを証明

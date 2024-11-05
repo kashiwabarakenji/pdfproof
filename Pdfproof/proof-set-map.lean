@@ -806,21 +806,3 @@ theorem image_inter_preimage_eq2 {X Y : Type} (f : X → Y) (A : Set X) (B : Set
     exact ⟨⟨x, hxA, rfl⟩, hxB⟩
   · rintro ⟨⟨x, hxA, rfl⟩, hyB⟩ --hxA : x ∈ A   hyB : f x ∈ B
     exact ⟨x, ⟨hxA, hyB⟩, rfl⟩
-
---写像 全射fの逆向きの単射gを構成。Lean by Exampleの問題。
-theorem surj_to_inj {A B : Type} (f : A →B) (hf : ∀b : B, ∃a : A, f a = b) :∃g : B →A, ∀x y : B, g x = g y →x = y :=
-by
-  -- ‘f‘ が全射であることから、逆向きの写像‘g‘ を構成するために、‘hf‘ から具体的な‘a‘ を取得
-  let g : B →A := fun b =>
-    (hf b).choose -- のLean ‘choose‘ を使って要素を選びます
-  -- ‘g(b)‘ の性質を確認
-  have hg : ∀b : B, f (g b) = b := fun b =>
-     (hf b).choose_spec -- ‘choose_spec‘ により、選択した要素が‘f (g b) = b‘ を満たすことを確認。選択公理を使用
-  -- 存在する写像‘g‘ とその単射性の証明を提供
-  apply Exists.intro g
-  intro x y h
-  -- ‘g(x) = g(y)‘ ならば‘f(g(x)) = f(g(y))‘ よりx = y が成り立つ
-  calc
-  x = f (g x) := (hg x).symm
-  _ = f (g y) := by rw [h]
-  _ = y := hg y

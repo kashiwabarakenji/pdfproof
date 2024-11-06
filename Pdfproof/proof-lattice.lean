@@ -133,3 +133,72 @@ instance : PartialOrder Divides where
   le_antisymm a b hab hba := by
     apply Divides.ext
     exact Nat.dvd_antisymm hab hba
+
+------------------
+------練習6--------
+------------------
+
+-- ℝ^2 の上の順序の定義: (x1, y1) >= (x2, y2) ⇔ x1 >= x2 かつ y1 >= y2
+structure R2 : Type :=
+  (x : ℝ)
+  (y : ℝ)
+
+namespace R2
+
+instance : PartialOrder R2 where
+  le a b := a.x ≤ b.x ∧ a.y ≤ b.y
+  le_refl a := ⟨le_refl a.x, le_refl a.y⟩
+  le_trans a b c hab hbc := ⟨le_trans hab.1 hbc.1, le_trans hab.2 hbc.2⟩
+  le_antisymm a b hab hba := by
+    have hx : a.x = b.x := le_antisymm hab.1 hba.1
+    have hy : a.y = b.y := le_antisymm hab.2 hba.2
+    simp_all only [le_refl, and_self]
+    cases a
+    simp_all only
+
+-- 上限 (sup) と下限 (inf) の定義
+noncomputable instance : Lattice R2 where
+  sup a b := ⟨max a.x b.x, max a.y b.y⟩
+  le_sup_left a b := ⟨le_max_left a.x b.x, le_max_left a.y b.y⟩
+  le_sup_right a b := ⟨le_max_right a.x b.x, le_max_right a.y b.y⟩
+  sup_le _ _ _ hac hbc := ⟨max_le hac.1 hbc.1, max_le hac.2 hbc.2⟩
+  inf a b := ⟨min a.x b.x, min a.y b.y⟩
+  inf_le_left a b := ⟨min_le_left a.x b.x, min_le_left a.y b.y⟩
+  inf_le_right a b := ⟨min_le_right a.x b.x, min_le_right a.y b.y⟩
+  le_inf _ _ _ hab hac := ⟨le_min hab.1 hac.1, le_min hab.2 hac.2⟩
+
+end R2
+
+------------------
+-----練習7 --------
+------------------
+
+variable {α : Type} [Lattice α]
+
+-- 冪等性: x ⊓ x = x, x ⊔ x = x
+theorem meet_idempotent (x : α) : x ⊓ x = x := by
+  rw [inf_idem]
+
+theorem join_idempotent (x : α) : x ⊔ x = x := by
+  rw [sup_idem]
+
+-- 交換律: x ⊓ y = y ⊓ x, x ⊔ y = y ⊔ x
+theorem meet_comm (x y : α) : x ⊓ y = y ⊓ x := by
+  rw [inf_comm]
+
+theorem join_comm (x y : α) : x ⊔ y = y ⊔ x := by
+  rw [sup_comm]
+
+-- 結合律: x ⊓ (y ⊓ z) = (x ⊓ y) ⊓ z, x ⊔ (y ⊔ z) = (x ⊔ y) ⊔ z
+theorem meet_assoc (x y z : α) : x ⊓ (y ⊓ z) = (x ⊓ y) ⊓ z := by
+  rw [inf_assoc]
+
+theorem join_assoc (x y z : α) : x ⊔ (y ⊔ z) = (x ⊔ y) ⊔ z := by
+  rw [sup_assoc]
+
+-- 吸収律: x ⊓ (y ⊔ x) = x, x ⊔ (x ⊓ y) = x
+theorem meet_absorption (x y : α) : x ⊓ (y ⊔ x) = x := by
+  simp_all only [le_sup_right, inf_of_le_left]
+
+theorem join_absorption (x y : α) : x ⊔ (x ⊓ y) = x := by
+  rw [sup_inf_self]

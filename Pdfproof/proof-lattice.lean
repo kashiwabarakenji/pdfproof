@@ -138,6 +138,7 @@ instance : PartialOrder Divides where
 ------練習6--------
 ------------------
 
+
 -- ℝ^2 の上の順序の定義: (x1, y1) >= (x2, y2) ⇔ x1 >= x2 かつ y1 >= y2
 structure R2 : Type :=
   (x : ℝ)
@@ -202,3 +203,170 @@ theorem meet_absorption (x y : α) : x ⊓ (y ⊔ x) = x := by
 
 theorem join_absorption (x y : α) : x ⊔ (x ⊓ y) = x := by
   rw [sup_inf_self]
+
+------------------
+-----練習10--------
+------------------
+
+--束に対して、
+-- meet distributive law
+-- a ⊓ (b ⊔ c) = (a ⊓ b) ⊔ (a ⊓ c)
+-- join distributive law
+-- a ⊔ (b ⊓ c) = (a ⊔ b) ⊓ (a ⊔ c)
+--が同値であることを証明する問題。
+--式変形で証明するのは難しい。双対性より成り立つというよくある証明も間違っていると思われる。
+--禁止部分束を利用するのが簡単に証明できると思われる。
+--meet distributive lawが成り立たないとすると、
+--a ⊓ (b ⊔ c) > (a ⊓ b) ⊔ (a ⊓ c) となる。この2元とbかcは比べられないので、
+--これらをすべてjoinしたa ⊔ b ⊔ c と、a ⊓ b ⊓ cを加えて、5元を考える。
+--これらの5元が全て異なる場合は、N5と呼ばれる部分束になり、
+-- X = a ⊓ (b ⊔ c), Y = (a ⊓ b) ⊔ (a ⊓ c), Z = bとすると、計算により、
+--X ⊔ (Y ⊓ Z)=Xと
+--(X ⊔ Y) ⊓ (X ⊔ Z)=Yが成り立ち、XとYが異なるので、join distributive lawが成り立たない。
+--5元のどれかが一致する場合は、M3という部分束になり、やはりjoin distributive lawが成り立たない。
+--以下のlean 4で証明は、作成するのに2日かかった。
+
+lemma meet_distributive_law_iff_join_distributive_law
+  (α : Type) [Lattice α] :
+  (∀ a b c : α, a ⊔ (b ⊓ c) = (a ⊔ b) ⊓ (a ⊔ c) ) →
+  (∀ a b c : α, a ⊓ (b ⊔ c) = (a ⊓ b) ⊔ (a ⊓ c))
+    :=
+by
+  contrapose
+  intro h_forall
+  push_neg at h_forall
+  --apply not_forall.mp at h
+  obtain ⟨a, b, c, h_exist⟩ := h_forall
+  intro h
+  let X := a ⊓ (b ⊔ c)
+  let Y := (a ⊓ b) ⊔ (a ⊓ c)
+  have h_existXY: X ≠ Y := by
+    intro h_eq
+    apply h_exist
+    exact h_eq
+  let Zb := b
+  --XとYが一致することを示せば、矛盾が生じる。
+
+  have h0: a ⊓ b ⊔ a ⊓ c ≤ a ⊓ (b ⊔ c) := by
+    apply ge_iff_le.mp
+    exact le_inf_sup
+
+  --h1の証明にh0を利用している。Xのほうが自明に大きい。この命題も証明には使ってない。
+  have h1 : X >= Y := by
+    simp_all only [X,Y]
+
+  --使ってないように見えて、コメントアウトするとエラーになる。
+  have h3: Y ⊔ Zb >= X := by
+    dsimp [X, Y, Zb]
+    simp_all
+    --goal a ⊓ (b ⊔ c) ≤ a ⊓ (a ⊓ b ⊔ c) ⊔ b
+    conv =>
+      rhs
+      rw [sup_comm]
+    rw [h b a ((a ⊓ b ⊔ c))]
+    --goal  a ⊓ (b ⊔ c) ≤ (b ⊔ a) ⊓ (b ⊔ (a ⊓ b ⊔ c))
+    have h3_lem: a <= b ⊔ a := by
+      exact le_sup_right
+    have h3_lem2: (b ⊔ c) <= (b ⊔ (a ⊓ b ⊔ c)) := by
+      simp_all only [inf_le_left, sup_of_le_right, le_inf_iff, and_self, le_sup_right, sup_le_iff, le_sup_left,
+        true_and, Y, X]
+      apply le_sup_of_le_right
+      simp_all only [le_sup_right]
+    exact inf_le_inf h3_lem h3_lem2
+
+
+  --M3のケースとN5のケースで場合分け。
+  by_cases m3n5: a ⊓ b <= c
+  case pos => --N5のケース
+
+
+    --明示的に引用されてないが、コメントアウトするとエラーになるので、引用されていると思われる。
+    have h3_dual: X ⊓ Zb <= Y := by
+      dsimp [X, Y, Zb]
+      simp_all
+      --goal a ⊓ (b ⊔ c) ⊓ b ≤ a   ∧   a ⊓ (b ⊔ c) ⊓ b ≤ a ⊓ b ⊔ c
+      symm
+      constructor
+      rw [inf_assoc]
+      rw [inf_comm]
+      rw [inf_comm (b ⊔ c) b]
+      rw [inf_sup_self]
+      rw [inf_comm]
+      exact m3n5
+
+      simp_all only [inf_le_left, sup_of_le_right, le_inf_iff, and_self, le_sup_left, inf_of_le_right, Y, X, Zb]
+      rw [inf_assoc]
+      rw [inf_comm]
+      rw [inf_comm (b ⊔ c) b]
+      rw [inf_sup_self]
+      simp_all only [inf_le_right]
+
+
+    let left_hand:= Y ⊔ (X ⊓ Zb)
+    let right_hand:= (Y ⊔ Zb) ⊓ (Y ⊔ X)
+    have left_eq: Y ⊔ (X ⊓ Zb) = Y := by
+      simp_all only [inf_le_left, sup_of_le_left, le_refl, le_sup_left, inf_of_le_left, not_true_eq_false, X, Y, Zb]
+    have right_eq: (Y ⊔ Zb) ⊓ (Y ⊔ X) = X := by
+      simp_all only [inf_le_left, sup_of_le_left, le_refl, le_sup_left, inf_of_le_left, not_true_eq_false, X, Y, Zb]
+      simp_all only [inf_le_left, sup_of_le_right, ne_eq, le_inf_iff, true_and, ge_iff_le, inf_of_le_right]
+    have h4 : left_hand = right_hand := by
+      dsimp [left_hand, right_hand]
+      conv =>
+        rhs
+        rw [inf_comm]
+      exact h Y X Zb
+    have h5 : X = Y := by
+      rw [←left_eq]
+      conv =>
+        lhs
+        rw [←right_eq]
+      symm
+      dsimp [left_hand,right_hand] at h4
+      exact h4
+    contradiction
+
+  case neg => --M3のケース　N5と同じように証明できるので場合分けが必要だったか不明。negの条件をどこで使っているのか。
+
+    --h3_dualも使ってないように見えてコメントアウトするとエラーになるので使っていると思われる。
+    have h3_dual: X ⊓ Zb <= Y := by
+      dsimp [X, Y, Zb]
+      simp_all
+      --goal a ⊓ (b ⊔ c) ⊓ b ≤ a   ∧   a ⊓ (b ⊔ c) ⊓ b ≤ a ⊓ b ⊔ c
+      symm
+      constructor
+      rw [inf_assoc]
+      rw [inf_comm]
+      rw [inf_comm (b ⊔ c) b]
+      rw [inf_sup_self]
+      rw [inf_comm]
+      simp_all only [inf_le_left, sup_of_le_right, not_false_eq_true, le_inf_iff, and_self, le_sup_left, X, Y, Zb]
+
+      simp_all only [inf_le_left, sup_of_le_right, le_inf_iff, and_self, le_sup_left, inf_of_le_right, Y, X, Zb]
+      rw [inf_assoc]
+      rw [inf_comm]
+      rw [inf_comm (b ⊔ c) b]
+      rw [inf_sup_self]
+      simp_all only [inf_le_right]
+
+    let left_hand:= Y ⊔ (X ⊓ Zb)
+    let right_hand:= (Y ⊔ Zb) ⊓ (Y ⊔ X)
+    have left_eq: Y ⊔ (X ⊓ Zb) = Y := by
+      simp_all only [inf_le_left, sup_of_le_left, le_refl, le_sup_left, inf_of_le_left, not_true_eq_false, X, Y, Zb]
+    have right_eq: (Y ⊔ Zb) ⊓ (Y ⊔ X) = X := by
+      simp_all only [inf_le_left, sup_of_le_left, le_refl, le_sup_left, inf_of_le_left, not_true_eq_false, X, Y, Zb]
+      simp_all only [inf_le_left, sup_of_le_right, ne_eq, le_inf_iff, true_and, ge_iff_le, inf_of_le_right]
+    have h4 : left_hand = right_hand := by
+      dsimp [left_hand, right_hand]
+      conv =>
+        rhs
+        rw [inf_comm]
+      exact h Y X Zb
+    have h5 : X = Y := by
+      rw [←left_eq]
+      conv =>
+        lhs
+        rw [←right_eq]
+      symm
+      dsimp [left_hand,right_hand] at h4
+      exact h4
+    contradiction

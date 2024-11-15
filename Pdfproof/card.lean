@@ -220,3 +220,67 @@ example (a b : Cardinal) (h₁ : a ≤ b) (h₂ : b ≤ a) : a = b := by
 -- 推移律: 任意のカーディナリティ a, b, c に対して、a ≤ b かつ b ≤ c ならば a ≤ c が成り立つ
 example (a b c : Cardinal) (h₁ : a ≤ b) (h₂ : b ≤ c) : a ≤ c := by
   apply le_trans h₁ h₂
+
+-----------
+---練習9---
+-----------
+
+open Cardinal
+
+theorem countable_integers : #ℤ = aleph0 := by
+  -- ℕ と ℤ の間に全単射（equiv）を構成
+  let f : ULift ℕ ≃ ℤ := {
+    toFun := λ n => if n.down % 2 = 0 then n.down / 2 else -((n.down + 1) / 2),
+    invFun := λ z => ⟨if 0 ≤ z then 2 * Int.natAbs z else 2 * Int.natAbs z - 1⟩,
+    left_inv := by
+      have left_inv_lem: Function.LeftInverse (fun z ↦ if 0 ≤ z then 2 * z.natAbs else 2 * z.natAbs - 1) fun n ↦
+       if n % 2 = 0 then Int.ofNat (n / 2) else -Int.ofNat ((n + 1) / 2) := by
+        intro n
+        by_cases h : 0 ≤ n
+        · simp
+          split_ifs with h₁ h₂ h₃
+          · simp_all only [zero_le]
+            norm_cast
+            omega
+          · simp_all only [not_le]
+            exfalso
+            omega
+          · simp_all only [zero_le, Nat.mod_two_ne_zero, Left.nonneg_neg_iff, Int.natAbs_neg]
+            exfalso
+            omega
+          · simp_all only [zero_le, Nat.mod_two_ne_zero, Left.nonneg_neg_iff, not_le, Int.natAbs_neg]
+            symm
+            omega
+
+        · simp
+          split_ifs with h₁ h₂ h₃
+          · simp_all only [zero_le, not_true_eq_false]
+          · simp_all only [zero_le, not_true_eq_false]
+          · simp_all only [zero_le, not_true_eq_false]
+          · simp_all only [zero_le, not_true_eq_false]
+      simp_all only [Int.ofNat_eq_coe, Int.ofNat_ediv, Nat.cast_ofNat, Nat.cast_add, Nat.cast_one]
+      tauto
+
+    right_inv := by
+      intro z
+      by_cases h : 0 ≤ z
+      · simp_all only [↓reduceIte, Nat.mul_mod_right, Nat.cast_mul, Nat.cast_ofNat, Int.natCast_natAbs, ne_eq,
+        OfNat.ofNat_ne_zero, not_false_eq_true, mul_div_cancel_left₀, abs_eq_self]
+      · simp_all only [not_le, Nat.cast_ite, Nat.cast_mul, Nat.cast_ofNat, Int.natCast_natAbs]
+        split
+        next h_1 =>
+          simp_all only [Nat.mul_mod_right, ↓reduceIte, ne_eq, OfNat.ofNat_ne_zero, not_false_eq_true,
+            mul_div_cancel_left₀, abs_eq_self]
+        next h_1 =>
+          simp_all only [not_le]
+          split
+          next h_1 =>
+            norm_cast
+            simp_all only [Int.ofNat_ediv, Nat.cast_ofNat]
+            omega
+          next h_1 =>
+            simp_all only [Nat.mod_two_ne_zero]
+            omega
+    }
+  -- ℕ ≃ ℤ なのでカーディナリティが等しいことが言える
+  exact Cardinal.mk_congr f.symm

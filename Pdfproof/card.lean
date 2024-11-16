@@ -8,7 +8,10 @@ import Mathlib.SetTheory.Cardinal.Basic
 import Mathlib.Logic.Function.Basic
 import LeanCopilot
 import Mathlib.Data.Real.Basic  --これがあるとuseが使える。Mathlib.Tactic.Useがよみこまれているのかも。
-import Mathlib.SetTheory.Cardinal.Continuum
+--import Mathlib.Data.Rat.Basic
+--import Mathlib.SetTheory.Cardinal.Continuum
+import Mathlib.Algebra.Order.Archimedean.Basic
+import Mathlib.Data.Real.Archimedean
 --import Mathlib.SetTheory.Countable.Basic
 --import Mathlib.Data.PProd.Basic
 --import Mathlib.Topology.Instances.Real
@@ -400,12 +403,68 @@ theorem q_countable : Set.Countable (Set.univ: Set ℚ) := by
 
 
 -----------
----練習12---
+---練習12--- 片側のみ
 -----------
 
-theorem infinite_card_eq_aleph0 {A : Type} (hA : Infinite A) (h : #A ≤ aleph0) : #A = aleph0 := by
-  apply le_antisymm
-  -- 1. #ℝ ≤ 2^#ℚ を証明
-  sorry
-  -- 2. 2^#ℚ ≤ #ℝ を証明
-  sorry
+--直接には使ってないが、基本の原理
+theorem exists_rat_in_open_interval (a b : ℝ) (h : a < b) : ∃ q : ℚ, a < q ∧ (q : ℝ) < b := by
+  -- 実数の密度性を利用して、有理数近似を求める
+  --#check @exists_rat_btwn _ _ (Real.instArchimedean) a b h
+  obtain ⟨q, hq⟩ := exists_rat_btwn h
+  -- q が a と b の間にあることを確認する
+  use q
+
+--とりあえず、片側だけ示した。もう片方は、10進展開を使ったりして、大変そうなので、とりあえずは保留。
+theorem infinite_card_eq_aleph0  : #ℝ ≤ 2^#ℚ := by
+  let real_to_rational_subset_type : ℝ → Set ℚ := λ r => {q : ℚ | r ≤ (q : ℝ)}
+  have func_inj: Function.Injective real_to_rational_subset_type := by
+    intros x y h
+    simp_all only [real_to_rational_subset_type]
+    by_contra hxy_ne
+    -- 実数の順序性に基づき、仮定に矛盾を導く
+    cases lt_or_gt_of_ne hxy_ne with
+    | inl hlt =>
+      -- x < y の場合
+      have ⟨q, hq1, hq2⟩ := exists_rat_btwn hlt
+      have hq : ∃ q : ℚ, x < (q : ℝ) ∧ (q : ℝ) < y := ⟨q, hq1, hq2⟩
+      cases hq with
+      | intro q hq_props =>
+        --消すと動かない。
+        have _ : q ∉  real_to_rational_subset_type y := by
+          simp [real_to_rational_subset_type]
+          by_cases hq : ↑q = y
+          case pos =>
+            rw [hq] at hq_props
+            subst hq
+            simp_all only [Rat.cast_le, Rat.cast_lt, le_refl, and_true, lt_self_iff_false, or_true]
+          case neg =>
+            obtain ⟨_, right⟩ := hq_props
+            contrapose! hq
+            linarith
+
+        have q_in_x_set : q ∈ real_to_rational_subset_type x := by
+          simp [real_to_rational_subset_type]
+          simp_all only [Set.mem_setOf_eq, not_le, real_to_rational_subset_type]
+          obtain ⟨left, _⟩ := hq_props
+          exact le_of_lt left
+        simp_all only [Set.mem_setOf_eq, not_le, real_to_rational_subset_type]
+        obtain ⟨_, right⟩ := hq_props
+        linarith
+
+    | inr hgt =>
+      -- y < x の場合（対称性により同様の処理を適用）
+      have ⟨q, hq1, hq2⟩ := exists_rat_btwn hgt
+      have hq : ∃ q : ℚ, y < (q : ℝ) ∧ (q : ℝ) < x := ⟨q, hq1, hq2⟩
+      cases hq with
+      | intro q hq_props =>
+        have q_not_in_x_set : q ∉ real_to_rational_subset_type x := by
+          simp [real_to_rational_subset_type]
+          exact hq_props.right
+        have q_in_y_set : q ∈ real_to_rational_subset_type y := by
+          simp_all only [gt_iff_lt, Set.mem_setOf_eq, not_le, real_to_rational_subset_type]
+          obtain ⟨left,_⟩ := hq_props
+          linarith
+        simp_all only [gt_iff_lt, not_true_eq_false, real_to_rational_subset_type]
+
+  let result := @Cardinal.mk_le_of_injective ℝ (Set ℚ) real_to_rational_subset_type func_inj
+  simpa using result --#R <= #(Set ℚ)から #R <= 2^#Q に変換

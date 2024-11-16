@@ -403,7 +403,17 @@ theorem q_countable : Set.Countable (Set.univ: Set ℚ) := by
 
 
 -----------
----練習12--- 片側のみ
+---練習12---
+-----------
+
+theorem infinite_card_eq_aleph0 {A : Type} (hA : Infinite A) (h : #A ≤ aleph0) : #A = aleph0 := by
+  apply le_antisymm
+  · exact h
+  · -- A が無限集合であるため、自然数から A への単射が存在
+    exact Cardinal.aleph0_le_mk A
+
+-----------
+---定理4---片側のみ
 -----------
 
 --直接には使ってないが、基本の原理
@@ -415,7 +425,7 @@ theorem exists_rat_in_open_interval (a b : ℝ) (h : a < b) : ∃ q : ℚ, a < q
   use q
 
 --とりあえず、片側だけ示した。もう片方は、10進展開を使ったりして、大変そうなので、とりあえずは保留。
-theorem infinite_card_eq_aleph0  : #ℝ ≤ 2^#ℚ := by
+theorem real_card_le_set_of_rational  : #ℝ ≤ 2^#ℚ := by
   let real_to_rational_subset_type : ℝ → Set ℚ := λ r => {q : ℚ | r ≤ (q : ℝ)}
   have func_inj: Function.Injective real_to_rational_subset_type := by
     intros x y h

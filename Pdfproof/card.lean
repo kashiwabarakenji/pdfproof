@@ -8,6 +8,14 @@ import Mathlib.SetTheory.Cardinal.Basic
 import Mathlib.Logic.Function.Basic
 import LeanCopilot
 import Mathlib.Data.Real.Basic  --これがあるとuseが使える。Mathlib.Tactic.Useがよみこまれているのかも。
+import Mathlib.SetTheory.Cardinal.Continuum
+--import Mathlib.SetTheory.Countable.Basic
+--import Mathlib.Data.PProd.Basic
+--import Mathlib.Topology.Instances.Real
+--import Mathlib.Topology.Separation
+--import Mathlib.Topology.DenseEmbedding
+--import Mathlib.Topology.MetricSpace.Basic -- Add this import for `exists_countable_dense_subset`
+
 --checkをうまく働かせるにもこのインポートが必要。checkがこれを使っているのかも。
 
 --import Mathlib.Tactic.Basic
@@ -284,3 +292,120 @@ theorem countable_integers : #ℤ = aleph0 := by
     }
   -- ℕ ≃ ℤ なのでカーディナリティが等しいことが言える
   exact Cardinal.mk_congr f.symm
+
+-----------
+---練習10---
+-----------
+
+def NatPos : Type := {n : ℕ // n > 0}
+instance : Nonempty NatPos := ⟨⟨1, by decide⟩⟩
+def NatPosSet : Set ℕ := {n | n > 0}  --NatPosだけだと、Setにならない。
+
+theorem natPos_countable : Countable NatPos := by
+  -- 自然数から ℕ⁺ への全単射を定義
+  let f : ℕ → NatPos := λ n => ⟨n + 1, Nat.succ_pos n⟩
+
+  have NatPosNonempty : Set.Nonempty NatPosSet := ⟨1, Nat.succ_pos 0⟩
+
+  -- f が全単射であることを証明
+  have f_bij : Function.Bijective f := by
+    constructor
+    -- 単射性の証明
+    { intros a b h
+      dsimp [f] at h
+      rw [Subtype.mk.injEq] at h
+      exact Nat.succ.inj h
+    }
+    -- 全射性の証明
+    { intro p
+      obtain ⟨m, hm⟩ := p
+      use m - 1
+      dsimp [f]
+      rw [Subtype.mk.injEq]
+      exact Nat.succ_pred_eq_of_pos hm
+    }
+
+  -- f が全単射であるため、NatPos は可算である
+  simp_all only [f]
+
+  exact (Set.countable_iff_exists_surjective NatPosNonempty).2 ⟨f, fun p => f_bij.2 p⟩
+
+theorem int_countable : Set.Countable (Set.univ : Set ℤ) := by
+   exact Set.countable_univ
+
+-- インスタンス: ℤ × ℕ⁺ が可算であることを示す
+theorem int_natPos_countable : Countable (Set.prod (Set.univ : Set ℤ) NatPosSet) := by
+  -- ℤ × ℕ⁺ は可算な集合の積
+  apply Set.Countable.prod int_countable natPos_countable
+  -- ℤ が可算であること
+
+--#check Set.prod (Set.univ : Set ℤ) NatPosSet
+
+-- 関数定義: ℤ × ℕ⁺ → ℚ を定義
+
+def int_natPos := (Set.prod (Set.univ : Set ℤ) NatPosSet)
+
+def int_natPos_to_Q (p : int_natPos): ℚ :=
+  p.1.1 / (p.1.2 : ℤ)
+
+
+
+-- 定理: 有理数 ℚ が可算であることを示す
+theorem q_countable : Set.Countable (Set.univ: Set ℚ) := by
+  /-
+  --使ってない
+  have int_natPos_Nonempty : int_natPos.Nonempty := by
+    use 1
+    dsimp [int_natPos]
+    simp [NatPosSet]
+    simp [Set.prod]
+
+  -- ℤ × ℕ⁺ から ℚ への全射を構築 使ってない
+  have suj: ∃ f : int_natPos →  ℚ, Function.Surjective f := ⟨int_natPos_to_Q, by
+    intro q
+    simp_all only [Subtype.exists, Prod.exists]
+    let z := q.num
+    let d := q.den
+    --obtain ⟨val, property⟩ := q
+    --obtain ⟨fst, snd⟩ := val
+    have d_pos : d > 0 := q.den_pos
+    use z
+    use d
+    simp [int_natPos_to_Q]
+    simp_all only [gt_iff_lt, d, z]
+    apply And.intro
+    · exact ⟨Set.mem_univ q.num, q.den_pos⟩
+    · exact q.num_div_den
+  ⟩
+  -/
+
+  have suj_func: Function.Surjective int_natPos_to_Q := by
+    intro q
+    simp_all only [Subtype.exists, Prod.exists]
+    let z := q.num
+    let d := q.den
+    have d_pos : d > 0 := q.den_pos
+    use z
+    use d
+    simp [int_natPos_to_Q]
+    simp_all only [d, z]
+    apply And.intro
+    · exact ⟨Set.mem_univ q.num, q.den_pos⟩
+    · exact q.num_div_den
+
+  haveI : Countable ℚ := Set.countable_univ_iff.mp q_countable
+  let result := Function.Surjective.countable suj_func
+  simp_all only [result]
+  apply Set.countable_univ
+
+
+-----------
+---練習12---
+-----------
+
+theorem infinite_card_eq_aleph0 {A : Type} (hA : Infinite A) (h : #A ≤ aleph0) : #A = aleph0 := by
+  apply le_antisymm
+  -- 1. #ℝ ≤ 2^#ℚ を証明
+  sorry
+  -- 2. 2^#ℚ ≤ #ℝ を証明
+  sorry

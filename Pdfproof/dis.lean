@@ -1,4 +1,10 @@
 import Mathlib.Data.Real.Basic
+import Mathlib.Topology.MetricSpace.Basic
+import Mathlib.Analysis.InnerProductSpace.Basic
+import Mathlib.Algebra.Order.Monoid.Defs
+import Mathlib.Data.Finset.Basic
+import Mathlib.Algebra.Order.BigOperators.Group.Finset
+import Mathlib.Data.Real.Sqrt
 import LeanCopilot
 
 ------------
@@ -106,3 +112,105 @@ example : ∀ x y z : X, d_2 x y ≥ 0 ∧ d_2 x y = d_2 y x ∧ (d_2 x y = 0 �
           subst h
           simp_all only [not_false_eq_true, le_refl]
         next h => simp_all only [zero_le_one]
+
+--------------------
+------練習3--------
+--------------------
+
+open Real
+open Metric
+
+theorem sum_sq_eq_zero_iff {n : ℕ} (x : Fin n → ℝ) :
+  (∑ i in Finset.univ, (x i) ^ 2) = 0 ↔ ∀ i, x i = 0 := by
+  apply Iff.intro
+  · intro h
+    have h_nonneg : ∀ i ∈ Finset.univ, (x i) ^ 2 ≥ 0 := fun i _ => sq_nonneg (x i)
+    have h_zero : ∀ i ∈ Finset.univ, (x i) ^ 2 = 0 := (Finset.sum_eq_zero_iff_of_nonneg h_nonneg).mp h
+    intro i
+    exact pow_eq_zero (h_zero i (Finset.mem_univ i))
+  · intro h
+    rw [Finset.sum_eq_zero]
+    intro i _
+    rw [h i]
+    exact zero_pow (by norm_num)
+
+-- 各 i に対して (x i - z i)^2 の項の展開が成立することを示す補題
+lemma sum_sq_expand {n : ℕ} (x y z : Fin n → ℝ) :
+  ∑ i : Fin n, ((x i - y i) ^ 2 + 2 * (x i - y i) * (y i - z i) + (y i - z i) ^ 2) ≤
+    ∑ i : Fin n, (x i - y i) ^ 2 + ∑ i : Fin n, (y i - z i) ^ 2 + ∑ i : Fin n, 2 * |(x i - y i) * (y i - z i)| :=
+by
+  -- 各 i に対して項ごとの不等式を構成する
+  have h_each : ∀ i : Fin n,
+    (x i - y i) ^ 2 + 2 * (x i - y i) * (y i - z i) + (y i - z i) ^ 2 ≤
+    (x i - y i) ^ 2 + (y i - z i) ^ 2 + 2 * |(x i - y i) * (y i - z i)| :=
+  by
+    intro i
+    calc
+      (x i - y i) ^ 2 + 2 * (x i - y i) * (y i - z i) + (y i - z i) ^ 2
+      = (x i - y i) ^ 2 + 2 * (x i - y i) * (y i - z i) + (y i - z i) ^ 2 := by
+        rfl
+   _ ≤ (x i - y i) ^ 2 + (y i - z i) ^ 2 + 2 * |(x i - y i) * (y i - z i)| := by
+        sorry
+
+  -- 各項ごとの不等式を全体に適用
+  sorry
+  --exact Finset.sum_le_sum h_each
+
+-- n次元のユークリッド空間上のユークリッド距離を定義します。
+noncomputable def euclidean_dist {n : ℕ} (x y : Fin n → ℝ) : ℝ :=
+  Real.sqrt (∑ i, (x i - y i) ^ 2)
+
+-- 距離空間であることを示します。
+instance : MetricSpace (Fin n → ℝ) where
+  dist := euclidean_dist
+  dist_self := by
+    intro x
+    unfold euclidean_dist
+    have : ∑ i, (x i - x i) ^ 2 = 0 := by
+      simp [pow_two, sub_self]
+    simp_all only [sub_self, ne_eq, OfNat.ofNat_ne_zero, not_false_eq_true, zero_pow, Finset.sum_const_zero, sqrt_zero]
+  eq_of_dist_eq_zero := by
+    intro x y h
+    unfold euclidean_dist at h
+    have this_lem: (∑ i, (x i - y i) ^ 2) = 0 := by
+      exact (sqrt_eq_zero h).mp
+    have eq_zero : ∀ i, (x i - y i) ^ 2 = 0 := by -- fun i =>
+      intro i
+      have eq_zero := sum_sq_eq_zero_iff (λ i => x i - y i)
+      simp_all only [sqrt_zero, ne_eq, OfNat.ofNat_ne_zero, not_false_eq_true, zero_pow, Finset.sum_const_zero,
+        implies_true]
+
+    exact funext fun i => sub_eq_zero.mp (pow_eq_zero (eq_zero i))
+  dist_comm := by
+    intro x y
+    unfold euclidean_dist
+    simp_all only
+    congr
+    ext1 x_1
+    ring
+
+  dist_triangle := by
+    intro x y z
+    unfold euclidean_dist
+        -- まず、2乗した形で三角不等式を証明します
+    have squared_triangle_ineq : (∑ i, (x i - z i) ^ 2) ≤ (∑ i, (x i - y i) ^ 2) + (∑ i, (y i - z i) ^ 2) := by
+      calc
+        ∑ i, (x i - z i) ^ 2 = ∑ i, ((x i - y i) + (y i - z i)) ^ 2 := by
+          congr
+          ext i
+          simp_all only [sub_add_sub_cancel]
+        _ = ∑ i, ((x i - y i) ^ 2 + 2 * (x i - y i) * (y i - z i) + (y i - z i) ^ 2) := by
+          simp only [sq, add_mul, mul_add, add_assoc]
+          congr
+          ext1 x_1
+          simp_all only [add_right_inj]
+          ring
+        _ ≤ ∑ i, (x i - y i) ^ 2 + ∑ i, (y i - z i) ^ 2 + ∑ i, 2 * |(x i - y i) * (y i - z i)| := by
+
+          exact sum_sq_expand x y z
+        _ ≤ (∑ i, (x i - y i) ^ 2) + (∑ i, (y i - z i) ^ 2) := by
+          have : 0 ≤ ∑ i, 2 * |(x i - y i) * (y i - z i)| := by
+            apply Finset.sum_nonneg
+            intro i _
+            exact mul_nonneg zero_le_two (abs_nonneg _)
+          sorry

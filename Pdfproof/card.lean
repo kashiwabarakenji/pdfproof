@@ -9,9 +9,10 @@ import Mathlib.Logic.Function.Basic
 import LeanCopilot
 import Mathlib.Data.Real.Basic  --これがあるとuseが使える。Mathlib.Tactic.Useがよみこまれているのかも。
 --import Mathlib.Data.Rat.Basic
---import Mathlib.SetTheory.Cardinal.Continuum
+import Mathlib.SetTheory.Cardinal.Continuum
 import Mathlib.Algebra.Order.Archimedean.Basic
 import Mathlib.Data.Real.Archimedean
+import Mathlib.Data.Real.Cardinality
 --import Mathlib.SetTheory.Countable.Basic
 --import Mathlib.Data.PProd.Basic
 --import Mathlib.Topology.Instances.Real
@@ -478,3 +479,14 @@ theorem real_card_le_set_of_rational  : #ℝ ≤ 2^#ℚ := by
 
   let result := @Cardinal.mk_le_of_injective ℝ (Set ℚ) real_to_rational_subset_type func_inj
   simpa using result --#R <= #(Set ℚ)から #R <= 2^#Q に変換
+
+--定理をちょっと使って、逆方向も一応証明しておく。本当に証明するのは大変そう。
+theorem cardinality_nat_subset_le_real :
+  (2 ^ (#ℕ)) = (#ℝ) :=
+by
+  -- `Cardinal.nat_power_aleph0` を用いて、2以上の自然数の指数が実数の濃度であることを示す。
+  have h : (2 : Cardinal) ^ ℵ₀ = #ℝ := by
+    --rw [←mk_nat]
+    rw [←Cardinal.continuum]
+    exact Cardinal.mk_real.symm
+  simp_all only [two_power_aleph0, mk_eq_aleph0]

@@ -121,11 +121,12 @@ example : ∀ x y z : X, d_2 x y ≥ 0 ∧ d_2 x y = d_2 y x ∧ (d_2 x y = 0 �
 --------------------
 ------練習3--------
 --------------------
+--証明するのに丸一日かかった。
 
-open Real
-open Metric
+open Real --sqrtを使うため
 
-theorem sum_sq_eq_zero_iff {n : ℕ} (x : Fin n → ℝ) :
+--下で使っている。
+lemma sum_sq_eq_zero_iff {n : ℕ} (x : Fin n → ℝ) :
   (∑ i in Finset.univ, (x i) ^ 2) = 0 ↔ ∀ i, x i = 0 := by
   apply Iff.intro
   · intro h
@@ -139,7 +140,7 @@ theorem sum_sq_eq_zero_iff {n : ℕ} (x : Fin n → ℝ) :
     rw [h i]
     exact zero_pow (by norm_num)
 
--- 各 i に対して (x i - z i)^2 の項の展開が成立することを示す補題
+-- 各 i に対して (x i - z i)^2 の項の展開が成立することを示す補題。下で使っている。
 lemma sum_sq_expand {n : ℕ} (x y z : Fin n → ℝ) :
   ∑ i : Fin n, ((x i - y i) ^ 2 + 2 * (x i - y i) * (y i - z i) + (y i - z i) ^ 2) ≤
     ∑ i : Fin n, (x i - y i) ^ 2 + ∑ i : Fin n, (y i - z i) ^ 2 + ∑ i : Fin n, 2 * |(x i - y i) * (y i - z i)| := by
@@ -170,40 +171,9 @@ lemma sum_sq_expand {n : ℕ} (x y z : Fin n → ℝ) :
    rw [Finset.sum_add_distrib, Finset.sum_add_distrib]
   simp_all only [Finset.mem_univ, true_implies, f, g]
 
---下で使っているので、正しく証明する必要あり。
-lemma cauchy_schwarz' {n : ℕ} (a b : Fin n → ℝ) :
-  (∑ i : Fin n, |a i * b i|) ≤ sqrt (∑ i : Fin n, a i^2) * sqrt (∑ i : Fin n, b i^2) :=
-  by
-    --apply CauchySchwarz.le _ _
-    apply Finset.sum_mul_sq_le_sq_mul_sq --2乗の形で書かれている。
 
 
-/- エラーたくさん 消す
--- Cauchy-Schwarz の不等式を Finset に対して定義する補題
-lemma CauchySchwarz_finset {n : ℕ} (a b : Fin n → ℝ) :
-  ∑ i, |a i * b i| ≤ Real.sqrt (∑ i, a i^2) * Real.sqrt (∑ i, b i^2) := by
-  -- 各項の絶対値を取ったシーケンスを定義
-  let a' := λ i=> |a i|
-  let b' := λ i=> |b i|
-
-  -- a' と b' の各項が非負であることを確認
-  have h_nonneg_a : ∀ i, a' i ≥ 0 := λ i=> abs_nonneg (a i)
-  have h_nonneg_b : ∀ i, b' i ≥ 0 := λ i=> abs_nonneg (b i)
-
-  -- Cauchy-Schwarz の標準的不等式を適用
-  have inner_product_le : ∑ i, a' i * b' i ≤ Real.sqrt (∑ i, a' i^2) * Real.sqrt (∑ i, b' i^2) := by
-    simp_all only [ge_iff_le, abs_nonneg, implies_true, sq_abs, a', b']
-    sorry
-
-  -- 右辺を展開して ∑ |a_i * b_i| に一致させる
-  have : ∑ i, a' i * b' i = ∑ i, |a i * b i| :=
-    Finset.sum_congr rfl (λ i _=> by
-    exact abs_mul (a i) (b i))
-
-  rw [this] at inner_product_le
-  exact inner_product_le
--/
-
+--下で使っている
 lemma le_of_le_sum_of_nonneg {a b c : ℝ}
   (ha : a ≥ 0)
   (hb : b ≥ 0)
@@ -231,12 +201,62 @@ lemma le_of_le_sum_of_nonneg {a b c : ℝ}
   contrapose! hab_nonneg
   nlinarith
 
+
+lemma le_of_le_mul_of_nonneg {a b c : ℝ}
+  (ha : a ≥ 0)
+  (hb : b ≥ 0)
+  (hc : c ≥ 0)
+  (h : c^2 ≤ a^2 * b^2) :
+  c ≤ a * b := by
+    have hh: c^2 <= (a*b)^2 := by
+      rw [pow_two]
+      simp_all only [ge_iff_le]
+      linarith
+    have hab: a*b ≥ 0 := by
+      exact mul_nonneg ha hb
+
+    by_contra hlt
+    simp_all only [ge_iff_le, not_le]
+    have := hh
+    simp_all only
+    rw [mul_comm] at this
+    nlinarith
+
+lemma finset_sum_abs_mul_le_sqrt_mul_sqrt {α : Type*} (s : Finset α) (f g : α → ℝ) :
+    ∑ i in s, |f i * g i| ≤ sqrt (∑ i in s, f i ^ 2) * sqrt (∑ i in s, g i ^ 2) := by
+  -- 各項の絶対値付きのコーシー・シュワルツ不等式を用意
+  have cauchy_schwarz := Finset.sum_mul_sq_le_sq_mul_sq s (fun i => |f i|) (fun i => |g i|)
+  apply le_of_le_mul_of_nonneg
+  simp only [sq_abs, ge_iff_le, sqrt_nonneg]
+  simp only [sq_abs, ge_iff_le, sqrt_nonneg]
+  simp only [sq_abs, ge_iff_le]
+  positivity
+  simp_all
+  have congr_sum: ∑ i in s, |f i * g i| = ∑ i in s, |f i| * |g i| := by
+    apply Finset.sum_congr rfl
+    intros i _
+    exact abs_mul (f i) (g i)
+  rw [←congr_sum] at cauchy_schwarz
+  simp_all
+  rw [Real.sq_sqrt]
+  rw [Real.sq_sqrt]
+  exact cauchy_schwarz
+  positivity
+  positivity
+
+--下で使っているので、正しく証明する必要あり。上の補題と同じ。
+lemma cauchy_schwarz' {n : ℕ} (a b : Fin n → ℝ) :
+  (∑ i : Fin n, |a i * b i|) ≤ sqrt (∑ i : Fin n, a i^2) * sqrt (∑ i : Fin n, b i^2) :=
+  by
+    have fi := finset_sum_abs_mul_le_sqrt_mul_sqrt Finset.univ a b
+    exact fi
+
 -- n次元のユークリッド空間上のユークリッド距離を定義します。
 noncomputable def euclidean_dist {n : ℕ} (x y : Fin n → ℝ) : ℝ :=
   Real.sqrt (∑ i, (x i - y i) ^ 2)
 
 -- 距離空間であることを示します。
-instance : MetricSpace (Fin n → ℝ) where
+noncomputable instance : MetricSpace (Fin n → ℝ) where
   dist := euclidean_dist
   dist_self := by
     intro x
@@ -248,7 +268,10 @@ instance : MetricSpace (Fin n → ℝ) where
     intro x y h
     unfold euclidean_dist at h
     have this_lem: (∑ i, (x i - y i) ^ 2) = 0 := by
-      exact (sqrt_eq_zero h).mp
+      dsimp [dist] at h
+      rw [Real.sqrt_eq_zero] at h
+      exact h
+      positivity
     have eq_zero : ∀ i, (x i - y i) ^ 2 = 0 := by -- fun i =>
       intro i
       have eq_zero := sum_sq_eq_zero_iff (λ i => x i - y i)
@@ -267,7 +290,8 @@ instance : MetricSpace (Fin n → ℝ) where
   dist_triangle := by
     intro x y z
     unfold euclidean_dist
-        -- まず、2乗した形で三角不等式を証明します
+    -- まず、2乗した形で三角不等式を証明します
+    -- コメントアウトするとエラーが出る
     have squared_triangle_ineq : (∑ i, (x i - z i) ^ 2) ≤ (∑ i, (x i - y i) ^ 2) + (∑ i, (y i - z i) ^ 2) + ∑ i, 2 * |(x i - y i) * (y i - z i)| := by
       calc
         ∑ i, (x i - z i) ^ 2 = ∑ i, ((x i - y i) + (y i - z i)) ^ 2 := by
@@ -284,22 +308,7 @@ instance : MetricSpace (Fin n → ℝ) where
 
           exact sum_sq_expand x y z
 
-    have squared_triangle_eq : (∑ i, (x i - z i) ^ 2) = (∑ i, (x i - y i) ^ 2) + (∑ i, (y i - z i) ^ 2) + ∑ i, 2 * (x i - y i) * (y i - z i) := by
-      calc
-        ∑ i, (x i - z i) ^ 2 = ∑ i, ((x i - y i) + (y i - z i)) ^ 2 := by
-          congr
-          ext i
-          simp_all only [sub_add_sub_cancel]
-        _ = ∑ i, ((x i - y i) ^ 2 + 2 * (x i - y i) * (y i - z i) + (y i - z i) ^ 2) := by
-          simp only [sq, add_mul, mul_add, add_assoc]
-          congr
-          ext1 x_1
-          simp_all only [add_right_inj]
-          ring
-        _ = (∑ i, (x i - y i) ^ 2) + (∑ i, (y i - z i) ^ 2) + ∑ i, 2 * (x i - y i) * (y i - z i) := by
-          rw [Finset.sum_add_distrib,Finset.sum_add_distrib]
-          ring
-
+    --コメントアウトするとエラーが出る。コーシーシュワルツの不等式。
     have lem_cauchy: ∑ i, 2 * |(x i - y i) * (y i - z i)| ≤ 2 * sqrt (∑ i, (x i - y i) ^ 2) * sqrt (∑ i, (y i - z i) ^ 2) := by
       have h_cauchy := cauchy_schwarz' (λ i => x i - y i) (λ i => y i - z i)
       norm_num
@@ -307,39 +316,18 @@ instance : MetricSpace (Fin n → ℝ) where
       rw [←Finset.mul_sum]
       apply @mul_le_mul_of_nonneg_left _ 2  (∑ i :Fin n,|(x i - y i) * (y i - z i)|) (sqrt (∑ i :Fin n, (x i - y i) ^ 2) * sqrt (∑ i :Fin n, (y i - z i) ^ 2))
       simp_all only [add_le_add_iff_left]
-
-    have squared_triangle_ineq2 : (∑ i, (x i - z i) ^ 2) ≤ (∑ i, (x i - y i) ^ 2) + (∑ i, (y i - z i) ^ 2) + 2*(∑ i,  (x i - y i)^2) * (∑ i,(y i - z i)^2) := by
-      calc
-        (∑ i, (x i - z i) ^ 2)
-       <= (∑ i, (x i - y i) ^ 2) + (∑ i, (y i - z i) ^ 2) + ∑ i, 2 * |(x i - y i) * (y i - z i)| := by
-          exact squared_triangle_ineq
-      _ ≤ (∑ i, (x i - y i) ^ 2) + (∑ i, (y i - z i) ^ 2) + 2 * sqrt (∑ i, (x i - y i) ^ 2) * sqrt (∑ i, (y i - z i) ^ 2) := by
-          apply add_le_add_left
-          exact lem_cauchy
-      _ = (∑ i, (x i - y i) ^ 2) + (∑ i, (y i - z i) ^ 2) + 2*(∑ i,  (x i - y i)^2) * (∑ i,(y i - z i)^2) := by
-          ring_nf
+      simp_all only [add_le_add_iff_left, Nat.ofNat_nonneg]
 
     dsimp [dist]
 
     apply @le_of_le_sum_of_nonneg √(∑ i : Fin n, (x i - y i) ^ 2)  √(∑ i : Fin n, (y i - z i) ^ 2) √(∑ i : Fin n, (x i - z i) ^ 2)
-    simp_all only [ge_iff_le, sqrt_nonneg]
-    simp_all only [ge_iff_le, sqrt_nonneg]
-    simp_all only [ge_iff_le, sqrt_nonneg]
-    apply squared_triangle_ineq2
-    ring_nf
-    search_proof
-
-
-    /-
-    · rw [sq]
-      field_simp
-    · symm
-      field_simp
-    · symm
-      field_simp
-    · -- goal 2 * √(∑ i : Fin n, (x i - y i) ^ 2) * √(∑ i : Fin n, (y i - z i) ^ 2) = ∑ i : Fin n, 2 * |(x i - y i) * (y i - z i)|
-      --これは等号では一般には成り立たない。<=不等号であれば、成り立つ。
-      --have squared_triangle_ineq : (∑ i, (x i - z i) ^ 2) ≤ (∑ i, (x i - y i) ^ 2) + (∑ i, (y i - z i) ^ 2) + ∑ i, 2 * (x i - y i) * (y i - z i)
-      --という絶対値なしを証明すべきだったのか。ここでコーシーシュワルツを使う必要あり。
-      sorry
--/
+    simp_all only [sqrt_nonneg]
+    simp_all only [sqrt_nonneg]
+    simp_all only [sqrt_nonneg]
+    rw [Real.sq_sqrt]
+    rw [Real.sq_sqrt]
+    rw [Real.sq_sqrt]
+    linarith
+    positivity
+    positivity
+    positivity

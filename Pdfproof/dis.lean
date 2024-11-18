@@ -4,8 +4,12 @@ import Mathlib.Analysis.InnerProductSpace.Basic
 import Mathlib.Topology.MetricSpace.Basic
 import Mathlib.Algebra.Order.Monoid.Defs
 import Mathlib.Data.Finset.Basic
+import Mathlib.Data.Fin.Basic
 import Mathlib.Algebra.Order.BigOperators.Group.Finset
 import Mathlib.Data.Real.Sqrt
+import Mathlib.Algebra.Order.AbsoluteValue
+import Mathlib.Analysis.SpecialFunctions.Sqrt
+--import Mathlib.Analysis.SpecialFunctions.Ineq
 import LeanCopilot
 
 ------------
@@ -140,46 +144,90 @@ lemma sum_sq_expand {n : ℕ} (x y z : Fin n → ℝ) :
   ∑ i : Fin n, ((x i - y i) ^ 2 + 2 * (x i - y i) * (y i - z i) + (y i - z i) ^ 2) ≤
     ∑ i : Fin n, (x i - y i) ^ 2 + ∑ i : Fin n, (y i - z i) ^ 2 + ∑ i : Fin n, 2 * |(x i - y i) * (y i - z i)| := by
   -- 各 i に対して項ごとの不等式を構成する
- 
+
   -- 定義した関数fとgを用意
   let f := λ i => (x i - y i)^2 + 2 * (x i - y i) * (y i - z i) + (y i - z i)^2
   let g := λ i => (x i - y i)^2 + (y i - z i)^2 + 2 * |(x i - y i) * (y i - z i)|
-  have h_each : ∀ i ∈ Finset.univ, f i ≤ g i :=
-    λ i hi =>
+  have h_each : ∀ i ∈ Finset.univ, f i ≤ g i := by
+    intro i _
       -- 2ab ≤ 2|ab|
-      have : 2 * (x i - y i) * (y i - z i) ≤ 2 * |(x i - y i) * (y i - z i)| := by
-        apply mul_le_mul_of_nonneg_left
-        exact abs_nonneg ((x i - y i) * (y i - z i))
+    have : 2 * (x i - y i) * (y i - z i) ≤ 2 * |(x i - y i) * (y i - z i)| := by
+      --have h_pos : 0 < 2 := by norm_num
+      rw [mul_assoc]
+      apply @mul_le_mul_of_nonneg_left _ 2 ((x i - y i) * (y i - z i)) (|(x i - y i) * (y i - z i)|) _ _ _ _
+      simp_all only [Finset.mem_univ, Nat.ofNat_pos]
+      exact le_abs_self _
+      simp_all only [Finset.mem_univ, Nat.ofNat_nonneg]
       -- (x i - y i)^2 + 2ab + (y i - z i)^2 ≤ (x i - y i)^2 + (y i - z i)^2 + 2|ab|
-      add_le_add (add_le_add_left (le_refl ((x i - y i)^2)) _) this
+    simp_all only [Finset.mem_univ, ge_iff_le, f, g]
+    linarith
 
   -- Finset.sum_le_sum に h_each を適用
-  exact Finset.sum_le_sum Finset.univ f g h_each
+  have tmp: ∑ i : Fin n, ((x i - y i) ^ 2 + 2 * (x i - y i) * (y i - z i) + (y i - z i) ^ 2) ≤ ∑ i : Fin n, ((x i - y i) ^ 2 + (y i - z i) ^ 2 + 2 * |(x i - y i) * (y i - z i)|)
+:= by
+    exact Finset.sum_le_sum h_each
+  have tmp2: ∑ i : Fin n, (x i - y i) ^ 2 + ∑ i : Fin n, (y i - z i) ^ 2 + ∑ i : Fin n, 2 * |(x i - y i) * (y i - z i)| = ∑ i : Fin n, ((x i - y i) ^ 2 + (y i - z i) ^ 2 + 2 * |(x i - y i) * (y i - z i)|):= by
+   rw [Finset.sum_add_distrib, Finset.sum_add_distrib]
+  simp_all only [Finset.mem_univ, true_implies, f, g]
 
+lemma cauchy_schwarz' {n : ℕ} (a b : Fin n → ℝ) :
+  (∑ i : Fin n, |a i * b i|) ≤ sqrt (∑ i : Fin n, a i^2) * sqrt (∑ i : Fin n, b i^2) :=
+  by
+    --apply CauchySchwarz.le _ _
+    apply Finset.sum_mul_sq_le_sq_mul_sq --2乗の形で書かれている。
 
+/- エラーたくさん 消す
 -- Cauchy-Schwarz の不等式を Finset に対して定義する補題
 lemma CauchySchwarz_finset {n : ℕ} (a b : Fin n → ℝ) :
   ∑ i, |a i * b i| ≤ Real.sqrt (∑ i, a i^2) * Real.sqrt (∑ i, b i^2) := by
   -- 各項の絶対値を取ったシーケンスを定義
   let a' := λ i=> |a i|
   let b' := λ i=> |b i|
-  
+
   -- a' と b' の各項が非負であることを確認
   have h_nonneg_a : ∀ i, a' i ≥ 0 := λ i=> abs_nonneg (a i)
   have h_nonneg_b : ∀ i, b' i ≥ 0 := λ i=> abs_nonneg (b i)
-  
+
   -- Cauchy-Schwarz の標準的不等式を適用
-  have inner_product_le : ∑ i, a' i * b' i ≤ Real.sqrt (∑ i, a' i^2) * Real.sqrt (∑ i, b' i^2) :=
-    Real.inner_le_norm a' b'
-  
+  have inner_product_le : ∑ i, a' i * b' i ≤ Real.sqrt (∑ i, a' i^2) * Real.sqrt (∑ i, b' i^2) := by
+    simp_all only [ge_iff_le, abs_nonneg, implies_true, sq_abs, a', b']
+    sorry
+
   -- 右辺を展開して ∑ |a_i * b_i| に一致させる
   have : ∑ i, a' i * b' i = ∑ i, |a i * b i| :=
     Finset.sum_congr rfl (λ i _=> by
     exact abs_mul (a i) (b i))
-  
+
   rw [this] at inner_product_le
   exact inner_product_le
+-/
 
+lemma le_of_le_sum_of_nonneg {a b c : ℝ}
+  (ha : a ≥ 0)
+  (hb : b ≥ 0)
+  (hc : c ≥ 0)
+  (h : c^2 ≤ a^2 + b^2 + 2 * a * b) :
+  c ≤ a + b := by
+  -- 右辺の和の平方を計算します
+  have h_sum_sq : (a + b)^2 = a^2 + b^2 + 2 * a * b:= by ring
+
+  -- 仮定 h を h_sum_sq に基づいて書き換えます
+  rw [←h_sum_sq] at h
+
+  -- 両辺が非負であることを確認します
+  have hab_nonneg : a + b ≥ 0 := add_nonneg ha hb
+
+  -- 両辺の平方根を取る準備として、c^2 ≤ (a + b)^2 を確認します
+  -- 両辺が非負なので、sqrt を適用できます
+  -- これは sqrt が単調増加関数であることを利用します
+  have h_sqrt : sqrt (c^2) ≤ sqrt ((a + b)^2) := by
+    apply sqrt_le_sqrt
+    exact h
+
+  -- c は非負であるため、sqrt (c^2) = c となります
+  simp_all only [ge_iff_le, sqrt_sq]
+  contrapose! hab_nonneg
+  nlinarith
 
 -- n次元のユークリッド空間上のユークリッド距離を定義します。
 noncomputable def euclidean_dist {n : ℕ} (x y : Fin n → ℝ) : ℝ :=
@@ -218,7 +266,7 @@ instance : MetricSpace (Fin n → ℝ) where
     intro x y z
     unfold euclidean_dist
         -- まず、2乗した形で三角不等式を証明します
-    have squared_triangle_ineq : (∑ i, (x i - z i) ^ 2) ≤ (∑ i, (x i - y i) ^ 2) + (∑ i, (y i - z i) ^ 2) := by
+    have squared_triangle_ineq : (∑ i, (x i - z i) ^ 2) ≤ (∑ i, (x i - y i) ^ 2) + (∑ i, (y i - z i) ^ 2) + ∑ i, 2 * |(x i - y i) * (y i - z i)| := by
       calc
         ∑ i, (x i - z i) ^ 2 = ∑ i, ((x i - y i) + (y i - z i)) ^ 2 := by
           congr
@@ -233,9 +281,37 @@ instance : MetricSpace (Fin n → ℝ) where
         _ ≤ ∑ i, (x i - y i) ^ 2 + ∑ i, (y i - z i) ^ 2 + ∑ i, 2 * |(x i - y i) * (y i - z i)| := by
 
           exact sum_sq_expand x y z
-        _ ≤ (∑ i, (x i - y i) ^ 2) + (∑ i, (y i - z i) ^ 2) := by
-          have : 0 ≤ ∑ i, 2 * |(x i - y i) * (y i - z i)| := by
-            apply Finset.sum_nonneg
-            intro i _
-            exact mul_nonneg zero_le_two (abs_nonneg _)
-          sorry
+
+    have squared_triangle_eq : (∑ i, (x i - z i) ^ 2) = (∑ i, (x i - y i) ^ 2) + (∑ i, (y i - z i) ^ 2) + ∑ i, 2 * (x i - y i) * (y i - z i) := by
+      calc
+        ∑ i, (x i - z i) ^ 2 = ∑ i, ((x i - y i) + (y i - z i)) ^ 2 := by
+          congr
+          ext i
+          simp_all only [sub_add_sub_cancel]
+        _ = ∑ i, ((x i - y i) ^ 2 + 2 * (x i - y i) * (y i - z i) + (y i - z i) ^ 2) := by
+          simp only [sq, add_mul, mul_add, add_assoc]
+          congr
+          ext1 x_1
+          simp_all only [add_right_inj]
+          ring
+        _ = (∑ i, (x i - y i) ^ 2) + (∑ i, (y i - z i) ^ 2) + ∑ i, 2 * (x i - y i) * (y i - z i) := by
+          rw [Finset.sum_add_distrib,Finset.sum_add_distrib]
+          ring
+
+    dsimp [dist]
+    apply @le_of_le_sum_of_nonneg √(∑ i : Fin n, (x i - y i) ^ 2)  √(∑ i : Fin n, (y i - z i) ^ 2) √(∑ i : Fin n, (x i - z i) ^ 2)
+    simp_all only [ge_iff_le, sqrt_nonneg]
+    simp_all only [ge_iff_le, sqrt_nonneg]
+    simp_all only [ge_iff_le, sqrt_nonneg]
+    convert squared_triangle_ineq --この条件ではないよう。
+    · rw [sq]
+      field_simp
+    · symm
+      field_simp
+    · symm
+      field_simp
+    · -- goal 2 * √(∑ i : Fin n, (x i - y i) ^ 2) * √(∑ i : Fin n, (y i - z i) ^ 2) = ∑ i : Fin n, 2 * |(x i - y i) * (y i - z i)|
+      --これは等号では一般には成り立たない。<=不等号であれば、成り立つ。
+      --have squared_triangle_ineq : (∑ i, (x i - z i) ^ 2) ≤ (∑ i, (x i - y i) ^ 2) + (∑ i, (y i - z i) ^ 2) + ∑ i, 2 * (x i - y i) * (y i - z i)
+      --という絶対値なしを証明すべきだったのか。ここでコーシーシュワルツを使う必要あり。
+      sorry

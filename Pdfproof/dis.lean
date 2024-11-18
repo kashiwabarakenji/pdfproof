@@ -170,11 +170,13 @@ lemma sum_sq_expand {n : ℕ} (x y z : Fin n → ℝ) :
    rw [Finset.sum_add_distrib, Finset.sum_add_distrib]
   simp_all only [Finset.mem_univ, true_implies, f, g]
 
+--下で使っているので、正しく証明する必要あり。
 lemma cauchy_schwarz' {n : ℕ} (a b : Fin n → ℝ) :
   (∑ i : Fin n, |a i * b i|) ≤ sqrt (∑ i : Fin n, a i^2) * sqrt (∑ i : Fin n, b i^2) :=
   by
     --apply CauchySchwarz.le _ _
     apply Finset.sum_mul_sq_le_sq_mul_sq --2乗の形で書かれている。
+
 
 /- エラーたくさん 消す
 -- Cauchy-Schwarz の不等式を Finset に対して定義する補題
@@ -298,12 +300,37 @@ instance : MetricSpace (Fin n → ℝ) where
           rw [Finset.sum_add_distrib,Finset.sum_add_distrib]
           ring
 
+    have lem_cauchy: ∑ i, 2 * |(x i - y i) * (y i - z i)| ≤ 2 * sqrt (∑ i, (x i - y i) ^ 2) * sqrt (∑ i, (y i - z i) ^ 2) := by
+      have h_cauchy := cauchy_schwarz' (λ i => x i - y i) (λ i => y i - z i)
+      norm_num
+      rw [mul_assoc]
+      rw [←Finset.mul_sum]
+      apply @mul_le_mul_of_nonneg_left _ 2  (∑ i :Fin n,|(x i - y i) * (y i - z i)|) (sqrt (∑ i :Fin n, (x i - y i) ^ 2) * sqrt (∑ i :Fin n, (y i - z i) ^ 2))
+      simp_all only [add_le_add_iff_left]
+
+    have squared_triangle_ineq2 : (∑ i, (x i - z i) ^ 2) ≤ (∑ i, (x i - y i) ^ 2) + (∑ i, (y i - z i) ^ 2) + 2*(∑ i,  (x i - y i)^2) * (∑ i,(y i - z i)^2) := by
+      calc
+        (∑ i, (x i - z i) ^ 2)
+       <= (∑ i, (x i - y i) ^ 2) + (∑ i, (y i - z i) ^ 2) + ∑ i, 2 * |(x i - y i) * (y i - z i)| := by
+          exact squared_triangle_ineq
+      _ ≤ (∑ i, (x i - y i) ^ 2) + (∑ i, (y i - z i) ^ 2) + 2 * sqrt (∑ i, (x i - y i) ^ 2) * sqrt (∑ i, (y i - z i) ^ 2) := by
+          apply add_le_add_left
+          exact lem_cauchy
+      _ = (∑ i, (x i - y i) ^ 2) + (∑ i, (y i - z i) ^ 2) + 2*(∑ i,  (x i - y i)^2) * (∑ i,(y i - z i)^2) := by
+          ring_nf
+
     dsimp [dist]
+
     apply @le_of_le_sum_of_nonneg √(∑ i : Fin n, (x i - y i) ^ 2)  √(∑ i : Fin n, (y i - z i) ^ 2) √(∑ i : Fin n, (x i - z i) ^ 2)
     simp_all only [ge_iff_le, sqrt_nonneg]
     simp_all only [ge_iff_le, sqrt_nonneg]
     simp_all only [ge_iff_le, sqrt_nonneg]
-    convert squared_triangle_ineq --この条件ではないよう。
+    apply squared_triangle_ineq2
+    ring_nf
+    search_proof
+
+
+    /-
     · rw [sq]
       field_simp
     · symm
@@ -315,3 +342,4 @@ instance : MetricSpace (Fin n → ℝ) where
       --have squared_triangle_ineq : (∑ i, (x i - z i) ^ 2) ≤ (∑ i, (x i - y i) ^ 2) + (∑ i, (y i - z i) ^ 2) + ∑ i, 2 * (x i - y i) * (y i - z i)
       --という絶対値なしを証明すべきだったのか。ここでコーシーシュワルツを使う必要あり。
       sorry
+-/

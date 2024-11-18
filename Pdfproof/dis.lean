@@ -1,6 +1,7 @@
 import Mathlib.Data.Real.Basic
 import Mathlib.Topology.MetricSpace.Basic
 import Mathlib.Analysis.InnerProductSpace.Basic
+import Mathlib.Topology.MetricSpace.Basic
 import Mathlib.Algebra.Order.Monoid.Defs
 import Mathlib.Data.Finset.Basic
 import Mathlib.Algebra.Order.BigOperators.Group.Finset
@@ -137,24 +138,48 @@ theorem sum_sq_eq_zero_iff {n : ℕ} (x : Fin n → ℝ) :
 -- 各 i に対して (x i - z i)^2 の項の展開が成立することを示す補題
 lemma sum_sq_expand {n : ℕ} (x y z : Fin n → ℝ) :
   ∑ i : Fin n, ((x i - y i) ^ 2 + 2 * (x i - y i) * (y i - z i) + (y i - z i) ^ 2) ≤
-    ∑ i : Fin n, (x i - y i) ^ 2 + ∑ i : Fin n, (y i - z i) ^ 2 + ∑ i : Fin n, 2 * |(x i - y i) * (y i - z i)| :=
-by
+    ∑ i : Fin n, (x i - y i) ^ 2 + ∑ i : Fin n, (y i - z i) ^ 2 + ∑ i : Fin n, 2 * |(x i - y i) * (y i - z i)| := by
   -- 各 i に対して項ごとの不等式を構成する
-  have h_each : ∀ i : Fin n,
-    (x i - y i) ^ 2 + 2 * (x i - y i) * (y i - z i) + (y i - z i) ^ 2 ≤
-    (x i - y i) ^ 2 + (y i - z i) ^ 2 + 2 * |(x i - y i) * (y i - z i)| :=
-  by
-    intro i
-    calc
-      (x i - y i) ^ 2 + 2 * (x i - y i) * (y i - z i) + (y i - z i) ^ 2
-      = (x i - y i) ^ 2 + 2 * (x i - y i) * (y i - z i) + (y i - z i) ^ 2 := by
-        rfl
-   _ ≤ (x i - y i) ^ 2 + (y i - z i) ^ 2 + 2 * |(x i - y i) * (y i - z i)| := by
-        sorry
+ 
+  -- 定義した関数fとgを用意
+  let f := λ i => (x i - y i)^2 + 2 * (x i - y i) * (y i - z i) + (y i - z i)^2
+  let g := λ i => (x i - y i)^2 + (y i - z i)^2 + 2 * |(x i - y i) * (y i - z i)|
+  have h_each : ∀ i ∈ Finset.univ, f i ≤ g i :=
+    λ i hi =>
+      -- 2ab ≤ 2|ab|
+      have : 2 * (x i - y i) * (y i - z i) ≤ 2 * |(x i - y i) * (y i - z i)| := by
+        apply mul_le_mul_of_nonneg_left
+        exact abs_nonneg ((x i - y i) * (y i - z i))
+      -- (x i - y i)^2 + 2ab + (y i - z i)^2 ≤ (x i - y i)^2 + (y i - z i)^2 + 2|ab|
+      add_le_add (add_le_add_left (le_refl ((x i - y i)^2)) _) this
 
-  -- 各項ごとの不等式を全体に適用
-  sorry
-  --exact Finset.sum_le_sum h_each
+  -- Finset.sum_le_sum に h_each を適用
+  exact Finset.sum_le_sum Finset.univ f g h_each
+
+
+-- Cauchy-Schwarz の不等式を Finset に対して定義する補題
+lemma CauchySchwarz_finset {n : ℕ} (a b : Fin n → ℝ) :
+  ∑ i, |a i * b i| ≤ Real.sqrt (∑ i, a i^2) * Real.sqrt (∑ i, b i^2) := by
+  -- 各項の絶対値を取ったシーケンスを定義
+  let a' := λ i=> |a i|
+  let b' := λ i=> |b i|
+  
+  -- a' と b' の各項が非負であることを確認
+  have h_nonneg_a : ∀ i, a' i ≥ 0 := λ i=> abs_nonneg (a i)
+  have h_nonneg_b : ∀ i, b' i ≥ 0 := λ i=> abs_nonneg (b i)
+  
+  -- Cauchy-Schwarz の標準的不等式を適用
+  have inner_product_le : ∑ i, a' i * b' i ≤ Real.sqrt (∑ i, a' i^2) * Real.sqrt (∑ i, b' i^2) :=
+    Real.inner_le_norm a' b'
+  
+  -- 右辺を展開して ∑ |a_i * b_i| に一致させる
+  have : ∑ i, a' i * b' i = ∑ i, |a i * b i| :=
+    Finset.sum_congr rfl (λ i _=> by
+    exact abs_mul (a i) (b i))
+  
+  rw [this] at inner_product_le
+  exact inner_product_le
+
 
 -- n次元のユークリッド空間上のユークリッド距離を定義します。
 noncomputable def euclidean_dist {n : ℕ} (x y : Fin n → ℝ) : ℝ :=

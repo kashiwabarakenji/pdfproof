@@ -151,7 +151,6 @@ instance {G G' : Type*} [Group G] [Group G'] (f : G →* G') : Group (group_hom_
 -----練習8----
 --------------
 
-
 -- 群準同型写像の単射性と核の関係に関する定理
 theorem groupHom_injective_iff_ker_trivial {G G' : Type*} [Group G] [Group G']
   (f : G →* G') : Function.Injective f ↔ f.ker = ⊥ := by
@@ -171,15 +170,7 @@ theorem groupHom_injective_iff_ker_trivial {G G' : Type*} [Group G] [Group G']
       simp_all only [Subgroup.mem_bot]
       subst h1
       apply OneMemClass.one_mem
-      -- {x | f x = 1} ⊆ {1_G}
-      /-rintro ⟨x, hx⟩
-      -- f x = 1_G ならば x = 1_G を示す
-      have h : x = 1 := h_inj (by rw [hx, f.map_one])
-      exact h
-    ·  -- {1_G} ⊆ {x | f x = 1}
-      intro h1
-      use 1
-      exact h1-/
+
   ·  -- 十分条件: ker f = {1_G} ならば f が単射
     intro hker
     intros x y hxy

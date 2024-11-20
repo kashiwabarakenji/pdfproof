@@ -1,6 +1,9 @@
 import Mathlib.Algebra.Group.Defs
 import Mathlib.Algebra.Group.Basic
 import Mathlib.Algebra.Group.Subgroup.Basic
+import Mathlib.GroupTheory.OrderOfElement
+import Mathlib.GroupTheory.Finiteness
+import Mathlib.Data.Finset.Lattice -- lcm を使うために必要なインポート
 import LeanCopilot
 import Mathlib.Algebra.BigOperators.Group.Finset
 --import Mathlib.Data.Equiv.Basic
@@ -134,3 +137,28 @@ by
       apply MulMemClass.mul_mem
       · simp_all only
       · simp_all only [inv_mem_iff]
+
+-----------
+---練習10----
+-----------
+
+
+-- 任意の有限群 G に対して、全ての元 x に対して x^n = 1 となる正の整数 n が存在することを示す。
+--ラグランジュの定理を使って証明している。
+theorem exists_universal_order (G : Type) [Fintype G] [Group G] :
+  ∃ n : ℕ, 0 < n ∧ ∀ x : G, x ^ n = 1 :=
+by
+  -- n を群 G の位数とする
+  use Fintype.card G
+  constructor
+  -- n が正であることを示す
+  · -- 群の位数は少なくとも 1 である
+    exact Fintype.card_pos
+  -- 任意の x に対して x^n = 1 であることを示す
+  · intro x
+    -- Lagrange の定理より、orderOf x は |G| を割り切る
+    have h : orderOf x ∣ Fintype.card G := by apply orderOf_dvd_card
+    -- n = |G| = orderOf x * k となる k が存在する
+    obtain ⟨k, hk⟩ := h
+    -- x^n = x^(orderOf x * k) = (x^(orderOf x))^k = 1^k = 1
+    rw [hk, pow_mul, pow_orderOf_eq_one, one_pow]

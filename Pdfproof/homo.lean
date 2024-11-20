@@ -82,3 +82,26 @@ instance {G G' : Type*} [Group G] [Group G'] (f : G →* G') : Group (group_hom_
   mul_one := λ a => Subtype.ext (mul_one a.1),
   inv_mul_cancel := λ a => Subtype.ext (inv_mul_cancel a.1)
 }
+
+--------------
+-----練習6----
+--------------
+
+-- 群準同型写像の合成が群準同型写像であることを示す定理
+def group_hom_comp_is_group_hom {G : Type*} [Group G] (f g : G →* G) : G →* G :=
+{
+  toFun := g.toFun ∘ f.toFun,  -- 合成写像 g ∘ f を定義
+  map_one' := by
+    -- (g ∘ f)(1) = g(f(1)) を示す
+    rw [Function.comp_apply]  -- 定義により (g ∘ f)(1) = g (f 1)
+    simp_all only [OneHom.toFun_eq_coe, map_one]
+  map_mul' := by
+    -- (g ∘ f)(x * y) = (g ∘ f)(x) * (g ∘ f)(y) を示す
+    intros x y                  -- 任意の x, y ∈ G を取る
+    simp only [Function.comp_apply, f.map_mul, g.map_mul]    -- 定義により (g ∘ f)(x * y) = g(f(x * y))
+    simp_all only [OneHom.toFun_eq_coe, MonoidHom.toOneHom_coe, map_mul]
+}
+
+-- 使用例: 自分で定義した合成写像が群準同型であることを確認
+example {G : Type*} [Group G] (f g : G →* G) : G →* G :=
+  group_hom_comp_is_group_hom f g

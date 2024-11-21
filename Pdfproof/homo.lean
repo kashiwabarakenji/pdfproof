@@ -1,6 +1,7 @@
 import Mathlib.Algebra.Group.Defs
 import Mathlib.Algebra.Group.Basic
 import Mathlib.Algebra.Group.Subgroup.Basic
+import Mathlib.Algebra.Group.Hom.Defs
 import Mathlib.Deprecated.Subgroup
 
 import LeanCopilot
@@ -196,3 +197,66 @@ theorem groupHom_injective_iff_ker_trivial {G G' : Type*} [Group G] [Group G']
 example {G G' : Type*} [Group G] [Group G']
   (f : G →* G') (h : f.ker = ⊥) : Function.Injective f :=
   (groupHom_injective_iff_ker_trivial f).mpr h
+
+--------------
+-----練習9----
+--------------
+
+-- f が G から G' への同型写像である場合、f⁻¹ が G' から G への同型写像であることを証明
+theorem inv_is_group_isomorphism {G G' : Type} [Group G] [Group G']
+  (f : G →* G') (h : Function.Bijective f) :
+  ∃ g : G' →* G, Function.Bijective g ∧ (∀ x : G, g (f x) = x) ∧ (∀ y : G', f (g y) = y) :=
+by
+  -- f⁻¹ を定義するため、h から逆写像を取得
+  let g := MulEquiv.symm (MulEquiv.ofBijective f h)
+  use g.toMonoidHom
+  constructor
+  -- g が全単射であることを示す
+  · exact g.bijective
+  -- f と g が逆写像の性質を満たすことを示す
+  · constructor
+    -- g (f x) = x
+    · intro x
+      simp_all only [MulEquiv.toMonoidHom_eq_coe, MonoidHom.coe_coe, g]
+      symm
+      simp [MulEquiv.ofBijective]
+    -- f (g x) = x
+    · intro y
+      simp_all only [MulEquiv.toMonoidHom_eq_coe, MonoidHom.coe_coe, MulEquiv.ofBijective_apply_symm_apply, g]
+
+-------------------
+------練習10--------
+--------------------
+
+-- 群 G の自己同型写像の集合が群であることを示したいが、Mathlib 4では、MulAut G はすでに群のinstance。
+variable {G : Type} [Group G]
+#check Group (MulAut G)
+
+lemma div_inv (G : Type) [Group G] [Semigroup (MulAut G)] (a b : MulAut G) : a / b = a * b⁻¹ :=
+by
+  rfl
+
+instance semigroup_mul_aut (G : Type) [Group G] : Semigroup (MulAut G) :=
+{
+  mul := λ f g => f.trans g, -- 写像の合成
+  mul_assoc := λ _ _ _ => MulEquiv.ext (λ _ => rfl), -- 結合律の証明
+}
+
+instance mul_one_class_mul_aut (G : Type) [Group G] : MulOneClass (MulAut G) :=
+{
+  mul := (· * ·), -- 前述の `Semigroup` インスタンスの `mul` を再利用
+  one := MulEquiv.refl G, -- 恒等写像
+  mul_one := λ _ => MulEquiv.ext (λ _ => rfl), -- 右単位元の証明
+  one_mul := λ _ => MulEquiv.ext (λ _ => rfl), -- 左単位元の証明
+}
+
+instance group_mul_aut (G : Type) [Group G] : Group (MulAut G) :=
+{
+  mul := (· * ·), -- 前述の `Semigroup` インスタンスの `mul` を再利用
+  one := MulEquiv.refl G, -- 恒等写像
+  inv := λ f => f.symm, -- 逆写像
+  mul_assoc := λ f g h => MulEquiv.ext (λ x => rfl), -- 結合律の証明
+  one_mul := MulOneClass.mul_one, -- 既に定義済みの左単位元を再利用
+  mul_one := MulOneClass.mul_one, -- 既に定義済みの右単位元を再利用
+  inv_mul_cancel := λ f => MulEquiv.ext (λ x => f.symm_apply_apply x), -- 逆元との積が単位元であることの証明
+}

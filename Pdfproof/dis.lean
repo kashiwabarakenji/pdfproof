@@ -1,5 +1,6 @@
 import Mathlib.Data.Real.Basic
 import Mathlib.Topology.MetricSpace.Basic
+import Mathlib.Topology.Basic
 import Mathlib.Analysis.InnerProductSpace.Basic
 import Mathlib.Topology.MetricSpace.Basic
 import Mathlib.Algebra.Order.Monoid.Defs
@@ -369,3 +370,28 @@ by
     exact ⟨ε, hε, ball_lem⟩
 
   exact this
+
+-----------------------
+------練習15-----------
+-----------------------
+
+-- 距離空間 X において、開集合の合併が開集合であることを証明
+example {X : Type} [PseudoMetricSpace X] (U : ι → Set X) (hU : ∀ i, IsOpen (U i)) :
+  IsOpen (⋃ i, U i) :=
+by
+  rw [isOpen_iff_forall_mem_open]
+  intro x hx
+  -- x ∈ ⋃ i, U i より、ある i が存在して x ∈ U i
+  obtain ⟨i, hxU⟩ := Set.mem_iUnion.mp hx
+  -- U i が開集合なので、x の開近傍を見つける
+  obtain ⟨ε, hε, hV_sub⟩ := Metric.isOpen_iff.mp (hU i) x hxU
+  --let V := Metric.ball x ε
+  simp_all only [Set.mem_iUnion, gt_iff_lt]
+  obtain ⟨w, h⟩ := hx
+  apply Exists.intro
+  · apply And.intro
+    · rfl
+    · simp_all only [Set.mem_iUnion]
+      apply And.intro
+      · exact isOpen_iUnion hU
+      · exact ⟨w, h⟩

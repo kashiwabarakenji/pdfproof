@@ -506,3 +506,59 @@ theorem normal_iff_left_cosets_eq_right_cosets {G : Type*} [Group G] {H : Subgro
       · simp
     rw [←lem7] at lem8
     exact lem8
+
+--------------
+-----練習15----
+--------------
+
+--import Mathlib.GroupTheory.Subgroup.Basic
+
+-- G, G' は群、f : G → G' は準同型
+example {G G' : Type} [Group G] [Group G'] (f : G →* G') :
+  Subgroup.Normal (f.ker) :=
+by
+  -- 目標：f.ker が正規部分群であることを示す
+  have goal : ∀ n ∈ f.ker, ∀ g, g * n * g⁻¹ ∈ f.ker := by
+    intros n hn g
+    -- 共役元 g * n * g⁻¹ が f.ker に属することを示す
+    simp only [MonoidHom.mem_ker]
+    -- f の準同型性を使って f(g * n * g⁻¹) を展開
+    calc
+      f (g * n * g⁻¹)
+          = f g * f n * f g⁻¹  := by rw [f.map_mul, f.map_mul, f.map_inv]
+      _ = f g * 1 * f g⁻¹    := by rw [hn] -- n ∈ ker(f) より f(n) = 1
+      _ = f g * f g⁻¹        := by rw [mul_one]
+      _ = 1                  := by simp_all only [map_inv, mul_inv_cancel]
+  -- goal の証明を Subgroup.Normal の定義に基づいて利用
+  exact Subgroup.Normal.mk goal
+
+--------------
+-----練習16----
+--------------
+
+example {G : Type} [Group G] (H : Subgroup G) :
+  Equivalence (λ x y : G => x⁻¹ * y ∈ H) :=
+by
+  -- 関係を定義
+  --let R := λ x y : G => x⁻¹ * y ∈ H
+  -- 同値関係の性質を確認
+  constructor
+  -- 反射律
+  · intro x
+    -- x⁻¹ * x = 1 が H に含まれることを示す
+    rw [inv_mul_cancel]
+    exact H.one_mem
+  -- 対称律
+  · intro x y hxy
+    -- x⁻¹ * y ∈ H から y⁻¹ * x ∈ H を示す
+    let hinv := H.inv_mem hxy
+    simp at hinv
+    exact hinv
+
+  -- 推移律
+  · intro x y z hxy hyz
+    -- x⁻¹ * y ∈ H と y⁻¹ * z ∈ H から x⁻¹ * z ∈ H を示す
+    have : x⁻¹ * z = (x⁻¹ * y) * (y⁻¹ * z) := by
+      simp [mul_assoc]
+    rw [this]
+    exact H.mul_mem hxy hyz

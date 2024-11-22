@@ -536,6 +536,7 @@ by
 -----練習16----
 --------------
 
+--練習16の前半
 example {G : Type} [Group G] (H : Subgroup G) :
   Equivalence (λ x y : G => x⁻¹ * y ∈ H) :=
 by
@@ -562,3 +563,48 @@ by
       simp [mul_assoc]
     rw [this]
     exact H.mul_mem hxy hyz
+
+--練習16の後半の問題
+example {G : Type} [Group G] (H : Subgroup G) (x y : G)
+  (hxy : x⁻¹ * y ∈ H) : Set.image (λ h => x * h) H = Set.image (λ h => y * h) H :=
+by
+  -- 左剰余類が等しいことを示すため、包含関係を確認する
+  ext g
+  constructor
+  -- xH ⊆ yH を示す
+  · intro hg
+    rcases hg with ⟨h, hH, rfl⟩
+    -- g = x * h の形に基づき、仮定 hxy を用いる
+    have : x * h = y * (y⁻¹ * x * h) := by
+      simp_all only [SetLike.mem_coe]
+      simp [mul_assoc]
+    -- H の閉性から g ∈ yH を示す
+    rw [Set.mem_image]
+    use y⁻¹ * x *h
+    constructor
+    have hinv := H.inv_mem hxy
+    simp at hinv
+    simp_all only [SetLike.mem_coe]
+    apply MulMemClass.mul_mem
+    · simp_all only
+    · simp_all only
+    rw [←mul_assoc]
+    simp
+
+  -- yH ⊆ xH を証明
+  · intro hg
+    rcases hg with ⟨h, hH, rfl⟩
+    -- g = y * h の形に基づき、仮定 hxy を用いる
+    have : y * h = x * (x⁻¹ * y * h) := by
+      simp_all only [SetLike.mem_coe]
+      simp [mul_assoc]
+    -- H の閉性から g ∈ xH を示す
+    rw [Set.mem_image]
+    use x⁻¹ * y * h
+    constructor
+    simp_all only [SetLike.mem_coe]
+    apply MulMemClass.mul_mem
+    · simp_all only
+    · simp_all only
+    rw [←mul_assoc]
+    simp

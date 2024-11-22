@@ -3,6 +3,8 @@ import Mathlib.Algebra.Group.Basic
 import Mathlib.Algebra.Group.Subgroup.Basic
 import Mathlib.Algebra.Group.Hom.Defs
 import Mathlib.Deprecated.Subgroup
+import Mathlib.GroupTheory.Coset.Basic
+import Mathlib.Algebra.Group.Subsemigroup.Basic
 
 import LeanCopilot
 
@@ -46,6 +48,7 @@ by
 --------------
 
 -- 群準同型写像の像が部分群であることを示す定理 既存の定理を利用した場合。
+--isSubgroupは、Deprecatedな関数。
 example {G G' : Type*} [Group G] [Group G']
   (f : G →* G') : IsSubgroup (Set.range f) := by
   exact f.range.isSubgroup
@@ -260,3 +263,246 @@ instance group_mul_aut (G : Type) [Group G] : Group (MulAut G) :=
   mul_one := MulOneClass.mul_one, -- 既に定義済みの右単位元を再利用
   inv_mul_cancel := λ f => MulEquiv.ext (λ x => f.symm_apply_apply x), -- 逆元との積が単位元であることの証明
 }
+
+-------------------
+------練習13--------
+-------------------
+
+--最初からアーベル群の部分群は、正規部分群であると、instanceで設定されている。
+theorem abelian_group_subgroup_normal {G : Type*} [CommGroup G]
+  {H : Subgroup G} : H.Normal := by
+  -- 正規部分群の定義に基づいて証明
+  infer_instance
+
+-------------------
+------練習14--------
+-------------------
+
+variable {G : Type*} [Group G]
+variable (H : Subgroup G)
+--variable (f : H → H)
+
+-- 正しい書き方：
+--#check Set.image f (Set.univ : Set H)
+--#check f '' (Set.univ : Set H)
+
+--結構使っているが、xをx^(-1)にしたものも作っても良かったかも。もしくは、直接conj_memを使っても良かったかも。
+lemma conj_mem_normal {G : Type*} [Group G] {H : Subgroup G}
+  (H_normal : H.Normal) (x : G) (h : G) (h_mem : h ∈ H) : x * h * x⁻¹ ∈ H :=
+by
+    -- H が正規部分群であるため、x * H * x⁻¹ = H
+    exact H_normal.conj_mem h h_mem x
+
+-- 定理: 群 G の部分群 H が正規部分群であることの必要十分条件は、
+-- 任意の x ∈ G に対して xH = Hx であることである。
+theorem normal_iff_left_cosets_eq_right_cosets {G : Type*} [Group G] {H : Subgroup G} :
+  H.Normal ↔ ∀ x : G, (Set.image (λ h=> x * h) H) = (Set.image (λ h => h * x) H) :=
+  by
+  constructor
+  · -- 正規部分群 H から ∀x, Set.image (λ h => x * h) H = Set.image (λ h => h * x) H を示す
+    intro h_normal
+    intro x
+    -- 定義: f : H → H を h ↦ x * h * x⁻¹ とする
+    --have elem: ∀ h ∈ H, x * h * x⁻¹ ∈ H := by
+
+    let f : H → H := λ h => ⟨x * h * x⁻¹, h_normal.conj_mem h h.2 x⟩
+    let g : H → H := λ h => ⟨x⁻¹ * h * x, by
+      let h_norm:=h_normal.conj_mem h h.2 x⁻¹
+      simp at h_norm
+      exact h_norm⟩
+
+    -- f が全単射であることを示す。使ってなかった。
+    /-
+    have f_bij : Function.Bijective f :=
+        -- f は単射であることの証明
+        by
+          constructor
+          · intro h1 h2
+            intro a
+            simp_all only [Subtype.mk.injEq, mul_left_inj, mul_right_inj, SetLike.coe_eq_coe, f]
+
+          · intro h
+            -- h = x * (x⁻¹ * h * x) * x⁻¹ となるので、x⁻¹ * h * x ∈ H である
+            use ⟨x⁻¹ * ↑h * x, by
+            let conj := conj_mem_normal h_normal x⁻¹ h h.2
+            simp at conj
+            exact conj⟩
+            simp_all only [f]
+            obtain ⟨val, property⟩ := h
+            simp_all only [Subtype.mk.injEq]
+            simp [mul_assoc]
+    -/
+
+    -- 任意の h ∈ H に対して、x * h = f h * x であることを示す。コメントアウトするとエラー。
+    have _ : ∀ (h : G) (hh : h ∈ H), x * h = (f ⟨h, hh⟩) * x :=
+      by
+        intro h hh
+        simp only [Function.comp_apply]
+        simp only [mul_assoc]
+        simp_all only [inv_mul_cancel, mul_one, f]
+
+    -- Set.image (λ h => x * h) H = Set.image (λ h => f h * x) H であることを示す
+    have h1 : Set.image (λ h => x * h) H.carrier = Set.image (λ h => f h * x) (Set.univ:Set H.carrier) := by
+      ext y
+      constructor
+      · intro hy
+        rcases hy with ⟨h, hH, rfl⟩
+        --goal (fun h ↦ x * h) h ∈ (fun h ↦ ↑(f h) * x) '' Set.univ
+        rw [Set.mem_image]
+        use f ⟨x⁻¹ * h * x, by
+          let h_norm := h_normal.conj_mem h hH x⁻¹
+          simp at h_norm
+          exact h_norm
+          ⟩
+        constructor
+        · exact Set.mem_univ (f ⟨h, hH⟩)
+        · --↑(f (f ⟨h, hH⟩)) * x = (fun h ↦ x * h) h
+          dsimp [f]
+          simp_all
+          rw [←mul_assoc]
+          rw [←mul_assoc]
+          rw [mul_inv_cancel]
+          rw [one_mul]
+          rw [mul_assoc]
+          rw [mul_inv_cancel]
+          simp_all only [mul_one, f]
+
+      · intro hy
+        rcases hy with ⟨h, _, rfl⟩
+        use (↑h : G)
+        constructor
+        · exact h.2
+        · -- (fun h ↦ x * h) ↑h = (fun h ↦ ↑(f h) * x) h
+          dsimp [f]
+          simp_all
+
+-- Set.image (λ h => f h * x) H = Set.image (λ h => h * x) H であることを示す
+    have h2 : Set.image (λ h => f h * x) (Set.univ:Set H.carrier) = Set.image (λ h => x * h) H := by
+      ext y
+      constructor
+      · intro hy
+        rcases hy with ⟨h, _, rfl⟩
+        rw [Set.mem_image]
+        use h
+        constructor
+        · simp_all
+        · -- (fun h ↦ f h * x) h = (fun h ↦ x * h) h
+          dsimp [f]
+          simp_all
+      · intro hy
+        rcases hy with ⟨h, hH, rfl⟩
+        use ⟨x⁻¹ *f ⟨h, hH⟩*x, by
+          dsimp [f]
+          rw [mul_assoc]
+          rw [mul_assoc]
+          simp
+          exact hH
+          ⟩
+        constructor
+        · exact Set.mem_univ (f ⟨h, hH⟩)
+        · -- (fun h ↦ f h * x) (f ⟨h, hH⟩) = (fun h ↦ x * h) ⟨h, hH⟩
+          dsimp [f]
+          simp_all
+          rw [mul_assoc]
+          rw [mul_assoc]
+          simp
+    ext z
+    apply Iff.intro
+    · intro h
+      rw [Set.mem_image] at h
+      rw [Set.mem_image]
+      obtain ⟨hr, hrH, rfl⟩ := h
+      have :  x * hr ∈ (fun h ↦ x * h) '' H.carrier  := by
+        rw [Set.mem_image]
+        use hr
+        constructor
+        · dsimp [f]
+          exact hrH
+        · rfl
+      rw [h1] at this
+      rw [Set.mem_image] at this
+      use f ⟨hr, hrH⟩
+      constructor
+      · dsimp [f]
+        simp_all
+        exact conj_mem_normal h_normal x hr hrH
+      · dsimp [f]
+        simp_all
+    · intro h
+      rw [Set.mem_image] at h
+      rw [Set.mem_image]
+      obtain ⟨hr, hrH, rfl⟩ := h
+      have :  f ⟨hr, hrH⟩ * x ∈ (fun h ↦ f h * x) '' Set.univ  := by
+        rw [Set.mem_image]
+        use ⟨hr,hrH⟩--f ⟨hr, hrH⟩
+        constructor
+        · simp
+        · rfl
+      rw [h2] at this
+      rw [Set.mem_image] at this
+      use g ⟨hr, hrH⟩
+      constructor
+      dsimp [f]
+      simp_all
+      let h_conj := conj_mem_normal h_normal x⁻¹ hr hrH
+      simp at h_conj
+      exact h_conj
+
+      dsimp [f]
+      rw [←mul_assoc]
+      rw [←mul_assoc]
+      simp_all
+
+   -- ∀x, Set.image (λ h => x * h) H = Set.image (λ h => h * x) H から H.Normal を示す
+  · intro h_cosets_eq
+    -- H.Normal の定義を構築する
+    constructor
+    intro hh hx
+    -- Set.image (λ h => x * h) H = Set.image (λ h => h * x) H を利用する
+    -- 定義: f : H → H を h ↦ x * h * x⁻¹ とする
+
+    intro g
+
+    --一般的な補題なので、定理の外に出しても良かった。
+    have lem0 {A B:Set G}:A=B → (Set.image (λ x=> g * x) A) = (Set.image (λ x => g * x) B):= by
+      intro eq
+      rw [eq]
+    --#check h_cosets_eq g
+    --#check lem0 (h_cosets_eq g⁻¹)
+    have lem1: (fun xx ↦ g * xx) '' ((fun xx ↦ g⁻¹ * xx) '' ↑H) = (fun xx ↦ g * xx) '' ((fun xx ↦ xx * g⁻¹) '' ↑H):= by
+      exact lem0 (h_cosets_eq g⁻¹)
+    simp only [Set.image_image] at lem1
+    simp only [←mul_assoc] at lem1
+    simp at lem1
+
+    have lem3 : ((fun xx ↦ g⁻¹ * xx) '' ↑H) =  ((fun xx ↦ xx*g⁻¹) '' ↑H) := by
+      exact h_cosets_eq g⁻¹
+    have lem4: (fun xx ↦ g * xx) '' ((fun xx ↦ xx * g⁻¹) '' H) = (fun xx ↦ g * xx) '' ((fun xx ↦ g⁻¹ * xx) '' H) := by
+      exact lem0 lem3.symm
+
+    simp at lem4
+    have lem5: (fun xx ↦  g * (xx * g⁻¹)) '' H  =  (fun xx ↦ g * xx) '' ((fun xx ↦ xx * g⁻¹) '' H) := by
+      rw [Set.image_image]
+    have lem6: (fun xx ↦  (xx)) '' H  =  (fun xx ↦ g * xx) '' ((fun xx ↦ g⁻¹ * xx) '' H) := by
+      rw [Set.image_image]
+      have : (fun x ↦ g * (g⁻¹ * x)) = (fun x ↦ (g * g⁻¹) * x) := by
+        funext x
+        rw [mul_assoc] -- 結合律: hh * (hh⁻¹ * x) = (hh * hh⁻¹) * x
+      rw [this]
+      funext x
+      simp
+
+    simp at lem5
+    simp at lem6
+    rw [←lem5] at lem4
+    rw [←lem6] at lem4
+    have lem7:  H = (fun a ↦ g * a * g⁻¹) '' H := by
+      exact lem1
+    have lem8 : g * hh * g⁻¹ ∈ (fun a ↦ g * a * g⁻¹) '' H := by
+      simp only [Set.mem_image]
+      use hh
+      constructor
+      · exact hx
+      · simp
+    rw [←lem7] at lem8
+    exact lem8

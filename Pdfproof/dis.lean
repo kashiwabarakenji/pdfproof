@@ -9,6 +9,7 @@ import Mathlib.Algebra.Order.BigOperators.Group.Finset
 import Mathlib.Data.Real.Sqrt
 import Mathlib.Algebra.Order.AbsoluteValue
 import Mathlib.Analysis.SpecialFunctions.Sqrt
+import Mathlib.Topology.MetricSpace.Basic
 --import Mathlib.Analysis.SpecialFunctions.Ineq
 import LeanCopilot
 
@@ -331,3 +332,40 @@ noncomputable instance : MetricSpace (Fin n → ℝ) where
     positivity
     positivity
     positivity
+
+-----------------------
+------練習14-----------
+-----------------------
+
+-- 距離空間 X において、開集合の交わりが開集合であることを証明
+example {X : Type} [MetricSpace X] (A B : Set X) (hA : IsOpen A) (hB : IsOpen B) :
+  IsOpen (A ∩ B) :=
+by
+  --rw [isOpen_iff_ball_subset] 必要ない。
+
+  apply Metric.isOpen_iff.mpr --これがポイント
+
+  intro x hx
+  -- x ∈ A ∩ B より x ∈ A かつ x ∈ B
+  have ⟨hAx, hBx⟩ := hx
+
+  have hA' := isOpen_iff_mem_nhds.mp hA
+  have hB' := isOpen_iff_mem_nhds.mp hB
+  rcases Metric.mem_nhds_iff.1 (hA' x hAx) with ⟨εA, hεA, hSubA⟩
+  rcases Metric.mem_nhds_iff.1 (hB' x hBx) with ⟨εB, hεB, hSubB⟩
+  -- 開球 U ∩ V が x を含むことを示す
+  -- ε = min(εA, εB) を定義
+  let ε := min εA εB
+  have hε : ε > 0  := lt_min hεA hεB
+  -- 開球 B(x, ε) が A ∩ B に含まれることを示す
+  have ball_lem: Metric.ball x ε ⊆ A ∩ B := by
+    intro y hy
+    -- 開球 B(x, ε) に含まれる任意の点 y について、y ∈ A かつ y ∈ B を示す
+    constructor
+    · exact hSubA (lt_of_lt_of_le hy (min_le_left εA εB))
+    · exact hSubB (lt_of_lt_of_le hy (min_le_right εA εB))
+
+  have : ∃ ε > 0, Metric.ball x ε ⊆ A ∩ B := by
+    exact ⟨ε, hε, ball_lem⟩
+
+  exact this

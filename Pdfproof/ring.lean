@@ -11,6 +11,47 @@ import Mathlib.RingTheory.Ideal.Basic
 import Mathlib.GroupTheory.Order.Min
 
 ------------
+---練習2-----
+------------
+
+-- 環において 0 * x = x * 0 = 0
+example {R : Type} [Ring R] [NoZeroDivisors R] [CharZero R] (x : R) : 0 * x = 0 ∧ x * 0 = 0 :=
+by
+  constructor
+  -- 左からのゼロ
+  · calc
+      0 * x = (0 + 0) * x := by rw [zero_add]
+      _ = 0 * x + 0 * x := add_mul 0 0 x
+      _ = 0 := by rw [zero_mul, add_zero]
+  -- 右からのゼロ
+  · calc
+      x * 0 = x * (0 + 0) := by rw [zero_add]
+      _ = x * 0 + x * 0 := mul_add x 0 0
+      _ = 0 + 0 := by rw [mul_zero, zero_add]
+      _ = 0 := by rw [zero_add]
+
+-- 環において (-1) * x = -x。これは、simpで成り立ってしまうので、限られた変形だけに限定するのは難しい。
+--そもそもゴールが(-1)*x=-xと書いているのに-1*x=-xに変換されている。
+example {R : Type} [Ring R] (x : R) : (-1) * x = -x :=
+by
+  have :(-1) * x + x = 0 := by
+   calc
+     (-1) * x + x = (-1)*x + 1*x := by rw [one_mul]
+     _= (-1 + 1) * x := by rw [add_mul]
+     _ = 0 * x := by rw [neg_add_cancel]
+     _ = 0 := by rw [zero_mul]
+  have lem2:(-1) * x + x + (- x) = -x := by
+    have h := (@add_right_eq_self R _ (-x) (-1 * x + x)).mpr  this
+    rw [add_comm] at h
+    exact h
+  rw [add_assoc] at lem2
+  have lem3: x + (- x) = 0:= by
+    exact add_neg_cancel x
+  rw [lem3] at lem2
+  rw [add_zero] at lem2
+  exact lem2
+
+------------
 ---練習3-----
 ------------
 

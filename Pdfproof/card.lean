@@ -195,6 +195,20 @@ by
   _ = y := hg y
 
 ------------
+---定理1----
+------------
+
+-- 集合 M の巾集合の濃度が M の濃度より真に大きいことを示す
+example (M : Type) : Cardinal.mk M < Cardinal.mk (Set M) :=
+by
+  -- 巾集合の濃度は M の濃度より大きい (カントールの定理)
+  have tmp: 2^(Cardinal.mk M) = Cardinal.mk (Set M) := by
+    simp_all only [Cardinal.mk_set]
+  let result := Cardinal.cantor (Cardinal.mk  M)
+  rw [tmp] at result
+  exact result
+
+------------
 ---練習7----
 ------------
 

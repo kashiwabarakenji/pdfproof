@@ -11,6 +11,8 @@ import Mathlib.Data.Real.Sqrt
 import Mathlib.Algebra.Order.AbsoluteValue
 import Mathlib.Analysis.SpecialFunctions.Sqrt
 import Mathlib.Topology.MetricSpace.Basic
+import Mathlib.Topology.MetricSpace.Pseudo.Defs
+import Mathlib.Topology.Instances.Real
 --import Mathlib.Analysis.SpecialFunctions.Ineq
 import LeanCopilot
 
@@ -395,3 +397,97 @@ by
       apply And.intro
       · exact isOpen_iUnion hU
       · exact ⟨w, h⟩
+
+-----------------------
+------練習18-----------
+-----------------------
+
+-- 有理数集合が実数空間で稠密であることを証明。もともとdenseになっている。
+example : Dense (Set.univ : Set ℚ) :=
+by
+  simp
+
+-- 有理数集合が実数空間で稠密であることを定義から証明
+example : ∀ x : ℝ, ∀ ε > 0, ∃ q : ℚ, |x - q| < ε :=
+by
+  intros x ε hε
+  -- 適切な n を選ぶ
+  let n := Nat.ceil (1 / ε)
+  --have hn : n > 0 := Nat.ceil_pos.mpr (one_div_pos.mpr hε)
+  -- n に基づいて有理数を構成
+  let q : ℚ := by
+    exact Int.floor (n * x) / n
+  use q
+  -- q の評価
+  calc
+    |x - q| = |x - (Int.floor (n * x) / n)| := by simp_all only [gt_iff_lt, one_div, Nat.ceil_pos, inv_pos,
+      Rat.cast_div, Rat.cast_intCast, Rat.cast_natCast, n, q]
+    _  = |x - ↑⌊↑n * x⌋ / ↑n| := by simp_all only [gt_iff_lt, one_div, Nat.ceil_pos, inv_pos, n]
+    _  = |(↑n * x) / ↑n - ↑(Int.floor (↑n * x)) / ↑n| := by simp_all only [gt_iff_lt, one_div, Nat.ceil_pos,
+      inv_pos, ne_eq, Nat.cast_eq_zero, Nat.ceil_eq_zero, inv_nonpos, not_le, mul_div_cancel_left₀, n]
+    _   = |(↑n * x - ↑(Int.floor (↑n * x))) / ↑n| := by rw [sub_div]
+    _   = |↑n * x - ↑(Int.floor (↑n * x))| / |↑n| := abs_div _ _
+    _  = |n * x - Int.floor (n * x)| / n := by simp_all only [gt_iff_lt, one_div, Nat.ceil_pos, inv_pos,
+      Int.self_sub_floor, Nat.abs_cast, n]
+    _ < 1 / n := by
+      simp_all only [gt_iff_lt, one_div, Nat.ceil_pos, inv_pos, Int.self_sub_floor, n]
+      rw [abs]
+      simp_all only [neg_le_self_iff, Int.fract_nonneg, sup_of_le_left]
+      apply lt_of_le_of_lt _
+      rw [div_lt_iff]
+      on_goal 5 => {rw [mul_comm]
+      }
+      · simp_all only [isUnit_iff_ne_zero, ne_eq, Nat.cast_eq_zero, Nat.ceil_eq_zero, inv_nonpos, not_le,
+          IsUnit.inv_mul_cancel]
+        apply Int.fract_lt_one
+      · simp_all only [Nat.cast_pos, Nat.ceil_pos, inv_pos]
+    _ ≤ ε := by
+      rw [one_div]
+      simp_all only [gt_iff_lt, one_div, Nat.ceil_pos, inv_pos, n]
+      rw [inv_le]
+      · exact Nat.le_ceil _
+      · simp_all only [Nat.cast_pos, Nat.ceil_pos, inv_pos]
+      · simp_all only
+
+-----------------------
+------練習19-----------
+-----------------------
+
+-- 距離空間 X における閉包 cl(A) が閉集合であることを証明
+example {X : Type} [MetricSpace X] (A : Set X) :
+  IsClosed (closure A) :=
+by
+  -- 閉包は常に閉集合であることは、閉包の定義から直ちに従う。
+  exact isClosed_closure
+
+-- 距離空間 X において、閉包が集積点全体と一致することを証明
+example {X : Type} [MetricSpace X] (A : Set X) :
+  closure A = {x | ∀ ε > 0, ∃ y ∈ A, dist x y < ε} :=
+by
+  ext x
+  constructor
+  -- x ∈ closure A → x は A の集積点
+  · intro hx
+    rw [Metric.mem_closure_iff] at hx
+    exact hx
+  -- x が A の集積点 → x ∈ closure A
+  · intro hx
+    rw [Metric.mem_closure_iff]
+    exact hx
+
+-----------------------
+------練習24-----------
+-----------------------
+
+-- 距離空間の連続写像の同値性。既存の定理を使って示した。
+example {X Y : Type} [TopologicalSpace X] [TopologicalSpace Y] (f : X → Y) :
+  (Continuous f ↔ ∀ A : Set Y, IsOpen A → IsOpen (f ⁻¹' A)) :=
+by
+  constructor
+  -- 連続性から逆像が開集合となることを示す
+  · intro h_cont A hA
+    exact continuous_def.mp h_cont A hA
+  -- 逆像が開集合であることから連続性を示す
+  · intro h_preimage
+    apply continuous_def.mpr
+    exact h_preimage

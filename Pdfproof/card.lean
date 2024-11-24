@@ -8,11 +8,14 @@ import Mathlib.SetTheory.Cardinal.Basic
 import Mathlib.Logic.Function.Basic
 import LeanCopilot
 import Mathlib.Data.Real.Basic  --これがあるとuseが使える。Mathlib.Tactic.Useがよみこまれているのかも。
+import Mathlib.Analysis.SpecialFunctions.Log.Basic
 --import Mathlib.Data.Rat.Basic
 import Mathlib.SetTheory.Cardinal.Continuum
 import Mathlib.Algebra.Order.Archimedean.Basic
 import Mathlib.Data.Real.Archimedean
 import Mathlib.Data.Real.Cardinality
+--import Mathlib.Data.Equiv.Basic
+
 --import Mathlib.SetTheory.Countable.Basic
 --import Mathlib.Data.PProd.Basic
 --import Mathlib.Topology.Instances.Real
@@ -162,6 +165,33 @@ lemma f_surjective : Function.Surjective f := by
 theorem f_bijective : Function.Bijective f :=
   ⟨f_injective, f_surjective⟩
 
+------------
+---練習4----
+------------
+
+-- 正の実数全体の集合をサブタイプとして定義
+def pos_real := {x : ℝ // 0 < x}
+
+-- 関数 f: ℝ → pos_real を定義。f(x) = e^x
+noncomputable def exp_to_pos_real : ℝ → pos_real := λ x=> ⟨Real.exp x, Real.exp_pos x⟩
+
+-- 関数 g: pos_real → ℝ を定義。g(s) = ln(s.val)
+noncomputable def g : pos_real → ℝ := λ s => Real.log s.val
+
+-- ℝ と pos_real 間の同型 (equiv) を構成
+noncomputable def real_pos_real_equiv : ℝ ≃ pos_real :=
+{ toFun := exp_to_pos_real,
+  invFun := g,
+  left_inv := λ x => by
+    -- g(f(x)) = ln(e^x) = x を証明
+    simp [g, exp_to_pos_real, Real.log_exp],
+
+  right_inv := λ s => Subtype.eq (by
+    -- f(g(s)) = e^{ln(s)} = s を証明
+    simp [exp_to_pos_real, g]
+    exact Real.exp_log s.2
+  )
+}
 
 ------------
 ---練習5----

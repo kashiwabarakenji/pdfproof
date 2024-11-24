@@ -13,6 +13,8 @@ import Mathlib.Analysis.SpecialFunctions.Sqrt
 import Mathlib.Topology.MetricSpace.Basic
 import Mathlib.Topology.MetricSpace.Pseudo.Defs
 import Mathlib.Topology.Instances.Real
+import Mathlib.Data.Fintype.Basic
+--import Mathlib.Analysis.NormedSpace.Basic
 --import Mathlib.Analysis.SpecialFunctions.Ineq
 import LeanCopilot
 
@@ -142,7 +144,7 @@ lemma sum_sq_eq_zero_iff {n : ℕ} (x : Fin n → ℝ) :
     rw [Finset.sum_eq_zero]
     intro i _
     rw [h i]
-    exact zero_pow (by norm_num)
+    simp
 
 -- 各 i に対して (x i - z i)^2 の項の展開が成立することを示す補題。下で使っている。
 lemma sum_sq_expand {n : ℕ} (x y z : Fin n → ℝ) :
@@ -335,6 +337,124 @@ noncomputable instance : MetricSpace (Fin n → ℝ) where
     positivity
     positivity
     positivity
+
+--------------------
+------練習4--------
+--------------------
+
+-- n 次元実数空間を Fin n → ℝ として定義
+def EuclideanSpace (n : ℕ) := Fin n → ℝ
+axiom n_pos {n : ℕ} : n > 0
+
+lemma univ_nonempty {n : ℕ} : (Finset.univ : Finset (Fin n)).Nonempty :=
+  Finset.univ_nonempty_iff.mpr (Fin.pos_iff_nonempty.mp n_pos)
+-- 距離関数 d' の定義
+def d' {n : ℕ} (x y : EuclideanSpace n) : ℝ :=
+    if h : n > 0 then (Finset.univ : Finset (Fin n)).sup' (by
+    simp_all only [gt_iff_lt]
+    rw [Finset.univ_nonempty_iff]
+    cases n
+    · simp_all only [lt_self_iff_false]
+    · simp_all only [lt_add_iff_pos_left, add_pos_iff, zero_lt_one, or_true]
+      infer_instance) (λ i => |x i - y i|) else 0
+
+-- 非負性の証明
+lemma d'_nonneg {n : ℕ} (x y : EuclideanSpace n) : 0 ≤ d' x y :=
+  by
+    unfold d'
+    by_cases h : n > 0
+    · simp_all only [gt_iff_lt, ↓reduceDIte, Finset.le_sup'_iff, Finset.mem_univ, abs_nonneg, and_self]
+      apply Exists.intro
+      · simp_all only
+      · use 0
+    · simp_all only [gt_iff_lt, not_lt, nonpos_iff_eq_zero, lt_self_iff_false, ↓reduceDIte, le_refl]
+
+-- 同一性の証明 nが1以上である仮定が必要か。
+lemma d'_eq_zero {n : ℕ} (x y : EuclideanSpace n) : d' x y = 0 ↔ x = y := by
+  apply Iff.intro
+  · intro h
+    unfold d' at h
+    let s:= (Finset.univ : Finset (Fin n))
+    have s_nonempty:s.Nonempty := univ_nonempty
+    have h_abs : ∀ i, |x i - y i| = 0 := by
+      intro i
+      have h_sup := (@Finset.sup'_le_iff  Real (Fin n) _ _ s_nonempty (λ i => abs (x i - y i)) (0:ℝ)).mp
+      simp [↓reduceDIte, s] at h
+      let hh := h n_pos
+      simp_all only [s]
+      simp only [Finset.mem_univ, abs_nonpos_iff, true_implies, abs_zero, Finset.sup'_const, le_refl,
+        implies_true, abs_eq_zero] at hh
+      simp_all only [s]
+      simp at h_sup
+      exact abs_eq_zero.mpr (h_sup i)
+
+    have h_eq : ∀ i, x i = y i := by
+      intro i
+      simp_all only [gt_iff_lt, ↓reduceDIte, Finset.sup'_const, dite_eq_ite, ite_self, abs_eq_zero]
+      convert sub_eq_zero.1 (h_abs i)
+    simp_all only [gt_iff_lt, ↓reduceDIte, sub_self, abs_zero, Finset.sup'_const, dite_eq_ite, ite_self, implies_true]
+    funext i
+    simp_all only
+
+  · intro h
+    subst h
+    unfold d'
+    by_cases h : n > 0
+    · simp_all only [gt_iff_lt, ↓reduceDIte, Finset.le_sup'_iff, Finset.mem_univ, and_self]
+      simp_all only [sub_self, abs_zero, Finset.sup'_const]
+    · simp_all only [gt_iff_lt, not_lt, nonpos_iff_eq_zero, lt_self_iff_false, ↓reduceDIte, le_refl]
+
+-- 対称性の証明
+lemma d'_symm {n : ℕ} (x y : EuclideanSpace n) : d' x y = d' y x :=
+  by
+    unfold d'
+    by_cases h : n > 0
+    · by_cases h : n > 0
+      · simp only [d', h, if_true]
+        congr
+        ext i
+        simp_all only [gt_iff_lt]
+        simp_rw [abs_sub_comm]
+      · simp_all only [gt_iff_lt]
+    · simp_all only [gt_iff_lt, not_lt, nonpos_iff_eq_zero, lt_self_iff_false, ↓reduceDIte]
+
+-- 三角不等式の証明
+lemma d'_triangle {n : ℕ} (x y z : EuclideanSpace n) : d' x z ≤ d' x y + d' y z :=
+  by
+    unfold d'
+    by_cases h : n > 0
+    · simp only [d', h, if_true]
+      apply Finset.sup'_le
+      simp_all only [gt_iff_lt]
+      rw [Finset.univ_nonempty_iff]
+      use 0
+      intro i
+      intro _
+      simp_all only [gt_iff_lt, ↓reduceDIte, Finset.le_sup', Finset.mem_univ, abs_sub]
+      -- goal |x i - z i| ≤ (Finset.univ.sup' ⋯ fun i ↦ |x i - y i|) + Finset.univ.sup' ⋯ fun i ↦ |y i - z i|
+      calc
+        |x i - z i| = |(x i - y i) + (y i - z i)| := by rw [sub_add_sub_cancel]
+        _ ≤ |x i - y i| + |y i - z i| := abs_add _ _
+      apply add_le_add
+      · simp_all only [Finset.le_sup'_iff, Finset.mem_univ, true_and]
+        simp_all only [gt_iff_lt]
+        use i
+      · simp_all only [Finset.le_sup'_iff, Finset.mem_univ, true_and]
+        simp_all only [gt_iff_lt]
+        use i
+    · simp_all only [gt_iff_lt, not_lt, nonpos_iff_eq_zero, lt_self_iff_false, ↓reduceDIte, add_zero, le_refl]
+
+-- 距離空間のインスタンスの定義
+instance EuclideanSpace_metric {n : ℕ} : MetricSpace (EuclideanSpace n) :=
+{
+  dist := d',
+  dist_self := λ x => (d'_eq_zero x x).mpr rfl,
+  dist_comm := d'_symm,
+  dist_triangle := d'_triangle,
+  eq_of_dist_eq_zero := by
+    intro x y h
+    exact (d'_eq_zero x y).mp h
+}
 
 -----------------------
 ------練習14-----------

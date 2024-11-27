@@ -21,6 +21,7 @@ import Mathlib.Topology.Bornology.Basic
 import Mathlib.Topology.Defs.Filter
 import Mathlib.Topology.MetricSpace.Bounded
 import Mathlib.Data.Real.Archimedean
+import Mathlib.Topology.Order.Monotone
 
 
 --import Mathlib.Integral.IntervalIntegral
@@ -577,6 +578,7 @@ lemma closed_ssup {α : Type} [TopologicalSpace α] (ss : Set α) (s : Set ℝ) 
   simp_all only [nonempty_subtype, Subtype.range_coe_subtype, Set.setOf_mem_eq, Set.image_nonempty, Set.mem_image,
     exists_eq_right, exists_prop]
 
+  /- 未完成だし、alphaがtopological spaceなのに、isupを使っていて、いまとなってはおかしい。supを使うべき。
   lemma closed_supr {α : Type} [TopologicalSpace α] (ss : Set α) (s : Set ℝ) (non:Nonempty ss)(hBddAbove : Bornology.IsBounded s) (h : IsClosed s) (f : α → ℝ) : f '' (Set.univ : Set ss) = s → ∃ x : ss, f x = ⨆ y ∈ s,y := by
   intro a
   rw [←a]
@@ -601,10 +603,13 @@ lemma closed_ssup {α : Type} [TopologicalSpace α] (ss : Set α) (s : Set ℝ) 
   have h_compact : IsCompact s :=
     Metric.isCompact_iff_isClosed_bounded.mpr ⟨lem0, hBddAbove⟩
 
+   --isLUB_ciSup∀ {α : Type u_1} {ι : Sort u_4} [inst : ConditionallyCompleteLattice α] [inst_1 : Nonempty ι] {f : ι → α},   BddAbove (range f) → IsLUB (range f) (⨆ i, f i)
+  have h_LUB : IsLUB s (⨆ y ∈ s,y) := by
+    exact Real.isLUB_sSup s nonemp hBddAbove
   have h_max : ∃ y ∈ s, y = ⨆ z ∈ s,z := by
     use ⨆ (z ∈ s),z
-    sorry
-    --constructor
+    constructor
+    exact IsCompact.sSup_mem h_compact nonemp
     --sが閉集合の仮定hを使うかも。実数の集合で有界な閉集合な集合はコンパクトで最大値が存在。
     --#check cSup_mem
     --exact Real.isLUB_sSup s nonemp h_bdd_above
@@ -614,6 +619,7 @@ lemma closed_ssup {α : Type} [TopologicalSpace α] (ss : Set α) (s : Set ℝ) 
   subst a
   simp_all only [nonempty_subtype, Subtype.range_coe_subtype, Set.setOf_mem_eq, Set.image_nonempty, Set.mem_image,
     exists_eq_right, exists_prop]
+  -/
 
 --これはssupなどによらない。bddでなく、Bornology.IsBoundedのほう。
 lemma cont_bounded {a b : ℝ} (hab : a ≤ b)
@@ -723,9 +729,34 @@ lemma supr_exists {a b : ℝ} (hab : a ≤ b)
     simp_all only [Set.mem_Icc, and_self]
 -/
 
+--下のbfで同じことをしているので、不要だったかも。でもこちらは上限値を与えている？
+theorem bounded_closed_set_has_maximum (S : Set ℝ) (h_bdd : BddAbove S) (h_closed : IsClosed S) (h_nonempty : S.Nonempty) :
+  ∃ x ∈ S, ∀ y ∈ S, y ≤ x := by
+  -- S が空でないことを仮定
+    -- sup S が存在する（BddAbove と Nonempty の仮定により）
+    let M := sSup S
+    -- sup S が上界であることと、S が閉集合であることを利用
+    have hM_sup : ∀ y ∈ S, y ≤ M := λ y hy => le_csSup h_bdd hy
+    have hM_closed : M ∈ S := by
+      exact IsClosed.csSup_mem h_closed h_nonempty h_bdd
+
+    use M
+
+lemma bdd_subset {A B : Set ℝ} (hB_subset_A : B ⊆ A) (hA_bdd : BddAbove A) : BddAbove B := by
+    -- `A` が上に有界であることから、上界 `M` を得る
+    obtain ⟨M, hM⟩ := hA_bdd
+    -- `M` を `B` の上界として使用
+    use M
+    intros x hx
+    -- `B ⊆ A` なので `x ∈ A` も成り立つ
+    exact hM (hB_subset_A hx)
+
+lemma bf_subset3 {A:Set Real} (h3_closed: IsClosed A)(b3_bdd:BddAbove A)(b3_nonempty:A.Nonempty ) : sSup A ∈ A := by
+
+  exact IsClosed.csSup_mem h3_closed b3_nonempty b3_bdd
 
 lemma triangle_lem  {f g : Ic → ℝ} (hf : Continuous f) (hg : Continuous g ) :
-    (⨆ x : Ic, f x + g x) ≤ (⨆ x : Ic, f x) + (⨆ x :Ic, g x) := by
+    (⨆ x  ∈ (Set.univ:Set Ic), f x + g x) ≤ (⨆ x  ∈ (Set.univ:Set Ic), f x) + (⨆ x  ∈ (Set.univ:Set Ic), g x) := by
   -- まず、Set.Icc a b が空でないことを示す補助的な定理を使います
   have nonempty : Set.Nonempty Ic := by
     unfold Ic
@@ -748,6 +779,10 @@ lemma triangle_lem  {f g : Ic → ℝ} (hf : Continuous f) (hg : Continuous g ) 
   have bf: BddAbove (f '' (Set.univ:Set Ic)) := by
     exact IsCompact.bddAbove compact_range_f
 
+  dsimp [BddAbove] at bf
+
+  obtain ⟨sup_f, hf'⟩ := bf
+
   have compact_range_g : IsCompact (g '' (Set.univ:Set Ic)) := by
     simp_all only [Set.image_univ]
     have compact_Icc := compact_Icc_s
@@ -764,7 +799,6 @@ lemma triangle_lem  {f g : Ic → ℝ} (hf : Continuous f) (hg : Continuous g ) 
   -- fとgは、s上で連続であるため、sの像の上限が存在する
   let sup_f : ℝ := ⨆ y∈ (f '' (Set.univ:Set Ic)),y
   let sup_g : ℝ := ⨆ y∈ (g '' (Set.univ:Set Ic)),y
-
 
   have H : ∀ x ∈ (Set.univ:Set Ic), f x + g x ≤ (sup_f : ℝ) + (sup_g : ℝ) := by
     intros x hx
@@ -811,9 +845,6 @@ lemma triangle_lem  {f g : Ic → ℝ} (hf : Continuous f) (hg : Continuous g ) 
 
           -/
 
-
-
-
       /-
       have tmp_eq: sSup (Set.range f) = sup_f := by
         dsimp [sup_f]
@@ -828,8 +859,50 @@ lemma triangle_lem  {f g : Ic → ℝ} (hf : Continuous f) (hg : Continuous g ) 
     have hf : f x ≤ sup_f := by
       dsimp [sup_f]
 
+      have bf_range : BddAbove (f '' (Set.univ:Set Ic)) := by
+        exact IsCompact.bddAbove compact_range_f
+
+      have f_nonempty : (f '' (Set.univ:Set Ic)).Nonempty := by
+        simp_all only [Set.image_univ, Set.mem_univ]
+        use f x
+
+      have bf_subset2:  sSup (f '' (Set.univ:Set Ic)) ∈ (f '' (Set.univ:Set Ic)) := by
+        exact IsClosed.csSup_mem (IsCompact.isClosed compact_range_f) f_nonempty bf_range
+
+      have bf_lub: IsLUB (f '' (Set.univ:Set Ic)) (⨆ z ∈ (f '' (Set.univ:Set Ic)),z) := by
+        rw [Set.image_univ] at bf_range
+        haveI : Nonempty (Set.Icc (0 : ℝ) 1) := ⟨⟨0, by exact ⟨le_refl 0, zero_le_one⟩⟩⟩
+        #check isLUB_ciSup bf_range
+
+
+      have bf_isLUB_mem:  ⨆ z ∈ (f '' (Set.univ:Set Ic)),z ∈ f '' (Set.univ:Set Ic) := by
+        exact IsClosed.isLUB_mem bf_lub f_nonempty (IsCompact.isClosed compact_range_f)
+
+      -- ⨆じゃなくて、sSupを使うべきかもしれない。xは関係ない。
+      --isLUB_ciSup ∀ {α : Type u_1} {ι : Sort u_4} [inst : ConditionallyCompleteLattice α] [inst_1 : Nonempty ι] {f : ι → α},   BddAbove (range f) → IsLUB (range f) (⨆ i, f i)
+      -- IsClosed.isLUB_mem ∀ {α : Type u} [inst : TopologicalSpace α] [inst_1 : LinearOrder α] [inst_2 : OrderTopology α] {a : α} {s : Set α},   IsLUB s a → Set.Nonempty s → IsClosed s → a ∈ s
+      have bf_subset:(Set.range fun y ↦ ⨆ (_ : y ∈ f '' (Set.univ:Set Ic)), y) ⊆ (f '' (Set.univ:Set Ic)) := by
+        congr
+        simp
+        intro y hy
+        simp_all only [Set.mem_range, Subtype.exists, Set.mem_image, exists_apply_eq_apply]
+        obtain ⟨val, property⟩ := hy
+        subst property
+        simp_all only [Set.image_univ, Set.mem_univ]
+        --iSupが要素内に存在するかという問題。closed性は利用する必要あり。bf_subset2を使っても良い。
+        --sSup (f '' (Set.univ:Set Ic)) = ⨆ z ∈ f '' Set.univ,z
+        use  ⨆  z ∈ f '' Set.univ,z
+        simp_all only [Set.mem_image, Set.mem_univ]
+        congr
+
+
+
+        sorry
+
       --convert le_csSup (IsCompact.bddAbove compact_range_f) contain_f  --compact_range_fがあってくれない。
-      convert le_csSup bf contain_f
+      apply le_csSup
+      exact bf_range
+      --IsCompact.bddAbove compact_range_f
       dsimp [sup_f]
       symm
       --goal sSup (f '' Set.univ) = ⨆ y ∈ f '' Set.univ, y
@@ -892,7 +965,7 @@ lemma triangle_lem  {f g : Ic → ℝ} (hf : Continuous f) (hg : Continuous g ) 
           ciSup_unique, sup_f]
       exact le_csSup bg' this
 
-      
+
 
     -- f x + g x ≤ sup_f + sup_g を導出
     linarith

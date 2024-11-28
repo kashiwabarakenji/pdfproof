@@ -22,6 +22,8 @@ import Mathlib.Topology.Defs.Filter
 import Mathlib.Topology.MetricSpace.Bounded
 import Mathlib.Data.Real.Archimedean
 import Mathlib.Topology.Order.Monotone
+import Mathlib.Data.Set.Defs
+import Mathlib.Order.SetNotation
 
 
 --import Mathlib.Integral.IntervalIntegral
@@ -475,7 +477,7 @@ instance EuclideanSpace_metric {n : ℕ} : MetricSpace (EuclideanSpace n) :=
 
 def Ic := Set.Icc (0:Real) 1
 
-
+--rangeが有界であることを示す。
 lemma bdd_above_range {fs :  Ic → ℝ} (hf2 : Continuous fs):
   BddAbove (Set.range fs) := by
     let Ic := Set.Icc (0:Real) 1
@@ -500,7 +502,7 @@ lemma bdd_above_range {fs :  Ic → ℝ} (hf2 : Continuous fs):
     apply hM y
     simp_all
 
---使わないかも。
+--直接は、使ってない。rangeが閉集合であること。地域のcompact性はcompact_image2などで示している。
 lemma image_closed
   {fs : Ic → ℝ}
   (hf : Continuous fs ) :
@@ -534,7 +536,7 @@ lemma image_closed
 
   simp_all only [Set.image_univ, isOpen_compl_iff]
 
-
+--使ってない。消してよさそう。
 lemma closure_extensive: ∀ {α : Type} [TopologicalSpace α] (s : Set α), s ⊆ closure s := by
   intro α
   intro s
@@ -543,7 +545,7 @@ lemma closure_extensive: ∀ {α : Type} [TopologicalSpace α] (s : Set α), s �
   intro a
   exact subset_closure a
 
---エラーがあるが、証明完成後にsSupのアプローチ自体を全部消す予定なので、問題ない。
+--いつの間にかエラーが解消したが、使ってない。消してよさそう。
 lemma closed_ssup {α : Type} [TopologicalSpace α] (ss : Set α) (s : Set ℝ) (non:Nonempty ss)(hBddAbove : Bornology.IsBounded s) (h : IsClosed s) (f : α → ℝ) : f '' (Set.univ : Set ss) = s → ∃ x : ss, f x = sSup s := by
   intro a
   rw [←a]
@@ -578,7 +580,8 @@ lemma closed_ssup {α : Type} [TopologicalSpace α] (ss : Set α) (s : Set ℝ) 
   simp_all only [nonempty_subtype, Subtype.range_coe_subtype, Set.setOf_mem_eq, Set.image_nonempty, Set.mem_image,
     exists_eq_right, exists_prop]
 
-  /- 未完成だし、alphaがtopological spaceなのに、isupを使っていて、いまとなってはおかしい。supを使うべき。
+
+  /- 未完成だし、使ってない。
   lemma closed_supr {α : Type} [TopologicalSpace α] (ss : Set α) (s : Set ℝ) (non:Nonempty ss)(hBddAbove : Bornology.IsBounded s) (h : IsClosed s) (f : α → ℝ) : f '' (Set.univ : Set ss) = s → ∃ x : ss, f x = ⨆ y ∈ s,y := by
   intro a
   rw [←a]
@@ -621,7 +624,7 @@ lemma closed_ssup {α : Type} [TopologicalSpace α] (ss : Set α) (s : Set ℝ) 
     exists_eq_right, exists_prop]
   -/
 
---これはssupなどによらない。bddでなく、Bornology.IsBoundedのほう。
+--Bornology.IsBoundedのほう。
 lemma cont_bounded {a b : ℝ} (hab : a ≤ b)
   {f : ℝ → ℝ}
   (hf : ContinuousOn f (Set.Icc a b)):
@@ -659,75 +662,38 @@ lemma cont_bounded {a b : ℝ} (hab : a ≤ b)
         exact tmp
       exact bdd
     exact bdd_s
-/- abの区間を01に変更した修正をする必要あり。
-lemma sup_exists {a b : ℝ} (hab : a ≤ b)
-  {f : ℝ → ℝ}
-  (hf : ContinuousOn f (Set.Icc a b)) :
-  ∃ x ∈ Set.Icc a b, f x = sSup (f '' Set.Icc a b) := by
+
+lemma sup_exists {f : Ic → ℝ}
+  (hf : Continuous f) :
+  ∃ x : Ic, f x = sSup (f '' (Set.univ:Set Ic)) := by
   -- 区間 [a, b] がコンパクトであることを確認
-    have lem0: IsClosed (f '' Set.Icc a b) := by
-      have closed_image : IsClosed (f '' Set.Icc a b) := isOpen_compl_iff.mp (image_closed hab hf)
-      exact closed_image
-
-    let nonempty : Set.Nonempty (Set.Icc a b) := ⟨a, by simp [hab]⟩
-    let s := Set.Icc a b
-    let fs : s → ℝ := λ x => f x.val
-
+    have lem0: IsClosed (f '' (Set.univ:Set Ic)) := by
+      have closed_image : IsClosed (Set.univ:Set Ic) := by
+        simp_all only [isClosed_univ]
+      exact isOpen_compl_iff.mp (image_closed hf)
 
     have bdd: Bornology.IsBounded (f '' Set.Icc a b) := by
       --have h_compact : IsCompact (Set.Icc a b) := isCompact_Icc
-      have h_bdd := cont_bounded hab hf
+      have h_bdd := cont_bounded hf
       simp_all only [Set.image_univ]
       convert h_bdd
       rw [Set.image_eq_range]
 
-    let tmp := closed_ssup (Set.Icc a b) (f '' Set.Icc a b) ⟨⟨a, by simp [hab]⟩⟩ bdd lem0 f
-    rw [Set.image_univ] at tmp
-    have imp_prop: f '' (Set.range (λ x : Set.Icc a b => (x : ℝ))) = f '' Set.Icc a b := by
 
-      simp_all only [Subtype.range_coe_subtype, Set.mem_Icc, Subtype.exists, exists_prop]
-      rfl
-    obtain ⟨x, hx⟩ := tmp imp_prop
-    use x
-    exact ⟨x.property, hx⟩
--/
-
-/- abの区間を01に変更した修正をする必要あり。
-lemma supr_exists {a b : ℝ} (hab : a ≤ b)
-  {f : ℝ → ℝ}
-  (hf : ContinuousOn f (Set.Icc a b)) :
-  ∃ x ∈ Set.Icc a b, f x = ⨆ ( y ∈ f '' Set.Icc a b), y:= by
+--
+lemma supr_exists {f : Ic → ℝ}
+  (hf : Continuous f) :
+  ∃ x : (Set.univ:Set Ic), f x = ⨆ ( y ∈ f '' (Set.univ:Set Ic)), y:= by
   -- 区間 [a, b] がコンパクトであることを確認
-    have lem0: IsClosed (f '' Set.Icc a b) := by
-      have closed_image : IsClosed (f '' Set.Icc a b) := isOpen_compl_iff.mp (image_closed hab hf)
-      exact closed_image
-
-    --let nonempty : Set.Nonempty (Set.Icc a b) := ⟨a, by simp [hab]⟩
-    let s := Set.Icc a b
-    --let fs : s → ℝ := λ x => f x.val
-
-
-    have bdd: Bornology.IsBounded (f '' Set.Icc a b) := by
-      --have h_compact : IsCompact (Set.Icc a b) := isCompact_Icc
-      have h_bdd := cont_bounded hab hf
+    have lem0: IsClosed (f '' (Set.univ:Set Ic)) := by
+      have closed_image : IsClosed (f '' (Set.univ:Set Ic)) := isOpen_compl_iff.mp (image_closed hf)
       simp_all only [Set.image_univ]
-      convert h_bdd
-      rw [Set.image_eq_range]
-
-    let tmp := closed_supr (Set.Icc a b) (f '' Set.Icc a b) ⟨⟨a, by simp [hab]⟩⟩ bdd lem0 f
-    rw [Set.image_univ] at tmp
-    have imp_prop: f '' (Set.range (λ x : Set.Icc a b => (x : ℝ))) = f '' Set.Icc a b := by
-
-      simp_all only [Subtype.range_coe_subtype, Set.mem_Icc, Subtype.exists, exists_prop]
-      rfl
-    obtain ⟨x, hx⟩ := tmp imp_prop
-    use x
-    simp_all only [Subtype.range_coe_subtype, Set.mem_Icc, Set.mem_image, Subtype.exists, exists_prop, and_true,
-      true_implies]
-    obtain ⟨val, property⟩ := x
-    simp_all only
-    simp_all only [Set.mem_Icc, and_self]
--/
+--Bornologyでのrangeのbounded性。未完成だが使うことがあるのか。
+    have bdd: Bornology.IsBounded (f '' (Set.univ:Set Ic)) := by
+      --have h_compact : IsCompact (Set.Icc a b) := isCompact_Icc
+      simp_all only [Set.image_univ]
+      sorry
+    sorry
 
 --下のbfで同じことをしているので、不要だったかも。でもこちらは上限値を与えている？
 theorem bounded_closed_set_has_maximum (S : Set ℝ) (h_bdd : BddAbove S) (h_closed : IsClosed S) (h_nonempty : S.Nonempty) :
@@ -742,6 +708,7 @@ theorem bounded_closed_set_has_maximum (S : Set ℝ) (h_bdd : BddAbove S) (h_clo
 
     use M
 
+--一般論での包含関係とsupの関係。使ってない。消してよさそう。
 lemma bdd_subset {A B : Set ℝ} (hB_subset_A : B ⊆ A) (hA_bdd : BddAbove A) : BddAbove B := by
     -- `A` が上に有界であることから、上界 `M` を得る
     obtain ⟨M, hM⟩ := hA_bdd
@@ -751,9 +718,92 @@ lemma bdd_subset {A B : Set ℝ} (hB_subset_A : B ⊆ A) (hA_bdd : BddAbove A) :
     -- `B ⊆ A` なので `x ∈ A` も成り立つ
     exact hM (hB_subset_A hx)
 
+--有界で閉のAの上限がAに属すること。
 lemma bf_subset3 {A:Set Real} (h3_closed: IsClosed A)(b3_bdd:BddAbove A)(b3_nonempty:A.Nonempty ) : sSup A ∈ A := by
-
   exact IsClosed.csSup_mem h3_closed b3_nonempty b3_bdd
+
+--chatGPTに成り立つかどうか聞いてみる。成り立ちそうな感じはする。bf_subset3を利用して証明できないか。
+--lemma bf_subset4 {A:Set Real} (h3_closed: IsClosed A)(b3_bdd:BddAbove A)(b3_nonempty:A.Nonempty ) : ⨆ z ∈ A,z ∈ A := by
+
+lemma sup_lem {x : Ic} (f : Ic → Real) (hf: Continuous f): f x ≤ ⨆ y ∈ (f '' (Set.univ : Set (Set.Icc (0 : ℝ) 1))), y := by
+
+  have nonempty : Set.Nonempty Ic := by
+    unfold Ic
+    simp_all only [Set.nonempty_Icc, zero_le_one]
+
+  have compact_Icc : IsCompact Ic := isCompact_Icc
+
+  have compact_Icc_s: IsCompact (Set.univ : Set Ic) := by
+    simp_all only [Ic]
+    exact isCompact_univ
+
+  have compact_range_f : IsCompact (f '' (Set.univ:Set Ic)) := by
+    simp_all only [Set.image_univ]
+    have compact_Icc := compact_Icc_s
+    simp_all only
+    simpa using compact_Icc.image hf
+
+  have bf: BddAbove (f '' (Set.univ:Set Ic)) := by
+    exact IsCompact.bddAbove compact_range_f
+
+  have f_nonempty : (f '' (Set.univ:Set Ic)).Nonempty := by
+    simp_all only [Set.image_univ, Set.mem_univ]
+    use f x
+
+  have eq_range: (Set.range f) = f '' Set.univ := by
+    simp_all only [Set.image_univ, Set.mem_univ, Set.mem_range, exists_apply_eq_apply]
+
+  have bf_subset2: sSup (f '' (Set.univ:Set Ic)) ∈ (f '' (Set.univ:Set Ic)) := by
+    exact IsClosed.csSup_mem (IsCompact.isClosed compact_range_f) f_nonempty bf
+
+  have bf_exists: ∃ x ∈ (Set.univ:Set Ic), f x = ⨆ z ∈ (f '' (Set.univ:Set Ic)),z := by
+    obtain ⟨x, hx⟩ := supr_exists hf
+    use x
+
+    simp_all only [Set.mem_univ, true_and]
+
+  have contain_f : f x ∈ f '' Set.univ := by
+    simp_all only [Set.mem_image, Set.mem_univ]
+    use x
+  /-
+  --言明がおかしいような気がする。
+  have contain_f2: f x ∈ Set.range fun y ↦ ⨆ (_ : y ∈ f '' Set.univ), y := by
+    simp_all only [Set.mem_image, Set.mem_univ]
+    obtain ⟨a, ha₀, ha'⟩ := bf_exists
+    use a
+    simp
+    exact le_csSup bf (Set.mem_image_of_mem f (Set.mem_univ x))
+  -/
+
+
+
+
+  --成り立つとは思いますが、sSup_rangeでは証明ができないのかも。
+  have eq_sup: sSup (f '' (Set.univ:Set Ic)) = ⨆ z ∈ (f '' (Set.univ:Set Ic)),z := by
+    --rw [ciSup, Subtype.range_coe]
+    rw [sSup_eq_iSup' (f '' (Set.univ:Set Ic))]
+    simp
+    congr
+    --左辺の範囲が問題。ここが問題。
+    sorry
+
+
+  have bf_bdd : BddAbove (f '' Set.univ) := by
+    exact IsCompact.bddAbove compact_range_f
+  --have compact_range : IsCompact (Set.range (λ y => ⨆ (_ : y ∈ f '' Set.univ), y)) := by
+  --  apply IsCompact.range
+  --  exact continuous_iSup (λ y=> continuous_const)
+  have bf_bdd2: BddAbove (Set.range fun y ↦ ⨆ (_ : y ∈ f '' Set.univ), y) := by
+    dsimp [BddAbove]
+    use sSup (f '' Set.univ)
+    simp
+    rintro _ ⟨x, hx, rfl⟩
+    have contain_f : f ⟨x, _⟩ ∈ f '' Set.univ := by
+      simp_all only [Set.mem_image, Set.mem_univ]
+      use x
+    exact le_csSup bf contain_f
+
+  exact @le_csSup _ _ (f '' (Set.univ:Set Ic)) _ bf_bdd contain_f
 
 lemma triangle_lem  {f g : Ic → ℝ} (hf : Continuous f) (hg : Continuous g ) :
     (⨆ x  ∈ (Set.univ:Set Ic), f x + g x) ≤ (⨆ x  ∈ (Set.univ:Set Ic), f x) + (⨆ x  ∈ (Set.univ:Set Ic), g x) := by
@@ -807,7 +857,7 @@ lemma triangle_lem  {f g : Ic → ℝ} (hf : Continuous f) (hg : Continuous g ) 
       simp_all only [Set.mem_image, Set.mem_univ]
       use x
 
-    have h_upper : ∀ a ∈ Ic, a  ≤ sSup Ic := λ a ha => le_csSup (IsCompact.bddAbove compact_Icc) ha
+    --have h_upper : ∀ a ∈ Ic, a  ≤ sSup Ic := λ a ha => le_csSup (IsCompact.bddAbove compact_Icc) ha
 
 /-
     have contain_f2:sup_f ∈ upperBounds (f '' Set.univ) := by
@@ -856,114 +906,11 @@ lemma triangle_lem  {f g : Ic → ℝ} (hf : Continuous f) (hg : Continuous g ) 
         rw [← Set.image_univ] at tmp2
       -/
 
-    have hf : f x ≤ sup_f := by
-      dsimp [sup_f]
-
-      have bf_range : BddAbove (f '' (Set.univ:Set Ic)) := by
-        exact IsCompact.bddAbove compact_range_f
-
-      have f_nonempty : (f '' (Set.univ:Set Ic)).Nonempty := by
-        simp_all only [Set.image_univ, Set.mem_univ]
-        use f x
-
-      have bf_subset2:  sSup (f '' (Set.univ:Set Ic)) ∈ (f '' (Set.univ:Set Ic)) := by
-        exact IsClosed.csSup_mem (IsCompact.isClosed compact_range_f) f_nonempty bf_range
-
-      have bf_lub: IsLUB (f '' (Set.univ:Set Ic)) (⨆ z ∈ (f '' (Set.univ:Set Ic)),z) := by
-        rw [Set.image_univ] at bf_range
-        haveI : Nonempty (Set.Icc (0 : ℝ) 1) := ⟨⟨0, by exact ⟨le_refl 0, zero_le_one⟩⟩⟩
-        #check isLUB_ciSup bf_range
+    --独立した補題にしたほうがいいかも。
+    --連続関数に関する最大値が存在する定理にする必要があるので、sSupではなく、iSupにする必要がある。
+    --ただし、有界閉を定義域として持つ連続関数の値域は、有界閉であることが示されているので、それから最大値を取るindexがあることを示すことができそう。
 
 
-      have bf_isLUB_mem:  ⨆ z ∈ (f '' (Set.univ:Set Ic)),z ∈ f '' (Set.univ:Set Ic) := by
-        exact IsClosed.isLUB_mem bf_lub f_nonempty (IsCompact.isClosed compact_range_f)
-
-      -- ⨆じゃなくて、sSupを使うべきかもしれない。xは関係ない。
-      --isLUB_ciSup ∀ {α : Type u_1} {ι : Sort u_4} [inst : ConditionallyCompleteLattice α] [inst_1 : Nonempty ι] {f : ι → α},   BddAbove (range f) → IsLUB (range f) (⨆ i, f i)
-      -- IsClosed.isLUB_mem ∀ {α : Type u} [inst : TopologicalSpace α] [inst_1 : LinearOrder α] [inst_2 : OrderTopology α] {a : α} {s : Set α},   IsLUB s a → Set.Nonempty s → IsClosed s → a ∈ s
-      have bf_subset:(Set.range fun y ↦ ⨆ (_ : y ∈ f '' (Set.univ:Set Ic)), y) ⊆ (f '' (Set.univ:Set Ic)) := by
-        congr
-        simp
-        intro y hy
-        simp_all only [Set.mem_range, Subtype.exists, Set.mem_image, exists_apply_eq_apply]
-        obtain ⟨val, property⟩ := hy
-        subst property
-        simp_all only [Set.image_univ, Set.mem_univ]
-        --iSupが要素内に存在するかという問題。closed性は利用する必要あり。bf_subset2を使っても良い。
-        --sSup (f '' (Set.univ:Set Ic)) = ⨆ z ∈ f '' Set.univ,z
-        use  ⨆  z ∈ f '' Set.univ,z
-        simp_all only [Set.mem_image, Set.mem_univ]
-        congr
-
-
-
-        sorry
-
-      --convert le_csSup (IsCompact.bddAbove compact_range_f) contain_f  --compact_range_fがあってくれない。
-      apply le_csSup
-      exact bf_range
-      --IsCompact.bddAbove compact_range_f
-      dsimp [sup_f]
-      symm
-      --goal sSup (f '' Set.univ) = ⨆ y ∈ f '' Set.univ, y
-
-      let tmp:= sSup_eq_iSup' (f '' (Set.univ:Set Ic))
-      rw [tmp]
-      simp
-      -- ⨆ a, ↑a = ⨆ y, ⨆ (_ : ∃ a, ∃ (b : a ∈ Ic), f ⟨a, b⟩ = y), y
-
-
-
-
-      --
-      --以下は古いものかも。
-
-/-
-      let css := @le_csSup _ _ (f '' Set.univ) (f x) bf contain_f --この方針は複雑？
-      dsimp [sSup] at css
-      have bf_range : BddAbove (f '' Set.univ) := by
-        exact IsCompact.bddAbove compact_range_f
-      --have bf_range2 : BddAbove (Set.range fun y ↦ ⨆ (_ : y ∈ fs '' Set.univ), y) := by
-      --  exact IsCompact.bddAbove compact_range_f
-
-      have bf_range2 : BddAbove (Set.range (λ y => ⨆ (_ : y ∈ f '' Set.univ), y)) := by
-        simp_all only [Set.image_univ, Set.mem_univ, Set.mem_range, Subtype.exists]
-        obtain ⟨val, property⟩ := x
-        split at css
-        next h =>
-          simp_all only [Set.image_univ, Set.mem_range, exists_apply_eq_apply]
-          obtain ⟨left, right⟩ := h
-          sorry
-        next h =>
-          simp_all only [Set.image_univ, Set.mem_range, exists_apply_eq_apply, and_true]
-          sorry
-        simp_all only [Set.image_univ, Set.mem_univ]
-
-      exact le_csSup bf_range2 contain_f
-
-      --fs x ≤ sSup (fs '' Set.univ)
-  -/
-
-
-
-    have contain_g: g x ∈ Set.range g := by
-      simp_all only [Set.mem_range, Set.mem_univ]
-      use x
-
-    have hg : g x ≤ sup_g := by
-      dsimp [sup_g]
-      --#check bg
-      have bg' : BddAbove (Set.range (λ y => ⨆ (_ : y ∈ g '' Set.univ), y)) := by
-        simp only [Set.range, Set.mem_image, exists_prop]
-        --goal
-        exact ⟨⨆ x ∈ Set.univ, g x, λ y ⟨x, hx⟩=> le_ciSup bg2 (Set.mem_image_of_mem _ (Set.mem_univ x))⟩
-      have : g x ∈ Set.range (λ y => ⨆ (_ : y ∈ g '' Set.univ), y) := by
-        simp only [Set.mem_range, exists_prop]
-        use g x
-        simp only [Set.mem_image, Set.mem_univ, exists_apply_eq_apply]
-        simp_all only [Set.image_univ, Set.mem_univ, Set.mem_range, exists_apply_eq_apply, Subtype.exists, true_and,
-          ciSup_unique, sup_f]
-      exact le_csSup bg' this
 
 
 

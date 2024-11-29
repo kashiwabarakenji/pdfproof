@@ -1,7 +1,13 @@
-import Mathlib.Data.Real.Basic
 import Mathlib.Topology.MetricSpace.Basic
 import Mathlib.Topology.Basic
+import Mathlib.Topology.MetricSpace.Defs
 import Mathlib.Topology.MetricSpace.Pseudo.Defs
+import Mathlib.Topology.ContinuousFunction.Basic
+import Mathlib.Topology.Compactness.Compact
+import Mathlib.Topology.Bornology.Basic
+import Mathlib.Topology.Defs.Filter
+import Mathlib.Topology.MetricSpace.Bounded
+import Mathlib.Topology.Order.Monotone
 import Mathlib.Topology.Instances.Real
 import Mathlib.Analysis.InnerProductSpace.Basic
 import Mathlib.Analysis.SpecialFunctions.Sqrt
@@ -14,17 +20,10 @@ import Mathlib.Data.Real.Sqrt
 import Mathlib.Order.Basic
 import Mathlib.Order.CompleteLattice
 import Mathlib.Order.ConditionallyCompleteLattice.Basic
---import Mathlib.Analysis.Supremum
-import Mathlib.Topology.ContinuousFunction.Basic
-import Mathlib.Topology.Compactness.Compact
-import Mathlib.Topology.Bornology.Basic
-import Mathlib.Topology.Defs.Filter
-import Mathlib.Topology.MetricSpace.Bounded
-import Mathlib.Data.Real.Archimedean
-import Mathlib.Topology.Order.Monotone
-import Mathlib.Data.Set.Defs
 import Mathlib.Order.SetNotation
-
+import Mathlib.Data.Real.Archimedean
+import Mathlib.Data.Real.Basic
+import Mathlib.Data.Set.Defs
 
 --import Mathlib.Integral.IntervalIntegral
 
@@ -589,12 +588,11 @@ lemma bf_exists (f : Ic → Real)(hf: Continuous f): ∃ x ∈ (Set.univ:Set Ic)
   simp_all only [Set.image_univ, Set.mem_range, Subtype.exists, Set.mem_univ, and_self]
 
 --fが出てこない一般論。下で一応使っている。
-lemma eq_sup2 {A : Set ℝ} (hBdd : BddAbove A) (hClosed : IsClosed A) (non: A.Nonempty): sSup A = ⨆ z ∈ A, z := by
-  sorry
+--lemma eq_sup2 {A : Set ℝ} (hBdd : BddAbove A) (hClosed : IsClosed A) (non: A.Nonempty): sSup A = ⨆ z ∈ A, z := by
 
 --set_option pp.all true
---証明終わっているように見えるが、使っている補題(eq_sup2)の証明が終わってない.
-lemma sup_lem {x : Ic} (f : Ic → Real) (hf: Continuous f): f x ≤ ⨆ y ∈ (f '' (Set.univ : Set (Set.Icc (0 : ℝ) 1))), y := by
+--⨆ y ∈ (f '' (Set.univ : Set (Set.Icc (0 : ℝ) 1))), y := byだったが、eq_sup2が証明できなかったので、sSupにした。
+lemma sup_lem {x : Ic} (f : Ic → Real) (hf: Continuous f): f x ≤ sSup (f '' (Set.univ:Set Ic)):= by
 
   have nonempty : Set.Nonempty Ic := by
     unfold Ic
@@ -632,9 +630,8 @@ lemma sup_lem {x : Ic} (f : Ic → Real) (hf: Continuous f): f x ≤ ⨆ y ∈ (
     use x
 
   --下で使っている。
-  have eq_sup: sSup (f '' (Set.univ:Set Ic)) = ⨆ z ∈ (f '' (Set.univ:Set Ic)),z := by
-    --rw [ciSup, Subtype.range_coe]
-    exact eq_sup2 bf (IsCompact.isClosed compact_range_f) f_nonempty
+--  have eq_sup: sSup (f '' (Set.univ:Set Ic)) = ⨆ z ∈ (f '' (Set.univ:Set Ic)),z := by
+--    exact eq_sup2 bf (IsCompact.isClosed compact_range_f) f_nonempty
 
   have bf_bdd : BddAbove (f '' Set.univ) := by
     exact IsCompact.bddAbove compact_range_f
@@ -643,20 +640,32 @@ lemma sup_lem {x : Ic} (f : Ic → Real) (hf: Continuous f): f x ≤ ⨆ y ∈ (
   --  exact continuous_iSup (λ y=> continuous_const)
   --have bf_bdd2: BddAbove (Set.range fun y ↦ ⨆ (_ : y ∈ f '' Set.univ), y) := by
 
-  rw [←eq_sup]
+--  rw [←eq_sup]
   exact @le_csSup _ _ (f '' (Set.univ:Set Ic)) _ bf_bdd contain_f
 
-lemma triangle_mono (ff gg : Ic → ℝ)  : --(hff : Continuous ff) (hgg : Continuous gg)
- ∀ x : Ic, ff x <= gg x → ⨆ x ∈ (Set.univ:Set Ic), ff x <= ⨆ x ∈ (Set.univ:Set Ic), gg x := by
-  intros x h
-  sorry
+lemma bdd_lem {f: Ic → ℝ} (bdd_g:BddAbove (f '' Set.univ)):BddAbove (Set.range (λ x => ⨆ (_ : x ∈ Set.univ), f x)):= by
+   simp_all only [Set.image_univ, Set.mem_univ, ciSup_unique]
+
+
+--一応成り立つが、仮定のBddAbove (f '' (Set.univ:Set Ic))を証明するのが難しい。BddAbove (Set.range f)から言えるか。
+lemma triangle_mono (ff gg : Ic → ℝ)(bdd_g: BddAbove (Set.range (λ x => ⨆ (_ : x ∈ Set.univ), gg x)))  (mono:∀ (x : ↑Ic), ⨆ (_ : x ∈ Set.univ), ff x ≤ ⨆ (_ : x ∈ Set.univ), gg x ): --(hff : Continuous ff) (hgg : Continuous gg)
+   ⨆ x ∈ (Set.univ:Set Ic), ff x <= ⨆ x ∈ (Set.univ:Set Ic), gg x := by
+  exact ciSup_mono bdd_g mono
+
+lemma triangle_mono2 (ff gg : Ic → ℝ) (bdd:BddAbove (gg '' Set.univ)) (mono:∀ (x : ↑Ic), ff x ≤ gg x ): --(hff : Continuous ff) (hgg : Continuous gg)
+   ⨆ x ∈ (Set.univ:Set Ic), ff x ≤ ⨆ x ∈ (Set.univ:Set Ic), gg x := by
+   let bdd_g := bdd_lem bdd
+   have mono: ∀ (x : ↑Ic), ⨆ (_ : x ∈ Set.univ), ff x ≤ ⨆ (_ : x ∈ Set.univ), gg x := by
+     intro x
+     simp_all only [Subtype.forall, Set.mem_univ, ciSup_unique]
+   exact triangle_mono ff gg bdd_g mono
 
 def C₀ := ContinuousMap (Set.Icc (0 : ℝ) 1) ℝ
 
 -- 距離関数を定義
 noncomputable def supDist (f g : C₀) : ℝ := ⨆ x : Set.Icc 0 1, |(f.1 x) - (g.1 x)|
 
--- メトリック空間のインスタンスを定義
+-- メトリック空間のインスタンスを定義。sSupで定義しなくてもいいのか？
 noncomputable instance : Dist C₀ where
   dist f g := ⨆ x : Set.Icc (0 : ℝ) 1, |(f.1 x) - (g.1 x)|
 
@@ -693,11 +702,35 @@ instance : MetricSpace C₀ where
       exact f_cont.sub g_cont
     have gh_cont: Continuous (λ x => g.toFun x - h.toFun x) := by
       exact g_cont.sub h_cont
+    have fh_cont: Continuous (λ x => f.toFun x - h.toFun x) := by
+      exact f_cont.sub h_cont
+
+    have fgh_cont: Continuous (λ x => |f.toFun x - g.toFun x|+|g.toFun x - h.toFun x|) := by
+      exact (continuous_abs.comp fg_cont).add (continuous_abs.comp gh_cont)
+    let fgh (f g h : C₀) (x : Ic) := |f.1 x - g.1 x| + |g.1 x - h.1 x|
+    have bdd_fg : BddAbove (Set.range (λ x => ⨆ (_ : x ∈ Set.univ), |f.toFun x - g.toFun x|)) := by
+      apply bdd_lem
+      exact bdd_above_range2 (continuous_abs.comp fg_cont)
+
+
+
+    have bdd_gh : BddAbove (Set.range (λ x => ⨆ (_ : x ∈ Set.univ), |g.toFun x - h.toFun x|)) := by
+      apply bdd_lem
+      exact bdd_above_range2 (continuous_abs.comp gh_cont)
+
+    have bdd_fgh:BddAbove ((fun x => |f.toFun x - g.toFun x| + |g.toFun x - h.toFun x|) '' Set.univ) := by
+      exact bdd_above_range2 fgh_cont
+
+
 
     have abs_ineq (a b c:Real) : |a - c| <= |a - b| + |b - c| := by
       calc
           |a - c| = |(a - b) + (b - c)| := by rw [sub_add_sub_cancel]
          _ <= |a - b| + |b - c|  := abs_add (a - b) (b - c)
+
+    have abs_all: ∀ x : Ic, |f.1 x - h.1 x| ≤ |f.1 x - g.1 x| + |g.1 x - h.1 x| := by
+      intro x
+      exact abs_ineq (f.1 x) (g.1 x) (h.1 x)
 
     have dist_fh : dist f h = ⨆ x : Ic, |f.1 x - h.1 x| := by rfl
     have dist_fg : dist f g = ⨆ x : Ic, |f.1 x - g.1 x| := by rfl
@@ -706,19 +739,44 @@ instance : MetricSpace C₀ where
       dist f h = ⨆ x : Ic, |f.1 x - h.1 x| := dist_fh
       _ ≤ ⨆ x : Ic, (|f.1 x - g.1 x| + |g.1 x - h.1 x|) := by
         let ineq (x :Ic):= abs_ineq (f.1 x) (g.1 x) (h.1 x)
-        exact triangle_mono (fun x => |f.1 x - h.1 x|) (fun x => |f.1 x - g.1 x| + |g.1 x - h.1 x|) (abs_ineq (f.1 x) (g.1 x) (h.1 x))
+        --let bdd_g := bdd_lem (bdd_above_range g_cont)
+        --goal ⨆ x, |f.toFun x - h.toFun x| ≤ ⨆ x, |f.toFun x - g.toFun x| + |g.toFun x - h.toFun x|
+        --#check triangle_mono2 (fun x => |f.1 x - h.1 x|) (fun x => |f.1 x - g.1 x| + |g.1 x - h.1 x|) bdd_fgh abs_all
+        --⨆ x ∈ Set.univ, |f.toFun x - h.toFun x| ≤ ⨆ x ∈ Set.univ, |f.toFun x - g.toFun x| + |g.toFun x - h.toFun x|
+        convert triangle_mono2 (fun x => |f.1 x - h.1 x|) (fun x => |f.1 x - g.1 x| + |g.1 x - h.1 x|) bdd_fgh abs_all
+        simp_all only [zero_lt_one, ContinuousMap.toFun_eq_coe, Set.mem_univ, ciSup_unique, Set.image_univ,
+          implies_true]
+        simp_all only [zero_lt_one, ContinuousMap.toFun_eq_coe, Set.mem_univ, ciSup_unique, Set.image_univ,
+          implies_true]
       _ ≤ (⨆ x : Ic, |f.1 x - g.1 x|) + (⨆ x : Ic, |g.1 x - h.1 x|) := by
         sorry
       _ = dist f g + dist g h := by rw [dist_fg, dist_gh]
 
   -- ∀ {x y : α}, dist x y = 0 → x = y
   eq_of_dist_eq_zero := by
-    have dist0 :∀ {x y : C₀}, dist x y = 0 → x = y := by
-      intros x y h
-      have h' := congr_arg (λ f : C₀ => f.1)
-      simp only [ContinuousMap.toFun_eq_coe] at h'
-      exact eq_of_sub_eq_zero (csSup_eq_zero h')
-    exact dist0
+    have dist0 : ∀ {f g : C₀}, dist f g = 0 → f = g := by
+      intros f g h
+      dsimp [dist] at h
+      have sup_zero_implies_all_zero (fz : Ic → ℝ) (h_nonneg : ∀ x:Ic, 0 ≤ fz x) :
+       (⨆ x, fz x) = 0 → ∀ x, fz x = 0 := by
+          intro h_sup x
+          -- f(x) ≥ 0 より、上限は f(x) を超えない
+          have h_le : fz x ≤ ⨆ x, fz x := le_ciSup (Set.range_nonempty fz) (Set.mem_range_self x)
+          have nonempty_Ic : Nonempty Ic := ⟨⟨0, by simp [Ic]⟩⟩
+          -- 上限が 0 なので、 f(x) ≤ 0
+          rw [h_sup] at h_le
+          have h_eq : fz x = 0 := by
+            apply le_antisymm
+            · exact h_le
+            · exact h_nonneg x
+          exact h_eq
+      have h_eq : ∀ x, |f.1 x - g.1 x| = 0 := sup_zero_implies_all_zero (λ x => |f.1 x - g.1 x|) (λ x => abs_nonneg _) h
+      specialize h_eq (⟨0, by simp [Ic]⟩)
+      simp at h_eq
+      simp_all only [Subtype.forall]
+      exact sup_zero_implies_all_zero (λ x => |f.1 x - g.1 x|) (λ (x:Ic) b => abs_nonneg (f.1 x - g.1 x)) h_eq
+      search_proof
+    exact @dist0
 
 ---使ってないもの。
 
@@ -790,7 +848,7 @@ lemma triangle_lem  {f g : Ic → ℝ} (hf : Continuous f) (hg : Continuous g ) 
     sorry
 
   sorry
---今は使ってないが使える可能性がある。一般論。
+--今は使ってないが使える可能性がある。トポロジカルな一般論。
 lemma closed_ssup {α : Type} [TopologicalSpace α] (ss : Set α) (s : Set ℝ) (non:Nonempty ss)(hBddAbove : Bornology.IsBounded s) (h : IsClosed s) (f : α → ℝ) : f '' (Set.univ : Set ss) = s → ∃ x : ss, f x = sSup s := by
   intro a
   rw [←a]

@@ -476,6 +476,16 @@ instance EuclideanSpace_metric {n : ℕ} : MetricSpace (EuclideanSpace n) :=
 
 def Ic := Set.Icc (0:Real) 1
 
+lemma nonemptyIc: Nonempty Ic:= by
+  simp_all only [nonempty_subtype]
+  use 1
+  simp [Ic]
+
+lemma nonemptyRange (f:Ic→Real): (f '' (Set.univ:Set Ic)).Nonempty:= by
+    simp_all only [Set.image_univ, Set.mem_univ]
+    use (f ⟨0, by simp [Ic]⟩)
+    simp_all only [Set.Icc.mk_zero, Set.mem_range, exists_apply_eq_apply]
+
 --rangeが有界であることを示す。下で使っている。
 lemma bdd_above_range {fs :  Ic → ℝ} (hf2 : Continuous fs):
   BddAbove (Set.range fs) := by
@@ -511,7 +521,7 @@ lemma bdd_above_range2 {fs :  Ic → ℝ} (hf2 : Continuous fs):
     simp_all
 
 
---rangeが閉集合であること。supr_exists2でつかっている。地域のcompact性はcompact_image2などでも示している。
+--rangeが閉集合であること。supr_exists2でつかっている。値域のcompact性はcompact_image2などでも示している。
 lemma image_closed
   {fs : Ic → ℝ}
   (hf : Continuous fs ) :
@@ -570,12 +580,55 @@ lemma bf_subset3 {A:Set Real} (h3_closed: IsClosed A)(b3_bdd:BddAbove A)(b3_none
 lemma supr_exists2 {f : Ic → ℝ}
   (hf : Continuous f) :
   ∃ x : (Set.univ:Set Ic), f x = ⨆ ( y ∈ f '' (Set.univ:Set Ic)), y:= by
-  obtain ⟨y0, h0, h1⟩ := bounded_closed_set_has_maximum (f '' (Set.univ:Set Ic)) (bdd_above_range2 hf) (image_closed hf) (Set.image_nonempty.mpr ⟨⟨0,_⟩, trivial⟩)
-  simp [Set.image_univ] at h0
-  obtain ⟨x, hx⟩ := h0
-  obtain ⟨y, hy⟩ := hx
-  use ⟨⟨x, y⟩, Set.mem_univ _⟩
-  simp [Set.image_univ]
+  obtain ⟨y0, h0, h1⟩ := bounded_closed_set_has_maximum (f '' (Set.univ:Set Ic)) (bdd_above_range2 hf) (image_closed hf) (nonemptyRange f)
+  obtain ⟨x0, hx⟩ := h0
+  obtain ⟨hy, hh⟩ := hx
+  have lem: y0 = ⨆ y ∈ f '' Set.univ, y := by
+    --rw [Set.image]
+    --rw [iSup]
+    --simp
+    apply le_antisymm
+    -- (2) y ≤ sup A
+    · have :y0 ∈ f '' (Set.univ:Set Ic) := by
+        subst hh
+        simp_all only [Set.mem_univ, Set.image_univ, Set.mem_range, Subtype.exists, forall_exists_index,
+          exists_apply_eq_apply]
+      have :y0 ∈ upperBounds (Set.range f) := by
+        subst hh
+        simp_all only [Set.mem_univ, Set.image_univ, Set.mem_range, Subtype.exists, forall_exists_index,
+          exists_apply_eq_apply]
+        obtain ⟨val, property⟩ := x0
+        rintro _ ⟨y, rfl⟩
+        obtain ⟨val_1, property_1⟩ := y
+        exact h1 _ _ property_1 rfl
+      let tmp := le_ciSup ⟨y0, this⟩ x0
+      rw [hh] at tmp
+      rw [←sSup_range] at tmp
+      rw [←sSup_range]
+      simp_all only [Set.image_univ, Set.mem_univ, ciSup_unique]
+      simp
+      sorry
+
+      --le_ciSup (Exists.intro y0 this) x0 : f x0 ≤ iSup f
+      --goal y0 ≤ ⨆ y ∈ f '' Set.univ, y
+      -- (1) sup A ≤ y
+    · have :∀ (x : ℝ), ⨆ (_ : x ∈ f '' Set.univ), x ≤ y0 := by
+        intro yy
+        let tmp := h1 yy
+        #check tmp--yy ∈ f '' Set.univ → yy ≤ y0
+
+
+
+
+
+      apply ciSup_le h1
+      intro x hx
+      exact h₂ x hx
+
+
+  use ⟨x, y⟩
+
+  , Set.mem_univ _⟩ simp [Set.image_univ]
   --goal f ⟨x, y⟩ = ⨆ y, ⨆ (_ : ∃ a, ∃ (b : a ∈ Ic), f ⟨a, b⟩ = y), y
   --apply le_antisymm
   --rw [← sSup_eq_iSup']

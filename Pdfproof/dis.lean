@@ -493,7 +493,7 @@ lemma nonemptyRange (f:Ic→Real): (f '' (Set.univ:Set Ic)).Nonempty:= by
 
 ----有界性
 
---rangeが有界であることを示す。下で使っている。
+--rangeが有界であることを示す。使っている。
 lemma bdd_above_range {fs :  Ic → ℝ} (hf2 : Continuous fs):
   BddAbove (Set.range fs) := by
     let Ic := Set.Icc (0:Real) 1
@@ -510,22 +510,14 @@ lemma bdd_above_range {fs :  Ic → ℝ} (hf2 : Continuous fs):
     apply hM y
     simp_all
 
---上の補題と、形が Set.rangeかf '' (Set.univ : Set Ic)の違いだけなので、統一してもよさそう。
+--上の補題と、形が Set.rangeかf '' (Set.univ : Set Ic)の違いだけ。
 lemma bdd_above_range2 {fs :  Ic → ℝ} (hf2 : Continuous fs):
   BddAbove (fs '' (Set.univ : Set Ic)) := by
-    let Ic := Set.Icc (0:Real) 1
-    have isCompact_Icc_s: IsCompact (Set.univ : Set Ic) := by
-      simp_all only [Ic]
-      exact isCompact_univ
-    obtain ⟨M, hM⟩ : ∃ M, ∀ y ∈ fs '' Set.univ, y ≤ M :=
-      IsCompact.bddAbove (IsCompact.image isCompact_Icc_s hf2)
-    use M
-    intros y hy
-    apply hM y
-    simp_all
+    rw [Set.image_univ]
+    exact bdd_above_range hf2
 
---値域のBddAboveを使いやすい形で示す。
-lemma bdd_lem {f: Ic → ℝ} (bdd_g:BddAbove (f '' Set.univ)):BddAbove (Set.range (λ x => ⨆ (_ : x ∈ Set.univ), f x)):= by
+--値域のBddAboveを使いやすい形に変換。
+lemma bdd_modify {f: Ic → ℝ} (bdd_g:BddAbove (f '' Set.univ)):BddAbove (Set.range (λ x => ⨆ (_ : x ∈ Set.univ), f x)):= by
    simp_all only [Set.image_univ, Set.mem_univ, ciSup_unique]
 
 ----閉集合であること
@@ -572,7 +564,7 @@ theorem bounded_closed_set_has_maximum (S : Set ℝ) (h_bdd : BddAbove S) (h_clo
 
     use M
 
---最大値をとる場所が存在すること。重要な補題。
+--最大値をとる点が存在すること。重要な補題。
 lemma supr_exists {f : Ic → ℝ}
   (hf : Continuous f) :
   ∃ x : (Set.univ:Set Ic), f x = sSup (f '' (Set.univ:Set Ic)):= by
@@ -625,8 +617,6 @@ lemma sup_lem (x : Ic) (f : Ic → Real) (hf: Continuous f): f x ≤ sSup (f '' 
 
   exact @le_csSup _ _ (f '' (Set.univ:Set Ic)) _ bf_bdd contain_f
 
-
-
 --iSupの中に大小が成り立てば、iSupをとっても不等号。
 lemma triangle_mono (ff gg : Ic → ℝ)(bdd_g: BddAbove (Set.range (λ x => ⨆ (_ : x ∈ Set.univ), gg x)))  (mono:∀ (x : ↑Ic), ⨆ (_ : x ∈ Set.univ), ff x ≤ ⨆ (_ : x ∈ Set.univ), gg x ):
    ⨆ x ∈ (Set.univ:Set Ic), ff x <= ⨆ x ∈ (Set.univ:Set Ic), gg x := by
@@ -634,7 +624,7 @@ lemma triangle_mono (ff gg : Ic → ℝ)(bdd_g: BddAbove (Set.range (λ x => ⨆
 
 lemma triangle_mono2 (ff gg : Ic → ℝ) (bdd:BddAbove (gg '' Set.univ)) (mono:∀ (x : ↑Ic), ff x ≤ gg x ): --(hff : Continuous ff) (hgg : Continuous gg)
    ⨆ x ∈ (Set.univ:Set Ic), ff x ≤ ⨆ x ∈ (Set.univ:Set Ic), gg x := by
-   let bdd_g := bdd_lem bdd
+   let bdd_g := bdd_modify bdd
    have mono: ∀ (x : ↑Ic), ⨆ (_ : x ∈ Set.univ), ff x ≤ ⨆ (_ : x ∈ Set.univ), gg x := by
      intro x
      simp_all only [Subtype.forall, Set.mem_univ, ciSup_unique]
@@ -690,11 +680,11 @@ noncomputable instance : MetricSpace C₀ where
       exact (continuous_abs.comp fg_cont).add (continuous_abs.comp gh_cont)
 
     have bdd_fg : BddAbove (Set.range (λ x => ⨆ (_ : x ∈ Set.univ), |f.toFun x - g.toFun x|)) := by
-      apply bdd_lem
+      apply bdd_modify
       exact bdd_above_range2 (continuous_abs.comp fg_cont)
 
     have bdd_gh : BddAbove (Set.range (λ x => ⨆ (_ : x ∈ Set.univ), |g.toFun x - h.toFun x|)) := by
-      apply bdd_lem
+      apply bdd_modify
       exact bdd_above_range2 (continuous_abs.comp gh_cont)
 
     have bdd_fgh:BddAbove ((fun x => |f.toFun x - g.toFun x| + |g.toFun x - h.toFun x|) '' Set.univ) := by
@@ -767,7 +757,6 @@ noncomputable instance : MetricSpace C₀ where
           dsimp [gh] at tmp
           convert tmp
           simp_all only [ContinuousMap.toFun_eq_coe, Set.mem_univ, ciSup_unique, Set.image_univ, implies_true]
-          --simp_all only [zero_lt_one, ContinuousMap.toFun_eq_coe, fgh]
           obtain ⟨val, property⟩ := x_0
           obtain ⟨val, property⟩ := val
           simp_all only

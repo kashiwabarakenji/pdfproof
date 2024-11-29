@@ -1,4 +1,5 @@
 import Mathlib.Topology.MetricSpace.Basic
+import Mathlib.Order.ConditionallyCompleteLattice.Basic
 import Mathlib.Topology.Basic
 import Mathlib.Topology.MetricSpace.Defs
 import Mathlib.Topology.MetricSpace.Pseudo.Defs
@@ -579,21 +580,20 @@ lemma bf_subset3 {A:Set Real} (h3_closed: IsClosed A)(b3_bdd:BddAbove A)(b3_none
 --最大値をとる場所が存在すること。下のbf_existsで使っているが。bf_existsを今は使っていない。未完成だが完成したい。
 lemma supr_exists2 {f : Ic → ℝ}
   (hf : Continuous f) :
-  ∃ x : (Set.univ:Set Ic), f x = ⨆ ( y ∈ f '' (Set.univ:Set Ic)), y:= by
+  ∃ x : (Set.univ:Set Ic), f x = sSup (f '' (Set.univ:Set Ic)):= by
   obtain ⟨y0, h0, h1⟩ := bounded_closed_set_has_maximum (f '' (Set.univ:Set Ic)) (bdd_above_range2 hf) (image_closed hf) (nonemptyRange f)
   obtain ⟨x0, hx⟩ := h0
   obtain ⟨hy, hh⟩ := hx
-  have lem: y0 = ⨆ y ∈ f '' Set.univ, y := by
-    --rw [Set.image]
-    --rw [iSup]
-    --simp
+  have lem: y0 = sSup (f '' Set.univ) := by
+    rw [←hh]
     apply le_antisymm
-    -- (2) y ≤ sup A
-    · have :y0 ∈ f '' (Set.univ:Set Ic) := by
+    · have assum_lem: f x0 ∈ f '' Set.univ := by
         subst hh
         simp_all only [Set.mem_univ, Set.image_univ, Set.mem_range, Subtype.exists, forall_exists_index,
           exists_apply_eq_apply]
-      have :y0 ∈ upperBounds (Set.range f) := by
+      apply le_csSup (bdd_above_range2 hf) assum_lem
+    · --
+      have upperb:f x0 ∈ upperBounds (f '' (Set.univ:Set Ic)):= by
         subst hh
         simp_all only [Set.mem_univ, Set.image_univ, Set.mem_range, Subtype.exists, forall_exists_index,
           exists_apply_eq_apply]
@@ -601,41 +601,13 @@ lemma supr_exists2 {f : Ic → ℝ}
         rintro _ ⟨y, rfl⟩
         obtain ⟨val_1, property_1⟩ := y
         exact h1 _ _ property_1 rfl
-      let tmp := le_ciSup ⟨y0, this⟩ x0
-      rw [hh] at tmp
-      rw [←sSup_range] at tmp
-      rw [←sSup_range]
-      simp_all only [Set.image_univ, Set.mem_univ, ciSup_unique]
-      simp
-      sorry
+      exact csSup_le (nonemptyRange f) upperb
+  use ⟨x0, hy⟩
+  subst lem
+  simp_all only [Set.image_univ, Set.mem_range, Subtype.exists, forall_exists_index]
 
-      --le_ciSup (Exists.intro y0 this) x0 : f x0 ≤ iSup f
-      --goal y0 ≤ ⨆ y ∈ f '' Set.univ, y
-      -- (1) sup A ≤ y
-    · have :∀ (x : ℝ), ⨆ (_ : x ∈ f '' Set.univ), x ≤ y0 := by
-        intro yy
-        let tmp := h1 yy
-        #check tmp--yy ∈ f '' Set.univ → yy ≤ y0
-
-
-
-
-
-      apply ciSup_le h1
-      intro x hx
-      exact h₂ x hx
-
-
-  use ⟨x, y⟩
-
-  , Set.mem_univ _⟩ simp [Set.image_univ]
-  --goal f ⟨x, y⟩ = ⨆ y, ⨆ (_ : ∃ a, ∃ (b : a ∈ Ic), f ⟨a, b⟩ = y), y
-  --apply le_antisymm
-  --rw [← sSup_eq_iSup']
-  sorry
-
---使ってないが使うかも。
-lemma bf_exists (f : Ic → Real)(hf: Continuous f): ∃ x ∈ (Set.univ:Set Ic), f x = ⨆ z ∈ (f '' (Set.univ:Set Ic)),z := by
+--使ってないが使うかも。supr_exists2と同じ言明に思える。
+lemma bf_exists (f : Ic → Real)(hf: Continuous f): ∃ x ∈ (Set.univ:Set Ic), f x = sSup (f '' (Set.univ:Set Ic)) := by
   obtain ⟨x, hx⟩ := supr_exists2 hf
   use x
   simp_all only [Set.image_univ, Set.mem_range, Subtype.exists, Set.mem_univ, and_self]
@@ -645,7 +617,7 @@ lemma bf_exists (f : Ic → Real)(hf: Continuous f): ∃ x ∈ (Set.univ:Set Ic)
 
 --set_option pp.all true
 --⨆ y ∈ (f '' (Set.univ : Set (Set.Icc (0 : ℝ) 1))), y := byだったが、eq_sup2が証明できなかったので、sSupにした。
-lemma sup_lem {x : Ic} (f : Ic → Real) (hf: Continuous f): f x ≤ sSup (f '' (Set.univ:Set Ic)):= by
+lemma sup_lem (x : Ic) (f : Ic → Real) (hf: Continuous f): f x ≤ sSup (f '' (Set.univ:Set Ic)):= by
 
   have nonempty : Set.Nonempty Ic := by
     unfold Ic
@@ -788,6 +760,23 @@ instance : MetricSpace C₀ where
     have dist_fh : dist f h = ⨆ x : Ic, |f.1 x - h.1 x| := by rfl
     have dist_fg : dist f g = ⨆ x : Ic, |f.1 x - g.1 x| := by rfl
     have dist_gh : dist g h = ⨆ x : Ic, |g.1 x - h.1 x| := by rfl
+    let fg := λ x => |f.1 x - g.1 x|
+    have fg_cont: Continuous fg := by
+      simp_all only [zero_lt_one, ContinuousMap.toFun_eq_coe, Set.mem_univ, ciSup_unique, Set.image_univ,
+        implies_true, fg]
+      fun_prop
+    have gh_cont: Continuous (λ x => |g.1 x - h.1 x|) := by
+      simp_all only [zero_lt_one, ContinuousMap.toFun_eq_coe, Set.mem_univ, ciSup_unique, Set.image_univ,
+        implies_true]
+      fun_prop
+    let gh := λ x => |g.1 x - h.1 x|
+    let fgh := fun (x:Ic) => |f.1 x - g.1 x| + |g.1 x - h.1 x|
+    have fgh_cont: Continuous fgh := by
+      simp_all only [zero_lt_one, ContinuousMap.toFun_eq_coe, Set.mem_univ, ciSup_unique, Set.image_univ,
+        implies_true, fgh]
+      exact fgh_cont
+
+    obtain ⟨x_0, h_x0⟩ := supr_exists2 fgh_cont
     calc
       dist f h = ⨆ x : Ic, |f.1 x - h.1 x| := dist_fh
       _ ≤ ⨆ x : Ic, (|f.1 x - g.1 x| + |g.1 x - h.1 x|) := by
@@ -801,8 +790,23 @@ instance : MetricSpace C₀ where
           implies_true]
         simp_all only [zero_lt_one, ContinuousMap.toFun_eq_coe, Set.mem_univ, ciSup_unique, Set.image_univ,
           implies_true]
+      _ =  |f.1 x_0.1 - g.1 x_0.1| + |g.1 x_0.1 - h.1 x_0.1| := by
+        simp_all only [zero_lt_one, ContinuousMap.toFun_eq_coe, Set.mem_univ, ciSup_unique, Set.image_univ,
+          implies_true]
+        simp_all only [ContinuousMap.toFun_eq_coe, fg, fgh]
+        obtain ⟨val, property⟩ := x_0
+        obtain ⟨val, property⟩ := val
+        simp_all only
+        simp_all only [Set.mem_univ]
+        rfl
+      _ ≤ (⨆ x : Ic, |f.1 x - g.1 x|) + |g.1 x_0.1 - h.1 x_0.1| := by
+        have sup_fg: |f.1 x_0.1 - g.1 x_0.1| ≤ ⨆ x : Ic, |f.1 x - g.1 x| := by
+          exact sup_lem x_0.1 fg fg_cont
+        have sup_lem_f_g := sup_lem (λ x => |f.1 x - g.1 x|) (continuous_abs.comp (f.continuous_toFun.sub g.continuous_toFun))
+        exact sup_lem_f_g x_0.1
       _ ≤ (⨆ x : Ic, |f.1 x - g.1 x|) + (⨆ x : Ic, |g.1 x - h.1 x|) := by
-        sorry
+        have sup_lem_g_h := sup_lem (λ x => |g.1 x - h.1 x|) (continuous_abs.comp (g.continuous_toFun.sub h.continuous_toFun))
+        exact sup_lem_g_h x_0.1
       _ = dist f g + dist g h := by rw [dist_fg, dist_gh]
 
   -- ∀ {x y : α}, dist x y = 0 → x = y
@@ -810,28 +814,77 @@ instance : MetricSpace C₀ where
     have dist0 : ∀ {f g : C₀}, dist f g = 0 → f = g := by
       intros f g h
       dsimp [dist] at h
-      have sup_zero_implies_all_zero (fz : Ic → ℝ) (h_nonneg : ∀ x:Ic, 0 ≤ fz x) :
-       (⨆ x, fz x) = 0 → ∀ x, fz x = 0 := by
+      have sup_zero_implies_all_zero (fz  : C₀) (h_nonneg : ∀ x:Ic, 0 ≤ fz.1 x) :
+       (⨆ x, fz.1 x) = 0 → ∀ x, fz.1 x = 0 := by
           intro h_sup x
           -- f(x) ≥ 0 より、上限は f(x) を超えない
-          have h_le : fz x ≤ ⨆ x, fz x := le_ciSup (Set.range_nonempty fz) (Set.mem_range_self x)
+          have h_le : fz.1 x ≤ ⨆ x, fz.1 x := by exact le_ciSup (bdd_above_range fz.2) x
           have nonempty_Ic : Nonempty Ic := ⟨⟨0, by simp [Ic]⟩⟩
           -- 上限が 0 なので、 f(x) ≤ 0
           rw [h_sup] at h_le
-          have h_eq : fz x = 0 := by
+          have h_eq : fz.1 x = 0 := by
             apply le_antisymm
             · exact h_le
             · exact h_nonneg x
           exact h_eq
-      have h_eq : ∀ x, |f.1 x - g.1 x| = 0 := sup_zero_implies_all_zero (λ x => |f.1 x - g.1 x|) (λ x => abs_nonneg _) h
-      specialize h_eq (⟨0, by simp [Ic]⟩)
-      simp at h_eq
-      simp_all only [Subtype.forall]
-      exact sup_zero_implies_all_zero (λ x => |f.1 x - g.1 x|) (λ (x:Ic) b => abs_nonneg (f.1 x - g.1 x)) h_eq
-      search_proof
-    exact @dist0
+      have cont: Continuous (λ x => |f.1 x - g.1 x|) := by
+        exact continuous_abs.comp (f.continuous_toFun.sub g.continuous_toFun)
+      have h_eq : ∀ x, |f.1 x - g.1 x| = 0 := sup_zero_implies_all_zero ⟨λ x => |f.1 x - g.1 x|,cont⟩ (λ x => abs_nonneg (f.1 x - g.1 x)) h
+      have h_eq2 : ∀ x, f.1 x = g.1 x := by
+        intro x
+        let h_eq_x := h_eq x
+        rw [@abs_eq_zero _ _ _ _ (f.1 x - g.1 x) _] at h_eq_x
+        exact sub_eq_zero.mp h_eq_x
+
+      convert h_eq2
+      apply Iff.intro
+      · intro a x
+        subst a
+        simp_all only [ContinuousMap.toFun_eq_coe, Subtype.forall, Set.mem_Icc, sub_self, abs_zero, ciSup_const,
+          implies_true]
+      · intro a
+        apply ContinuousMap.ext
+        exact a
+    intro x y a
+    simp_all only
+    simpa [supDist, a] using dist0 a
+
+
+
 
 ---使ってないもの。
+/-
+theorem sup_eq_max_of_all_le {A : Set ℝ} (y : ℝ)(bdd: BddAbove A)
+  (h₁ : y ∈ A)
+  (h₂ : ∀ x ∈ A, x ≤ y) :
+  (sSup A) = y  :=
+by
+  apply le_antisymm
+  -- (1) sup A ≤ y
+
+  · #check ciSup_le'
+    --ciSup_le'.{u_1, u_4} {α : Type u_1} {ι : Sort u_4} [ConditionallyCompleteLinearOrderBot α] {f : ι → α} {a : α}  (h : ∀ (i : ι), f i ≤ a) : ⨆ i, f i ≤ a
+    apply ciSup_le
+    sorry
+
+  -- (2) y ≤ sup A
+  · apply le_ciSup
+    intro z hz
+    exact h₂ z hz
+
+
+  -- First, show that the supremum is less than or equal to y
+  · exact sSup_le h₂
+    -- We need to show that for all a in A, a ≤ y
+    intro a ha
+    -- This follows directly from the hypothesis h₂
+    exact h₂ a ha
+
+  -- Then, show that y is less than or equal to the supremum
+  · exact le_csSup bdd h₁
+    -- We know y is in A from the hypothesis h₁
+    exact h₁
+  -/
 
 --indexが有限の場合
 lemma sSup_mono {α : Type*} [CompleteLattice α] (f g : ℕ → α) (h : ∀ i, f i ≤ g i) :

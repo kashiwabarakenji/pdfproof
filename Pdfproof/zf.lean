@@ -110,3 +110,54 @@ theorem uniqueness_of_emptySet (A : MySetType) (hA : IsEmptySet A) : A = Myempty
     exfalso
     let me:=MyemptySetAxiom
     exact me x h
+
+  -------------
+  ----練習5-----
+  -------------
+
+-- 対集合の存在公理 (S3)
+axiom myPair : MySetType → MySetType → MySetType
+axiom myPair_spec : ∀ (A B x : MySetType), myElem x (myPair A B) ↔ (x = A ∨ x = B)
+
+-- 合併集合の存在公理 (S4)
+-- 任意の集合 S に対して、∪S が存在することを主張する公理。
+axiom myUnionExist : MySetType → MySetType
+axiom myUnionExist_spec : ∀ (S x : MySetType), myElem x (myUnionExist S) ↔ ∃y, myElem y S ∧ myElem x y
+
+-- ここで、myUnion A B を ∪{A,B} として定義する。
+variable (A B:MySetType)
+
+#check myUnionExist (myPair A B)
+noncomputable def myUnion (A B : MySetType) : MySetType := myPair A B--myUnionExist (myPair A B)
+
+-- union_spec の証明: x ∈ A ∪ B ↔ x ∈ A ∨ x ∈ B
+theorem union_spec (A B x : MySetType) : myElem x (myUnion A B) ↔ (myElem x A ∨ myElem x B) := by
+  rw [myUnion, myUnionExist_spec (myPair A B) x]
+  apply Iff.intro
+  · intro ⟨y, hy_in_pair, hx_in_y⟩
+    rw [myPair_spec A B y] at hy_in_pair
+    cases hy_in_pair with
+    | inl ha =>
+      rw [ha] at hx_in_y
+      left
+      exact hx_in_y
+    | inr hb =>
+      rw [hb] at hx_in_y
+      right
+      exact hx_in_y
+  · intro h
+    cases h with
+    | inl hA =>
+      exists A
+      constructor
+      · rw [myPair_spec A B A]
+        left
+        rfl
+      · exact hA
+    | inr hB =>
+      exists B
+      constructor
+      · rw [myPair_spec A B B]
+        right
+        rfl
+      · exact hB

@@ -116,19 +116,19 @@ theorem uniqueness_of_emptySet (A : MySetType) (hA : IsEmptySet A) : A = Myempty
   -------------
 
 -- 対集合の存在公理 (S3)
-axiom myPair : MySetType → MySetType → MySetType
+axiom myPair : MySetType.{u} → MySetType.{u} → MySetType.{u}
 axiom myPair_spec : ∀ (A B x : MySetType), myElem x (myPair A B) ↔ (x = A ∨ x = B)
 
 -- 合併集合の存在公理 (S4)
 -- 任意の集合 S に対して、∪S が存在することを主張する公理。
-axiom myUnionExist : MySetType → MySetType
+axiom myUnionExist : MySetType.{u} → MySetType.{u}
 axiom myUnionExist_spec : ∀ (S x : MySetType), myElem x (myUnionExist S) ↔ ∃y, myElem y S ∧ myElem x y
 
 -- ここで、myUnion A B を ∪{A,B} として定義する。
 variable (A B:MySetType)
 
-#check myUnionExist (myPair A B)
-noncomputable def myUnion (A B : MySetType) : MySetType := myPair A B--myUnionExist (myPair A B)
+--#check myUnionExist (myPair A B)
+noncomputable def myUnion (A B : MySetType) : MySetType := myUnionExist (myPair A B)
 
 -- union_spec の証明: x ∈ A ∪ B ↔ x ∈ A ∨ x ∈ B
 theorem union_spec (A B x : MySetType) : myElem x (myUnion A B) ↔ (myElem x A ∨ myElem x B) := by
@@ -161,3 +161,52 @@ theorem union_spec (A B x : MySetType) : myElem x (myUnion A B) ↔ (myElem x A 
         right
         rfl
       · exact hB
+
+theorem subset_union_eq (A B : MySetType) : subset myElem A B ↔ myUnion A B = B := by
+  apply Iff.intro
+  · intro h
+    apply Myextensionality
+    intro x
+    apply Iff.intro
+    · intro hx
+      rw [union_spec A B x] at hx
+      cases hx with
+      | inl ha =>
+        exact h x ha
+      | inr hb =>
+        exact hb
+    · intro hx
+      rw [union_spec A B x]
+      right
+      exact hx
+  · intro h
+    intro x ha
+    -- hより a ∪ b = b
+    -- x ∈ a → x ∈ a ∪ b より、x ∈ b
+    have eqSymm : myUnion A B = B := h
+    rw [← eqSymm]
+    rw [union_spec A B x]
+    left
+    exact ha
+
+  -------------
+  ----練習6-----
+  -------------
+
+theorem union_empty (A : MySetType.{u}) : myUnion A MyemptySet = A := by
+  apply Myextensionality.{u, u}
+  intro x
+  apply Iff.intro
+  · intro hx
+    -- x ∈ A ∪ ∅ より x ∈ A ∨ x ∈ ∅
+    rw [union_spec A MyemptySet x] at hx
+    cases hx with
+    | inl hA => exact hA
+    | inr hEmpty =>
+      by_contra h
+      exact MyemptySetAxiom x hEmpty
+  · intro hA
+    -- x ∈ A ならば x ∈ A ∪ ∅ は
+    rw [union_spec A MyemptySet x]
+    left
+    exact hA

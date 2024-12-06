@@ -50,7 +50,7 @@ theorem RussellParadoxContradiction (elem : MySet → MySet → Prop)(RussellSet
 
 -- 集合の型を `MySetType` として定義し、要素関係 `myElem` を導入
 axiom MySetType : Type u
-axiom myElem : MySetType → MySetType → Prop   -- `a ∈ b` の関係を表現
+axiom myElem : MySetType.{u} → MySetType.{u} → Prop   -- `a ∈ b` の関係を表現
 
 -- 外延性の公理
 axiom Myextensionality (A B : MySetType) : (∀ x : MySetType, myElem x A ↔ myElem x B) → A = B
@@ -194,7 +194,7 @@ theorem subset_union_eq (A B : MySetType) : subset myElem A B ↔ myUnion A B = 
   -------------
 
 theorem union_empty (A : MySetType.{u}) : myUnion A MyemptySet = A := by
-  apply Myextensionality.{u, u}
+  apply Myextensionality
   intro x
   apply Iff.intro
   · intro hx
@@ -210,3 +210,53 @@ theorem union_empty (A : MySetType.{u}) : myUnion A MyemptySet = A := by
     rw [union_spec A MyemptySet x]
     left
     exact hA
+
+--------------
+---練習9-----
+--------------
+
+axiom separation (a : MySetType.{u}) (P : MySetType.{u} → Prop) :
+  ∃ b : MySetType.{u}, ∀ x : MySetType.{u}, myElem x b ↔ (myElem x a ∧ P x)
+
+theorem separation_spec (a : MySetType.{u}) (P : MySetType.{u} → Prop) :
+  ∃ b, ∀ x, myElem x b ↔ (myElem x a ∧ P x) := by
+  exact separation a P
+
+noncomputable def Dash (a : MySetType.{u}) : MySetType.{u} := Classical.choose (separation a (λ x => ¬ myElem x x))
+def Dash_spec (a : MySetType.{u}) : ∀ x : MySetType.{u}, myElem x (Dash a) ↔ (myElem x a ∧ ¬ myElem x x) :=
+  Classical.choose_spec (separation a (λ x => ¬ myElem x x))
+
+theorem russell_like_paradox (a : MySetType.{u}) : ¬ myElem (Dash a) a := by
+
+    intro hContra   -- 仮定: (Dash a) ∈ a
+    have h_spec := Dash_spec a (Dash a)
+
+    rw [h_spec] at h_spec
+    rw [←h_spec] at h_spec  -- ちょっとややこしいが、単に h_spec の内容をよく見直すだけで良い
+
+    -- 実際には以下のように簡潔に書ける：
+    have : (myElem (Dash a) (Dash a) ↔ (myElem (Dash a) a ∧ ¬ myElem (Dash a) (Dash a))) := Dash_spec a (Dash a)
+
+    have h_self := Dash_spec a (Dash a)
+    rw [←h_self] at h_self  -- myElem (Dash a) (Dash a) が左辺にも右辺にも出ることを確認
+
+    have eq: ∀ x, myElem x (Dash a) ↔ (myElem x a ∧ ¬ myElem x x) := Dash_spec a
+    have h := eq (Dash a)
+    --by_contra h_contra
+    have : myElem (Dash a) (Dash a) ↔ ¬ myElem (Dash a) (Dash a) := by
+      rw [h]
+      apply Iff.intro
+      · intro hh
+        simp
+        intro _
+        exact h.mpr hh
+      · intro hh
+        constructor
+        simp at hh
+        exact hContra
+
+        simp at hh
+        exact (h.mp (hh hContra)).2
+
+    exfalso
+    exact iff_not_self this

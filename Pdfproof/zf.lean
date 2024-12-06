@@ -88,3 +88,25 @@ theorem emptySet_subset_iff (a: MySetType) : (∀ b : MySetType, subset myElem a
     intro x a
     let cont := (MyemptySetAxiom x)
     contradiction
+
+-------------
+---練習3------
+-------------
+
+-- 空集合であることを定義的に表すための述語
+def IsEmptySet (A : MySetType.{u}) : Prop := ∀ x : MySetType.{u}, ¬ myElem x A
+
+-- 空集合は存在すると一意的であることを示す定理
+-- すなわち、任意の空集合 A は MyemptySet と等しい。
+theorem uniqueness_of_emptySet (A : MySetType) (hA : IsEmptySet A) : A = MyemptySet := by
+  apply Myextensionality
+  intro x
+  apply Iff.intro
+  · intro h
+    -- x ∈ A は空集合性より矛盾
+    exact False.elim (hA x h)
+  · intro h
+    -- x ∈ MyemptySet は仮定より成り立たない
+    exfalso
+    let me:=MyemptySetAxiom
+    exact me x h

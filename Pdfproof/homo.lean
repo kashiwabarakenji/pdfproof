@@ -265,6 +265,56 @@ instance group_mul_aut (G : Type) [Group G] : Group (MulAut G) :=
 }
 
 -------------------
+------練習11--------
+-------------------
+
+-- 群の同型関係が同値関係であることの証明。バンドルを利用しないとうまくいかなかった。
+structure BundledGroup where
+  α : Type _
+  [inst : Group α]
+  attribute [instance] BundledGroup.inst
+
+def isomorphic (G H : BundledGroup) [Group G.α] [Group H.α] : Prop :=
+  Nonempty (G.α ≃* H.α)
+
+theorem isomorphic_refl (G : BundledGroup) [Group G.α] : isomorphic G G := by
+  -- `MulEquiv.refl G.α` は「恒等写像」で同型を作る
+  exact ⟨MulEquiv.refl G.α⟩
+
+theorem isomorphic_symm (G H : BundledGroup) [Group G.α] [Group H.α] :
+    isomorphic G H → isomorphic H G := by
+  intro hGH
+  cases' hGH with h h
+  constructor
+  exact h.symm
+
+theorem isomorphic_trans (A B C : BundledGroup)
+    [Group A.α] [Group B.α] [Group C.α] (hAB : isomorphic A B) (hBC : isomorphic B C) :
+    isomorphic A C :=
+by
+  -- `hAB : Nonempty (A.α ≃* B.α)` から代表元 eAB を取り出す
+  dsimp [isomorphic] at hAB
+  dsimp [isomorphic] at hBC
+  dsimp [isomorphic]
+  obtain ⟨e⟩ := hAB
+  obtain ⟨e'⟩ := hBC
+  exact ⟨e.trans e'⟩
+
+theorem isomorphic_equiv :  Equivalence (λ (G H:BundledGroup) => isomorphic G H) :=
+  {
+    -- 1. 反射律
+    refl := fun G => isomorphic_refl G
+    -- 2. 対称律
+    symm := by
+      intro G H
+      exact isomorphic_symm G H
+    -- 3. 推移律
+    trans := by
+      intro G H K
+      exact isomorphic_trans G H K
+  }
+
+-------------------
 ------練習13--------
 -------------------
 

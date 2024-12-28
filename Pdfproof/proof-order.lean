@@ -172,6 +172,12 @@ by
           rw [hS₂_eq, Set.mem_setOf_eq] at h
           rw [hS₁_eq, Set.mem_setOf_eq]
           exact hR.trans h (hR.symm Ry1y2)
+      exfalso
+      have : y ∈ candidates := by
+        dsimp [candidates]
+        rw [List.mem_filterMap]
+        use y.val
+        simp_all only [ne_eq, List.mem_range, Fin.is_lt]
       contradiction
 
     -- 3. 全体集合 X が M の部分集合の和集合であることを証明
@@ -641,10 +647,12 @@ instance : LinearOrder (Fin n) :=
   le_trans := fun i j k hij hjk =>
   by
     simp_all only
-    exact hij.trans hjk
+    exact hij.trans hjk,
   le_antisymm := fun i j hij hji => Fin.eq_of_val_eq (le_antisymm hij hji),
   le_total := fun i j => le_total i.val j.val,
-  decidableLE := inferInstance
+  decidableLE := inferInstance,
+  compare := fun i j => compareOfLessAndEq i j,
+  decidableLT := inferInstance
 }
 
 lemma mem_range_of_mem_filter {p : ℕ → Bool} {i n : ℕ} :
@@ -659,48 +667,65 @@ lemma mem_range_of_mem_filter {p : ℕ → Bool} {i n : ℕ} :
 「有限列 `a, b : Fin n → P` のうち、最初に異なるインデックス」を返す。
 `h : ∃ i, a i ≠ b i` により、少なくとも1つは異なる場所が存在することを前提とする。
 -/
-def smallestDiff {n : ℕ} {P : Type} (a b : Fin n → P) (h : ∃ i : Fin n, a i ≠ b i) : Fin n :=
-  let indices    := List.range n
-  /-
-    `i` が `indices.filter (λ i => ...)` の結果に入るとは
-    - もともと `i ∈ range n`（つまり `i < n`）
-    - `a ⟨i, i < n⟩ ≠ b ⟨i, i < n⟩`
-    の 2 つが成立しているということ
-  -/
-  let candidates := indices.filter (fun i =>
-    a ⟨i, by
-      -- i が range n に入っていれば i < n がわかる
-      apply List.mem_range.mp
-      assumption
-    ⟩
-    ≠
-    b ⟨i, by
-      apply List.mem_range.mp
-      assumption
-    ⟩
+def smallestDiff {n : ℕ} {P : Type} (a b : Fin n → P)[hh:DecidablePred (fun (i:Fin n) => a i = b i)] (h : ∃ i : Fin n, a i ≠ b i) : Fin n :=
+  -- `candidates` は「`i < n` かつ `a i ≠ b i` を満たす `Fin n`」のリスト
+  let candidates := (List.range n).filterMap (fun i =>
+    if hi : i < n then
+      if h : a ⟨i, hi⟩ ≠ b ⟨i, hi⟩ then some ⟨i, hi⟩ else none
+    else
+      none
   )
-  match candidates.head? with
-  | some i =>
-    -- head? で得られた i も、同じく `i < n` を示さないと Fin n に詰められない
-    ⟨ i, mem_range_of_mem_filter (List.head?_mem_head?.mpr rfl) ⟩
-  | none => by
-    -- 「候補が1つもない」は `∃ i, a i ≠ b i` に反するので矛盾
-    exfalso
-    obtain ⟨i, hi⟩ := h
-    have : i.val ∈ candidates :=
-      List.mem_filter.mpr ⟨List.mem_range.mpr i.is_lt, hi⟩
-    contradiction
 
-def smallestDiff {n : ℕ} {P : Type} (a b : Fin n → P) (h : ∃ i : Fin n, a i ≠ b i) : Fin n :=
-  let indices := List.range n -- Fin n の全ての要素をリスト化
-  let candidates := indices.filter (fun i => a ⟨i, Nat.lt_of_lt_add_one i n⟩ ≠ b ⟨i, Nat.lt_of_lt_add_one i n⟩)
   match candidates.head? with
-  | some i => ⟨i, Nat.lt_of_lt_add_one i n⟩
+  | some idx =>
+    -- リストの先頭要素が見つかったので、それが最も小さい異なるインデックス
+    idx
   | none => by
+    have h_empty : candidates = [] := by
+      cases candidates with
+      | nil => rfl
+      | cons _ _ => by search_proof
+    -- 「候補が1つもない」は「∃ i, a i ≠ b i」に反するので矛盾
+    have h_empty : candidates = [] :=
+    by
+      match candidates with
+      | []      => rfl
+      | x :: xs => assumption
+
+
+        #check candidates.head?
+        contradiction
+
+
     exfalso
     obtain ⟨i, hi⟩ := h
-    have : i.val ∈ candidates := List.mem_filter.mpr ⟨List.mem_range.mpr i.is_lt, hi⟩
-    contradiction
+    -- i が必ず candidates に含まれるはずなので、含まれないのは矛盾
+    have : i ∈ candidates := by
+      -- `i` は `List.range n` に含まれ、かつ `a i ≠ b i`
+      -- ならば、filterMap で必ず `some i` が生成されるはず
+      dsimp [candidates]
+      simp only [List.mem_filterMap, List.mem_range, dif_pos]
+      -- 証明方針：
+      --   candidates.filterMap から出るには、(1) i.val ∈ List.range n
+      --   (2) i.val < n, (3) a i ≠ b i のすべてを満たす必要がある
+      exists i.val
+      constructor
+      · simp_all only [ne_eq, Fin.is_lt]
+      · -- if 分岐: i.val < n なので dif_pos i.is_lt
+        simp_all only [ne_eq, Fin.is_lt, ↓reduceIte]
+        -- さらに a i ≠ b i なので dif_pos hi
+        simp_all only [↓reduceDIte, not_false_eq_true, ↓reduceIte, Fin.eta]
+
+      -- 最後は some i と一致させる必要があるので rfl
+    simp_all only [ne_eq, dite_eq_ite, ite_not, List.mem_filterMap, List.mem_range, candidates]
+    obtain ⟨w, h⟩ := this
+
+
+
+
+
+
+
 
 -- 定義: P^n 上の辞書式順序
 def lexOrder {n : ℕ} : LinearOrder (Fin n → P) :=

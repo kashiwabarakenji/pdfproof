@@ -5,6 +5,7 @@ import Mathlib.Init.Data.Nat.Lemmas
 import Mathlib.Data.Real.Basic
 import Mathlib.Order.Basic
 import Mathlib.Order.Defs
+import Mathlib.Data.List.Basic
 
 ----------------------
 -----2項関係と順序------
@@ -626,6 +627,221 @@ instance : ToString Divides where
 -- 使用例
 def example1 : Divides := mkDivides 6
 def example2 : Divides := mkDivides 12
+
+--------------------
+--2項関係と順序 練習9--
+--------------------
+
+variable {P : Type} [LinearOrder P]
+
+instance : LinearOrder (Fin n) :=
+{
+  le := fun i j => i.val ≤ j.val,
+  le_refl := fun i => le_refl i.val,
+  le_trans := fun i j k hij hjk =>
+  by
+    simp_all only
+    exact hij.trans hjk
+  le_antisymm := fun i j hij hji => Fin.eq_of_val_eq (le_antisymm hij hji),
+  le_total := fun i j => le_total i.val j.val,
+  decidableLE := inferInstance
+}
+
+lemma mem_range_of_mem_filter {p : ℕ → Bool} {i n : ℕ} :
+    i ∈ (List.range n).filter p → i < n := by
+  intro h
+  -- `i ∈ range n` を示すには、`i` が filter される前のリストにもいるはずなので
+  apply List.mem_range.mp
+  exact List.mem_of_mem_filter h
+
+/--
+`smallestDiff a b h` は、
+「有限列 `a, b : Fin n → P` のうち、最初に異なるインデックス」を返す。
+`h : ∃ i, a i ≠ b i` により、少なくとも1つは異なる場所が存在することを前提とする。
+-/
+def smallestDiff {n : ℕ} {P : Type} (a b : Fin n → P) (h : ∃ i : Fin n, a i ≠ b i) : Fin n :=
+  let indices    := List.range n
+  /-
+    `i` が `indices.filter (λ i => ...)` の結果に入るとは
+    - もともと `i ∈ range n`（つまり `i < n`）
+    - `a ⟨i, i < n⟩ ≠ b ⟨i, i < n⟩`
+    の 2 つが成立しているということ
+  -/
+  let candidates := indices.filter (fun i =>
+    a ⟨i, by
+      -- i が range n に入っていれば i < n がわかる
+      apply List.mem_range.mp
+      assumption
+    ⟩
+    ≠
+    b ⟨i, by
+      apply List.mem_range.mp
+      assumption
+    ⟩
+  )
+  match candidates.head? with
+  | some i =>
+    -- head? で得られた i も、同じく `i < n` を示さないと Fin n に詰められない
+    ⟨ i, mem_range_of_mem_filter (List.head?_mem_head?.mpr rfl) ⟩
+  | none => by
+    -- 「候補が1つもない」は `∃ i, a i ≠ b i` に反するので矛盾
+    exfalso
+    obtain ⟨i, hi⟩ := h
+    have : i.val ∈ candidates :=
+      List.mem_filter.mpr ⟨List.mem_range.mpr i.is_lt, hi⟩
+    contradiction
+
+def smallestDiff {n : ℕ} {P : Type} (a b : Fin n → P) (h : ∃ i : Fin n, a i ≠ b i) : Fin n :=
+  let indices := List.range n -- Fin n の全ての要素をリスト化
+  let candidates := indices.filter (fun i => a ⟨i, Nat.lt_of_lt_add_one i n⟩ ≠ b ⟨i, Nat.lt_of_lt_add_one i n⟩)
+  match candidates.head? with
+  | some i => ⟨i, Nat.lt_of_lt_add_one i n⟩
+  | none => by
+    exfalso
+    obtain ⟨i, hi⟩ := h
+    have : i.val ∈ candidates := List.mem_filter.mpr ⟨List.mem_range.mpr i.is_lt, hi⟩
+    contradiction
+
+-- 定義: P^n 上の辞書式順序
+def lexOrder {n : ℕ} : LinearOrder (Fin n → P) :=
+{
+  le := λ x y => (∃ i : Fin n, (x i < y i) ∧ ∀ j : Fin n, j < i → x j = y j) ∨ x = y,
+  le_refl := by --∀ (a : Fin n → P), a ≤ a
+  {
+    intro a
+    right
+  },
+  le_trans := by --goal ∀ (a b c : Fin n → P), a ≤ b → b ≤ c → a ≤ c
+  {
+    intro a b c hab hbc
+    obtain ⟨i, hibi, hia⟩ := hab
+    obtain ⟨j, hjcj, hbj⟩ := hbc
+    cases lt_or_ge i j with
+    | inl h =>
+      left
+      use i
+      constructor
+      · simp_all only
+      · intros k hkj
+        simp_all only
+        apply hbj
+        exact hkj.trans h
+        --exact hbj k hk
+    | inr h =>
+      cases eq_or_lt_of_le h with
+      | inl hh =>
+        subst hh
+        simp_all only [ge_iff_le, le_refl]
+        apply Or.inl
+        apply Exists.intro
+        · apply And.intro
+          · exact hibi.trans hjcj
+          · intro j_1 a_1
+            apply hia
+            exact a_1
+
+      | inr hh =>
+        left
+        use j
+        constructor
+        · simp_all only [ge_iff_le]
+        · intros k hki
+          let hbjk := hbj k
+          have hkij: k < i :=
+          by
+            simp_all only [ge_iff_le]
+            omega
+          let hiak := hia k hkij
+          rw [hbjk] at hiak
+          exact hiak
+          exact hki
+
+  },
+  le_antisymm := by --goal ∀ (a b : Fin n → P), a ≤ b → b ≤ a → a = b
+  {
+    intro a b hab hba
+    cases hab
+    case inr hab_eq => exact hab_eq
+    case inl hab_lt =>
+      cases hba
+      case inr hba_eq => exact hba_eq.symm
+      case inl hba_lt =>
+        obtain ⟨i, hia, hib⟩ := hab_lt
+        obtain ⟨j, hjb, hja⟩ := hba_lt
+        cases lt_or_ge i j with
+        | inl h =>
+          simp_all only [lt_self_iff_false]
+        | inr h =>
+          cases eq_or_lt_of_le h with
+          | inl hh =>
+            subst hh
+            simp_all only [ge_iff_le, le_refl]
+            simp_all only [implies_true]
+            contrapose! hjb
+            simp_all only [ne_eq]
+            exact le_of_lt hia
+          | inr hh =>
+            have hji: j < i := hh
+            have hibj := hib j hji
+            rw [hja] at hibj
+            simp_all only [lt_self_iff_false]
+            simp_all only [lt_self_iff_false]
+  },
+  le_total := by --goal ∀ (a b : Fin n → P), a ≤ b ∨ b ≤ a
+  {
+    intro a b
+    by_cases h : a = b
+    case pos =>
+      right
+      exact h
+    case neg =>
+      have : ∃ i : Fin n, ¬ (a i = b i) :=
+      by
+        have nf: ¬ (∀ i : Fin n, a i = b i) ↔  ∃ i : Fin n, ¬ (a i = b i) := by
+          apply Iff.intro
+          · intro h
+            by_contra hcontra
+            apply h
+            intro i
+            by_contra hcontra2
+            simp_all only [not_forall]
+          · intro a_1
+            simp_all only [not_forall]
+        apply nf.mp
+        by_contra hcontra
+        have :a=b := by
+          apply funext
+          intro i
+          exact hcontra i
+        subst this
+        simp_all only [not_true_eq_false]
+    let i_min := WellFounded.min
+    (measureWellFounded (fun i => i.val)) -- Fin n の順序付け
+    (fun i => a i ≠ b i)                 -- 条件: a i ≠ b i
+    h
+      obtain ⟨i, hne⟩ := this
+      by_cases hlt : a i < b i
+      case pos =>
+        left
+        use i
+        search_proof
+
+
+
+
+
+
+
+
+
+  },
+ }
+
+-- 全順序性の証明
+theorem lex_is_linear_order {n : ℕ} : LinearOrder (Fin n → P) :=
+by
+  -- 辞書式順序が定義済み
+  apply lexOrder
 
 -------------------------
 -- 練習10 x が最小元ならば極小元であることを証明

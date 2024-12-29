@@ -6,6 +6,9 @@ import Mathlib.Data.Real.Basic
 import Mathlib.Order.Basic
 import Mathlib.Order.Defs
 import Mathlib.Data.List.Basic
+import Init.Data.List.Find
+import Mathlib.Data.List.Defs
+import Mathlib.Data.Fin.Basic
 
 ----------------------
 -----2項関係と順序------
@@ -173,12 +176,8 @@ by
           rw [hS₁_eq, Set.mem_setOf_eq]
           exact hR.trans h (hR.symm Ry1y2)
       exfalso
-      have : y ∈ candidates := by
-        dsimp [candidates]
-        rw [List.mem_filterMap]
-        use y.val
-        simp_all only [ne_eq, List.mem_range, Fin.is_lt]
-      contradiction
+      subst hSame hS₂_eq
+      simp_all only [Set.inter_self, ne_eq, not_true_eq_false]
 
     -- 3. 全体集合 X が M の部分集合の和集合であることを証明
     · intro x0 a
@@ -571,7 +570,7 @@ instance Q_is_partial_order : PartialOrder X :=
 variable {α : Type}
 
 -- 部分集合間の包含関係を定義。Fは証明に使ってないが、F上の部分集合として定義。冪集合として証明されている。
-instance (F : Set (Set α)): PartialOrder (Set α) where
+instance (_ : Set (Set α)): PartialOrder (Set α) where
   le := Set.Subset
   le_refl := fun A => Set.Subset.refl A
   le_trans := fun A B C hab Hbc => Set.Subset.trans hab Hbc
@@ -643,98 +642,136 @@ variable {P : Type} [LinearOrder P]
 instance : LinearOrder (Fin n) :=
 {
   le := fun i j => i.val ≤ j.val,
-  le_refl := fun i => le_refl i.val,
-  le_trans := fun i j k hij hjk =>
-  by
-    simp_all only
-    exact hij.trans hjk,
-  le_antisymm := fun i j hij hji => Fin.eq_of_val_eq (le_antisymm hij hji),
-  le_total := fun i j => le_total i.val j.val,
-  decidableLE := inferInstance,
-  compare := fun i j => compareOfLessAndEq i j,
-  decidableLT := inferInstance
+  lt := fun i j => i.val < j.val,
+  le_refl := fun i => Nat.le_refl i.val,
+  le_trans := fun i j k hij hjk => Nat.le_trans hij hjk,
+  le_antisymm := fun i j hij hji => Fin.eq_of_val_eq (Nat.le_antisymm hij hji),
+  le_total := fun i j => Nat.le_total i.val j.val,
+  decidableLE := by infer_instance,
+  decidableLT := inferInstance,
+  compare := fun i j =>
+    if i.val < j.val then Ordering.lt
+    else if i.val = j.val then Ordering.eq
+    else Ordering.gt,
+  compare_eq_compareOfLessAndEq := fun i j =>
+    match Nat.lt_trichotomy i.val j.val with
+    | Or.inl hlt =>
+      by
+        simp [compare, hlt]
+        rw [compareOfLessAndEq]
+        simp_all only [↓reduceIte]
+    | Or.inr (Or.inl heq) =>
+      by
+        simp [compare, heq]
+        cases i
+        simp_all only [Fin.eta]
+        subst heq
+        simp_all only [Fin.is_lt]
+        simp [compareOfLessAndEq]
+    | Or.inr (Or.inr hgt) =>
+      by
+        simp [compare, hgt]
+        split
+        next h => simp [compareOfLessAndEq, h]
+        next h =>
+          --simp_all only [not_lt]
+          split
+          next h_1 => simp_all only [lt_self_iff_false]
+          next h_1 =>
+            rw [compareOfLessAndEq]
+            simp_all only
+            split
+            next h_2 => omega
+            next h_2 =>
+              simp_all only [not_lt]
+              split
+              next h_2 =>
+                subst h_2
+                simp_all only [lt_self_iff_false]
+              next h_2 => simp_all only
+  lt_iff_le_not_le := by
+    intro a b
+    constructor
+    · intro h
+      simp_all only [not_le, and_true]
+      simpa using h.le
+    · intro h
+      simp_all only [not_le, and_true]
 }
 
-lemma mem_range_of_mem_filter {p : ℕ → Bool} {i n : ℕ} :
-    i ∈ (List.range n).filter p → i < n := by
-  intro h
-  -- `i ∈ range n` を示すには、`i` が filter される前のリストにもいるはずなので
-  apply List.mem_range.mp
-  exact List.mem_of_mem_filter h
+/--
+`head?_mem`:
+`l.head? = some a` ならば `a ∈ l` である。
+
+Lean 4 (mathlib4) では Lean 3 にあった
+`List.head?_mem_head` や `List.head?_mem` 相当の
+補題がそのまま用意されていないので、自前で定義。
+-/
+lemma List.head?_mem {α : Type _} {l : List α} {a : α}
+    (h : l.head? = some a) : a ∈ l := by
+  match l with
+  | [] => contradiction
+  | x :: xs =>
+    injection h with hx
+    rw [hx]
+    apply List.Mem.head
 
 /--
-`smallestDiff a b h` は、
-「有限列 `a, b : Fin n → P` のうち、最初に異なるインデックス」を返す。
-`h : ∃ i, a i ≠ b i` により、少なくとも1つは異なる場所が存在することを前提とする。
+`eq_nil_of_head?_eq_none`:
+`l.head? = none` ならば `l = []`。
 -/
-def smallestDiff {n : ℕ} {P : Type} (a b : Fin n → P)[hh:DecidablePred (fun (i:Fin n) => a i = b i)] (h : ∃ i : Fin n, a i ≠ b i) : Fin n :=
-  -- `candidates` は「`i < n` かつ `a i ≠ b i` を満たす `Fin n`」のリスト
-  let candidates := (List.range n).filterMap (fun i =>
-    if hi : i < n then
-      if h : a ⟨i, hi⟩ ≠ b ⟨i, hi⟩ then some ⟨i, hi⟩ else none
-    else
-      none
-  )
+lemma List.eq_nil_of_head?_eq_none {α : Type _} {l : List α}
+    (h : l.head? = none) : l = [] := by
+  match l with
+  | [] => rfl
+  | _ :: _ => contradiction
 
-  match candidates.head? with
-  | some idx =>
-    -- リストの先頭要素が見つかったので、それが最も小さい異なるインデックス
-    idx
-  | none => by
-    have h_empty : candidates = [] := by
-      cases candidates with
-      | nil => rfl
-      | cons _ _ => by search_proof
-    -- 「候補が1つもない」は「∃ i, a i ≠ b i」に反するので矛盾
-    have h_empty : candidates = [] :=
-    by
-      match candidates with
-      | []      => rfl
-      | x :: xs => assumption
+theorem List.findIdx?_le_length' {α : Type} {xs : List α} {p : α → Bool}
+  (h : List.findIdx? p xs = some i) :
+  i < xs.length := by
+    induction xs generalizing i with
+    | nil => simp at h
+    | cons a as h_ih =>
+      simp [List.findIdx?] at h
+      split at h
+      · simp_all only [Option.some.injEq, length_cons]
+        subst h
+        simp_all only [lt_add_iff_pos_left, add_pos_iff, zero_lt_one, or_true]
+      · simp_all only [Bool.not_eq_true, Option.map_eq_some', length_cons]
+        obtain ⟨w, h⟩ := h
+        obtain ⟨left, right⟩ := h
+        subst right
+        simp_all only [Option.some.injEq, forall_eq', add_lt_add_iff_right]
 
+def findFirstNonZeroIndex (l : List Int) : Option (Fin l.length) := by
+  let pred : Int → Bool := λ x => x ≠ 0
+  match nn:List.findIdx? pred l with
+  | none =>
+    exact none
+  | some i =>
+      have h_i_lt_length : i < l.length := by
+        apply List.findIdx?_le_length'
+        exact nn
+      exact some ⟨i, h_i_lt_length⟩
 
-        #check candidates.head?
-        contradiction
-
-
-    exfalso
-    obtain ⟨i, hi⟩ := h
-    -- i が必ず candidates に含まれるはずなので、含まれないのは矛盾
-    have : i ∈ candidates := by
-      -- `i` は `List.range n` に含まれ、かつ `a i ≠ b i`
-      -- ならば、filterMap で必ず `some i` が生成されるはず
-      dsimp [candidates]
-      simp only [List.mem_filterMap, List.mem_range, dif_pos]
-      -- 証明方針：
-      --   candidates.filterMap から出るには、(1) i.val ∈ List.range n
-      --   (2) i.val < n, (3) a i ≠ b i のすべてを満たす必要がある
-      exists i.val
-      constructor
-      · simp_all only [ne_eq, Fin.is_lt]
-      · -- if 分岐: i.val < n なので dif_pos i.is_lt
-        simp_all only [ne_eq, Fin.is_lt, ↓reduceIte]
-        -- さらに a i ≠ b i なので dif_pos hi
-        simp_all only [↓reduceDIte, not_false_eq_true, ↓reduceIte, Fin.eta]
-
-      -- 最後は some i と一致させる必要があるので rfl
-    simp_all only [ne_eq, dite_eq_ite, ite_not, List.mem_filterMap, List.mem_range, candidates]
-    obtain ⟨w, h⟩ := this
-
-
-
-
-
-
-
+def smallestDiffWithProof
+  {n : ℕ} {P : Type}
+  [DecidableEq P]        -- P の等号可判定性
+  (a b : Fin n → P)
+  (h : ∃ i : Fin n, a i ≠ b i)
+  : { i : Fin n // (a i ≠ b i) ∧ ∀ j < i, a j = b j } :=
+by sorry
 
 -- 定義: P^n 上の辞書式順序
-def lexOrder {n : ℕ} : LinearOrder (Fin n → P) :=
+def lexOrder {n : ℕ} [DecidableEq (Fin n → P)][DecidableRel fun (x x_1:Fin n) ↦ x ≤ x_1 ]: LinearOrder (Fin n → P) :=
 {
   le := λ x y => (∃ i : Fin n, (x i < y i) ∧ ∀ j : Fin n, j < i → x j = y j) ∨ x = y,
+  lt := λ x y => (∃ i : Fin n, (x i < y i) ∧ ∀ j : Fin n, j < i → x j = y j),
   le_refl := by --∀ (a : Fin n → P), a ≤ a
   {
     intro a
     right
+    simp_all only
   },
   le_trans := by --goal ∀ (a b c : Fin n → P), a ≤ b → b ≤ c → a ≤ c
   {
@@ -780,6 +817,14 @@ def lexOrder {n : ℕ} : LinearOrder (Fin n → P) :=
           rw [hbjk] at hiak
           exact hiak
           exact hki
+    rename_i h
+    subst h
+    simp_all only
+    exact Or.inl ⟨i, hibi, hia⟩
+
+    rename_i h
+    subst h
+    simp_all only
 
   },
   le_antisymm := by --goal ∀ (a b : Fin n → P), a ≤ b → b ≤ a → a = b
@@ -840,33 +885,44 @@ def lexOrder {n : ℕ} : LinearOrder (Fin n → P) :=
           exact hcontra i
         subst this
         simp_all only [not_true_eq_false]
-    let i_min := WellFounded.min
-    (measureWellFounded (fun i => i.val)) -- Fin n の順序付け
-    (fun i => a i ≠ b i)                 -- 条件: a i ≠ b i
-    h
-      obtain ⟨i, hne⟩ := this
-      by_cases hlt : a i < b i
-      case pos =>
+      let ⟨i_min,hi⟩ := smallestDiffWithProof a b this
+      simp_all only [or_false]
+      have : (b i_min < a i_min) ∨ (a i_min < b i_min) := by
+        simp_all only [gt_iff_lt, lt_or_lt_iff_ne, ne_eq]
+        apply Aesop.BuiltinRules.not_intro
+        intro a_1
+        simp [a_1] at hi
+      cases this with
+      | inl hlt =>
+        right
         left
-        use i
-        search_proof
-
-
-
-
-
-
-
-
-
+        use i_min
+        constructor
+        · exact hlt
+        · intros j hjw
+          exact (hi.2 j hjw).symm
+      | inr hlt =>
+        left
+        use i_min
+        constructor
+        · exact hlt
+        · intros j hjw
+          exact hi.2 j hjw
+      --a_i > b_i または a_i < b_i である
   },
+  decidableLE := by infer_instance,
+  decidableLT := by infer_instance,
+  decidableEq := inferInstance
  }
 
 -- 全順序性の証明
-theorem lex_is_linear_order {n : ℕ} : LinearOrder (Fin n → P) :=
+instance lex_is_linear_order {n : ℕ} [d:DecidableEq (Fin n → P)] : LinearOrder (Fin n → P) :=
 by
-  -- 辞書式順序が定義済み
-  apply lexOrder
+  convert lexOrder
+  rename_i inst
+  exact inst
+
+  exact d
 
 -------------------------
 -- 練習10 x が最小元ならば極小元であることを証明

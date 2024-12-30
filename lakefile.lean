@@ -3,19 +3,19 @@ open Lake DSL
 
 package "pdfproof" where
   -- Settings applied to both builds and interactive editing
-  leanOptions := #[
+    leanOptions := #[
     ⟨`pp.unicode.fun, true⟩ -- pretty-prints `fun a ↦ b`
-  ]
-  moreLinkArgs := #[
-    "-L./.lake/packages/LeanCopilot/.lake/build/lib",
-    "-lctranslate2"
-  ]
+    ]
+    moreLinkArgs := #[
+      "-L./.lake/packages/LeanCopilot/.lake/build/lib",
+      "-lctranslate2"
+    ]
 
 -- add any additional package configuration options here
 
-require "leanprover-community" / "mathlib" @  "git#v4.11.0"
+require "leanprover-community" / "mathlib" @  "git#v4.14.0"
 
-require LeanCopilot from git "https://github.com/lean-dojo/LeanCopilot.git" @ "v1.6.0"
+require LeanCopilot from git "https://github.com/lean-dojo/LeanCopilot.git" @ "v4.14.0"
 
 @[default_target]
 lean_lib «Pdfproof» where

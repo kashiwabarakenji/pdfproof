@@ -4,8 +4,9 @@ import Mathlib.Data.Set.Function
 --import Mathlib.Init.Data.Nat.Lemmas
 import Mathlib.Data.Real.Basic
 import Mathlib.Order.Basic
-import Mathlib.Order.Defs
+--import Mathlib.Order.Defs
 import Mathlib.Order.Lattice
+
 
 -- 一般的なLattice αを仮定
 variable {α : Type*} [Lattice α]
@@ -140,7 +141,7 @@ instance : PartialOrder Divides where
 
 
 -- ℝ^2 の上の順序の定義: (x1, y1) >= (x2, y2) ⇔ x1 >= x2 かつ y1 >= y2
-structure R2 : Type :=
+structure R2 : Type where
   (x : ℝ)
   (y : ℝ)
 

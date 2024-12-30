@@ -1,7 +1,7 @@
 import Mathlib.Algebra.Ring.Basic
 import Mathlib.RingTheory.Ideal.Basic
 import Mathlib.Algebra.Ring.Hom.Defs
-import Mathlib.Algebra.Group.Units
+import Mathlib.Algebra.Group.Units.Basic
 import Mathlib.Algebra.Group.Defs
 import Mathlib.Algebra.Field.Defs
 import Mathlib.Data.Nat.Prime.Defs

@@ -3,7 +3,7 @@ import Mathlib.Order.ConditionallyCompleteLattice.Basic
 import Mathlib.Topology.Basic
 import Mathlib.Topology.MetricSpace.Defs
 import Mathlib.Topology.MetricSpace.Pseudo.Defs
-import Mathlib.Topology.ContinuousFunction.Basic
+import Mathlib.Topology.ContinuousMap.Basic
 import Mathlib.Topology.Compactness.Compact
 import Mathlib.Topology.Bornology.Basic
 import Mathlib.Topology.Defs.Filter
@@ -198,7 +198,7 @@ lemma sum_sq_expand {n : ℕ} (x y z : Fin n → ℝ) :
 lemma le_of_le_sum_of_nonneg {a b c : ℝ}
   (ha : a ≥ 0)
   (hb : b ≥ 0)
-  (hc : c ≥ 0)
+  (_ : c ≥ 0)
   (h : c^2 ≤ a^2 + b^2 + 2 * a * b) :
   c ≤ a + b := by
   -- 右辺の和の平方を計算します
@@ -226,7 +226,7 @@ lemma le_of_le_sum_of_nonneg {a b c : ℝ}
 lemma le_of_le_mul_of_nonneg {a b c : ℝ}
   (ha : a ≥ 0)
   (hb : b ≥ 0)
-  (hc : c ≥ 0)
+  (_ : c ≥ 0)
   (h : c^2 ≤ a^2 * b^2) :
   c ≤ a * b := by
     have hh: c^2 <= (a*b)^2 := by
@@ -649,10 +649,10 @@ noncomputable instance : MetricSpace C₀ where
     calc
       dist f f = ⨆ x : Set.Icc 0 1, |f.1 x - f.1 x| := by
         simp only [sub_self, abs_zero]
-        simp_all only [Set.mem_Icc, ciSup_const_zero, ciSup_const]
+        simp_all only [Set.mem_Icc,  ciSup_const]
         simp [dist]
           _ = ⨆ x ∈ Ic, 0 := by simp
-          _ = 0 := by simp_all only [Set.mem_Icc, zero_le, true_and, ciSup_const_zero, ciSup_const]
+          _ = 0 := by simp
 
   -- dist(f, g) = dist(g, f) を証明
   dist_comm f g :=
@@ -996,7 +996,7 @@ by
       rw [abs]
       simp_all only [neg_le_self_iff, Int.fract_nonneg, sup_of_le_left]
       apply lt_of_le_of_lt _
-      rw [div_lt_iff]
+      rw [div_lt_iff₀]
       on_goal 5 => {rw [mul_comm]
       }
       · simp_all only [isUnit_iff_ne_zero, ne_eq, Nat.cast_eq_zero, Nat.ceil_eq_zero, inv_nonpos, not_le,
@@ -1006,7 +1006,7 @@ by
     _ ≤ ε := by
       rw [one_div]
       simp_all only [gt_iff_lt, one_div, Nat.ceil_pos, inv_pos, n]
-      rw [inv_le]
+      rw [inv_le_comm₀]
       · exact Nat.le_ceil _
       · simp_all only [Nat.cast_pos, Nat.ceil_pos, inv_pos]
       · simp_all only

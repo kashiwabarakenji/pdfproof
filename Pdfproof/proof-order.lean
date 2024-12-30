@@ -754,13 +754,184 @@ def findFirstNonZeroIndex (l : List Int) : Option (Fin l.length) := by
         exact nn
       exact some ⟨i, h_i_lt_length⟩
 
+theorem findIdx?_eq_some_iff_getElem {xs : List α} {p : α → Bool} {i : Nat} :
+    xs.findIdx? p = some i ↔
+      ∃ h : i < xs.length, p xs[i] ∧ ∀ j (hji : j < i), ¬p (xs[j]'(Nat.lt_trans hji h)) := by
+  induction xs generalizing i with
+  | nil => simp
+  | cons x xs ih =>
+    simp
+    split
+    · simp only [Option.some.injEq, Bool.not_eq_true, List.length_cons]
+      cases i with
+      | zero => simp_all
+      | succ i =>
+        simp only [Bool.not_eq_true, Nat.zero_ne_one, List.get_cons_succ, false_iff, not_exists,
+          not_and, Classical.not_forall, Bool.not_eq_false]
+        intros
+        refine ⟨0, Nat.zero_lt_succ i, ‹_›⟩
+    · simp only [Option.map_eq_some', ih, Bool.not_eq_true, List.length_cons]
+      constructor
+      · rintro ⟨a, ⟨⟨h, h₁, h₂⟩, rfl⟩⟩
+        refine ⟨Nat.succ_lt_succ_iff.mpr h, by simpa, fun j hj => ?_⟩
+        cases j with
+        | zero => simp_all
+        | succ j =>
+          apply h₂
+          simp_all [Nat.succ_lt_succ_iff]
+      · rintro ⟨h, h₁, h₂⟩
+        cases i with
+        | zero => simp_all
+        | succ i =>
+          refine ⟨i, ⟨Nat.succ_lt_succ_iff.mp h, by simpa, fun j hj => ?_⟩, rfl⟩
+          simpa using h₂ (j + 1) (Nat.succ_lt_succ_iff.mpr hj)
+
+
 def smallestDiffWithProof
   {n : ℕ} {P : Type}
   [DecidableEq P]        -- P の等号可判定性
   (a b : Fin n → P)
-  (h : ∃ i : Fin n, a i ≠ b i)
+  (nonempty : ∃ i : Fin n, a i ≠ b i)
   : { i : Fin n // (a i ≠ b i) ∧ ∀ j < i, a j = b j } :=
-by sorry
+by
+  clear M X R trans_R not_refl_R
+  --noneはリストに入らずに候補のindexのみはいる。
+  let candidates :=  (List.range n).filterMap fun i =>
+    if hi : i < n then
+      if a (Fin.mk i hi) ≠ b (Fin.mk i hi) then some (Fin.mk i hi) else none
+    else
+      none
+  have : candidates.length <=  (List.range n).length  := by
+    apply List.length_filterMap_le _ (List.range n)
+  have candidates_len: candidates.length ≤ n := by
+    rw [List.length_range n] at this
+    exact this
+  have candidates_el:∀i:Fin n, i ∈ candidates → a i ≠ b i := by
+    intro i hi
+    simp [candidates] at hi
+    simp_all only [ne_eq, ite_not, List.length_range, candidates]
+    obtain ⟨w, h⟩ := nonempty
+    obtain ⟨w_1, h_1⟩ := hi
+    obtain ⟨left, right⟩ := h_1
+    simp_all only [↓reduceDIte]
+    apply Aesop.BuiltinRules.not_intro
+    intro a_1
+    split at right
+    next h_1 => simp_all only
+    next h_1 => simp_all only [Option.some.injEq, not_true_eq_false]
+
+  --candidatesは異なるものを持ってきたリストなので、findIdxするのはおかしいのでは。
+  let idx := List.findIdx? (λ i => a i ≠ b i) candidates
+  match m:idx with
+  | none =>
+    exfalso
+    obtain ⟨i, hi⟩ := nonempty
+    have h : a i ≠ b i := hi
+    have h' : i ∈ candidates := by
+      simp [candidates]
+      simp_all only [ne_eq, decide_not, ite_not, not_false_eq_true, idx, candidates]
+      apply Exists.intro
+      · split
+        rename_i h_1
+        simp_all only [true_and]
+        split
+        rename_i h_2
+        on_goal 3 => rename_i h_1
+        on_goal 2 => {
+          rename_i h_2
+          simp_all only [Option.some.injEq]
+          rfl
+        }
+        simp_all only [Fin.eta, not_true_eq_false]
+        simp_all only [Fin.is_lt, not_true_eq_false]
+    unfold List.findIdx? at m
+    simp at m
+
+    have wh: List.findIdx? (λ i => a i ≠ b i) candidates = none :=
+    by
+      simp_all only [ne_eq, not_false_eq_true, ite_not, List.mem_filterMap, List.mem_range, decide_not]
+      obtain ⟨w, h_1⟩ := h'
+      obtain ⟨left, right⟩ := h_1
+      simp_all only [↓reduceDIte]
+      split at m
+      next x x_1 heq =>
+        split at right
+        next h_1 => simp_all only
+        next h_1 => simp_all only [Option.some.injEq, List.findIdx?_nil]
+      next x x_1 a_1 l heq =>
+        split at right
+        next h_1 =>
+          split at m
+          next h_2 => simp_all only
+          next h_2 => simp_all only
+        next h_1 =>
+          split at m
+          next h_2 =>
+            simp_all only [Option.some.injEq, Option.map_eq_none', List.findIdx?_cons, decide_True, Bool.not_true,
+              Bool.false_eq_true, ↓reduceIte, zero_add, List.findIdx?_succ, Option.map_none']
+          next h_2 => simp_all only [Option.some.injEq]
+    let lf := List.findIdx?_of_eq_none wh (Fin.mk i (Nat.lt_succ_self i))
+    --simp only [List.findIdx?] at m
+    cases List.findIdx? (λ i => a i ≠ b i) candidates
+    case none => sorry
+    case some i => sorry
+
+  | some idx_correct =>
+    --have idx_correct' : List.findIdx? (λ i => a i ≠ b i) candidates = some idx := by
+    --  simp_all only [ne_eq, decide_not, ite_not, Option.pure_def, Option.bind_eq_bind, Option.some_bind, idx,
+    --    candidates]
+    have idxeq: idx_correct = idx := by
+      simp_all only [ne_eq, decide_not, ite_not, Option.pure_def, Option.bind_eq_bind, Option.some_bind, idx]
+    have listval:List.findIdx? (λ i => a i ≠ b i) candidates = some idx_correct:=
+    by
+      simp_all only [ decide_not, ite_not, Option.pure_def, Option.bind_eq_bind, Option.some_bind]
+      dsimp [idx]
+      simp
+    have idx_n: idx_correct < n := by
+      dsimp [idx]
+      --unfold List.findIdx?
+      --simp
+      --exact List.findIdx?_le_length' listval
+      let listineq := List.findIdx?_le_length' listval
+      --let listineq2 := Nat.le_trans (Nat.le_of_lt listineq) candidates_len
+      exact lt_of_lt_of_le listineq candidates_len
+
+    have candidates_nonempty : 0 < candidates.length := by
+      obtain ⟨i, hi⟩ := nonempty
+      --前の部分にもどうような補題があるが、obtainを外に出せない関係で、重複している。
+      have h' : i ∈ candidates := by
+        simp [candidates]
+        simp_all only [ne_eq, decide_not, ite_not, not_false_eq_true]
+        apply Exists.intro
+        · split
+          rename_i h_1
+          simp_all only [true_and]
+          split
+          rename_i h_2
+          on_goal 3 => rename_i h_1
+          on_goal 2 => {
+            rename_i h_2
+            simp_all only [Option.some.injEq]
+            rfl
+          }
+          simp_all only [Fin.eta, not_true_eq_false]
+          simp_all only [Fin.is_lt, not_true_eq_false]
+      exact List.length_pos_of_mem h'
+
+    let found := candidates.get ⟨0, candidates_nonempty⟩
+    have found_in: found ∈ candidates := by
+      exact List.get_mem candidates 0 candidates_nonempty
+    have hfound : a found ≠ b found := by
+      apply candidates_el found found_in
+    have hminimal : ∀ j < found, a j = b j := by
+      intro j hj
+      by_contra hne
+      --obtainは証明中に入れる必要がある。listvalを持ってくるのは違う気がする。candidatesはすでに異なるものを持ってきたリストなので、
+      obtain ⟨hj, ⟨hne, hforall⟩⟩ := findIdx?_eq_some_iff_getElem.mp listval
+      --search_proof
+
+
+    exact ⟨found, ⟨hfound, hminimal⟩⟩
 
 -- 定義: P^n 上の辞書式順序
 def lexOrder {n : ℕ} [DecidableEq (Fin n → P)][DecidableRel fun (x x_1:Fin n) ↦ x ≤ x_1 ]: LinearOrder (Fin n → P) :=

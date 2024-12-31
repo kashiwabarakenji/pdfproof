@@ -1,15 +1,24 @@
 import LeanCopilot
+import Mathlib.Algebra.Group.Defs
 import Mathlib.Data.Set.Basic
 import Mathlib.Data.Set.Function
+import Mathlib.Algebra.Group.Basic
+import Mathlib.Algebra.Group.Units.Basic
+import Mathlib.Algebra.NeZero
+import Mathlib.Algebra.Order.Monoid.Unbundled.Basic
+import Mathlib.Algebra.Order.Monoid.Canonical.Defs
+import Init.Data.List.OfFn
+import Mathlib.Data.List.OfFn
 --import Mathlib.Init.Data.Nat.Lemmas
-import Mathlib.Data.Real.Basic
-import Mathlib.Order.Basic
+--import Mathlib.Data.Real.Basic
+--import Mathlib.Order.Basic
 --import Mathlib.Order.Defs
-import Mathlib.Data.List.Basic
-import Init.Data.List.Find
-import Mathlib.Data.List.Defs
-import Mathlib.Data.Fin.Basic
+--import Mathlib.Data.List.Basic
+--import Init.Data.List.Find
+--import Mathlib.Data.List.Defs
+--import Mathlib.Data.Fin.Basic
 import Init.Data.Fin.Fold
+import Init.Data.List.Lemmas
 
 ----------------------
 -----2項関係と順序------
@@ -283,7 +292,7 @@ theorem my_refl (n : ℤ) : ∀ x : ℤ, equiv_rel n x x :=
 by
   intro x
   use 0
-  rw [mul_zero, sub_self]
+  simp_all only [Int.sub_self, Int.mul_zero]
 
 -- 対称性の証明
 theorem my_symm (n : ℤ) : ∀ x y : ℤ, equiv_rel n x y → equiv_rel n y x :=
@@ -291,7 +300,7 @@ by
   intro x y h
   rcases h with ⟨k, hk⟩
   use -k
-  rw [mul_neg, ←hk, sub_eq_add_neg, add_comm]
+  rw [Int.mul_neg, ←hk, Int.sub_eq_add_neg, Int.add_comm]
   omega
 
 -- 推移性の証明
@@ -301,7 +310,10 @@ by
   rcases h1 with ⟨k1, hk1⟩
   rcases h2 with ⟨k2, hk2⟩
   use k1 + k2
-  rw [←sub_add_sub_cancel x y z, hk1, hk2, Int.mul_add]
+  calc
+    x - z = (x - y) + (y - z) := by simp_all only; omega--rw [←sub_add_sub_cancel x y z]
+    _   = n * k1 + n * k2   := by rw [hk1, hk2]
+    _   = n * (k1 + k2)     := by rw [Int.mul_add]
 
 -- 同値関係の証明
 theorem equiv_is_equiv (n : ℤ) : Equivalence (equiv_rel n) :=
@@ -337,9 +349,28 @@ instance natPartialOrder : PartialOrder MyNat where
 --利用する補題
 lemma mul_eq_one_of_ge_one {a b : Nat} (h : a * b = 1) : a = 1 ∧ b = 1 := by
   have a_eq_one : a = 1 := by
-    simp_all only [ge_iff_le, mul_eq_one, ne_eq, one_ne_zero, not_false_eq_true, le_refl]
+    cases a
+    case zero =>
+      simp_all only [Nat.zero_mul, zero_ne_one]
+    case succ =>
+      cases b
+      case zero =>
+        simp_all only [Nat.mul_zero, Nat.zero_ne_one]
+      case succ =>
+        simp_all only [Nat.succ_mul]
+        simp_all only [Nat.add_left_eq_self]
+        injection h
+        rename_i n_eq
+        --aesop_unfold at n_eq
+        simp_all only [Nat.add_eq, Nat.add_eq_zero_iff]
+        obtain ⟨left, right⟩ := n_eq
+        subst right
+        simp_all only [Nat.zero_add, Nat.mul_one]
+
+
   have b_eq_one : b = 1 := by
-    simp_all only [ge_iff_le, mul_eq_one, ne_eq, one_ne_zero, not_false_eq_true, le_refl]
+    subst a_eq_one
+    simp_all only [Nat.one_mul]
   -- 結論として、a = 1 かつ b = 1 である
   exact ⟨a_eq_one, b_eq_one⟩
 
@@ -392,8 +423,8 @@ instance myNatPartialOrder : PartialOrder MyNat where
         -- a.val = 0 ならば b.val = 0 も同様
         rw [aval] at hk
         have : b.val = 0 := by
-          simp_all only [zero_mul]
-        simp_all only [zero_mul]
+          simp_all only [Nat.zero_mul]
+        simp_all only [Nat.zero_mul]
         cases a
         simp_all only
         subst aval
@@ -411,7 +442,7 @@ instance myNatPartialOrder : PartialOrder MyNat where
         have kl_eq_one : k * l = 1 := by
           let natv := (Nat.pos_of_ne_zero aval)
           let natv2 := Nat.eq_of_mul_eq_mul_left natv canc2
-          rw [mul_comm]
+          rw [Nat.mul_comm]
           apply natv2
 
         -- 自然数において k * l = 1 ならば k = 1 かつ l = 1
@@ -683,7 +714,9 @@ instance : LinearOrder (Fin n) :=
             rw [compareOfLessAndEq]
             simp_all only
             split
-            next h_2 => omega
+            next h_2 =>
+              simp_all only [Fin.val_fin_lt, Fin.not_lt, reduceCtorEq]
+              omega
             next h_2 =>
               simp_all only [not_lt]
               split
@@ -691,6 +724,7 @@ instance : LinearOrder (Fin n) :=
                 subst h_2
                 simp_all only [lt_self_iff_false]
               next h_2 => simp_all only
+
   lt_iff_le_not_le := by
     intro a b
     constructor
@@ -726,12 +760,13 @@ theorem List.findIdx?_le_length' {α : Type} {xs : List α} {p : α → Bool}
       split at h
       · simp_all only [Option.some.injEq, length_cons]
         subst h
-        simp_all only [lt_add_iff_pos_left, add_pos_iff, zero_lt_one, or_true]
-      · simp_all only [Bool.not_eq_true, Option.map_eq_some', length_cons]
+        simp_all only [Nat.zero_lt_succ]
+      ·
+        simp_all only [Bool.not_eq_true, Option.map_eq_some', length_cons]
         obtain ⟨w, h⟩ := h
         obtain ⟨left, right⟩ := h
         subst right
-        simp_all only [Option.some.injEq, forall_eq', add_lt_add_iff_right]
+        simp_all only [Option.some.injEq, forall_eq', Nat.add_lt_add_iff_right]
 
 def findFirstNonZeroIndex (l : List Int) : Option (Fin l.length) := by
   let pred : Int → Bool := λ x => x ≠ 0
@@ -744,9 +779,11 @@ def findFirstNonZeroIndex (l : List Int) : Option (Fin l.length) := by
         exact nn
       exact some ⟨i, h_i_lt_length⟩
 
+
+
 --4.15になったらFin.length_ofFnができるので、そのときまで待つ。今は時期尚早。
 --今はエラーがとれないので、コメントアウト
-/-
+
 def smallestDiffWithProof
   {n : ℕ} {P : Type}
   [DecidableEq P]        -- P の等号可判定性
@@ -755,53 +792,115 @@ def smallestDiffWithProof
   : { i : Fin n // (a i ≠ b i) ∧ ∀ j < i, a j = b j } :=
 by
   clear M X R trans_R not_refl_R
-  --noneはリストに入らずに候補のindexのみはいる。
-  let candidates :=  (List.range n).filterMap fun i =>
-    if hi : i < n then
-      if a (Fin.mk i hi) ≠ b (Fin.mk i hi) then some (Fin.mk i hi) else none
-    else
-      none
+  --noneはリストに入らずに候補のindexのみはいる。使わないかも。
 
-  have : candidates.length <=  (List.range n).length  := by
-    apply List.length_filterMap_le _ (List.range n)
-  have candidates_len: candidates.length ≤ n := by
-    rw [List.length_range n] at this
-    exact this
-  have candidates_el:∀i:Fin n, i ∈ candidates → a i ≠ b i := by
-    intro i hi
-    simp [candidates] at hi
-    simp_all only [ne_eq, ite_not, List.length_range, candidates]
-    obtain ⟨w, h⟩ := nonempty
-    obtain ⟨w_1, h_1⟩ := hi
-    obtain ⟨left, right⟩ := h_1
-    simp_all only [↓reduceDIte]
-    apply Aesop.BuiltinRules.not_intro
-    intro a_1
-    simp_all only [exists_true_left]
-    obtain ⟨left_1, right⟩ := right
-    subst right
-    simp_all only [not_true_eq_false]
 
-  have candidates_nonempty : 0 < candidates.length := by
-      obtain ⟨i, hi⟩ := nonempty
-      --前の部分にもどうような補題があるが、obtainを外に出せない関係で、重複している。
-      have h' : i ∈ candidates := by
-        simp [candidates]
-        sorry
-      exact List.length_pos_of_mem h'
-
-  let idx := candidates.get ⟨0, candidates_nonempty⟩
+  --
   let listfin := List.ofFn (λ i : Fin n => i)
+  have listlen: listfin.length = n := by --これのせいで1日かかった。4.15にすることで解決。
+    dsimp [listfin]
+    exact (List.length_ofFn (λ i : Fin n => i))
 
   --candidatesを使わずにこっちを返り値としてつかったほうがいいかも。
-  let idxf := List.findIdx? (λ i => a i ≠ b i) listfin
-  have idxfsome: idxf.isSome := by
-    sorry
+  let idxo := List.findIdx? (λ i => a i ≠ b i) listfin
+  have idxfsome: idxo.isSome := by
+    have idxsome2: listfin.any (λ i => a i ≠ b i) := by
+      obtain ⟨w, h⟩ := nonempty
+      simp
+      use w
+      constructor
+      dsimp [listfin]
+      have : w = (List.ofFn fun i ↦ i)[w] := by
+        simp
+      --rw [this]
+      --dsimp [List.ofFn]
+      rw [List.mem_ofFn (fun i => i) w]
+      dsimp [Set.range]
+      use w
 
-  exact ⟨idx, ⟨hidx, hminimal⟩⟩
--/
--- 定義: P^n 上の辞書式順序
+      rw [←ne_eq]
+      exact h
+
+    rw [List.findIdx?_isSome]
+    exact idxsome2
+  have idxf_eqn:∃ (idxs:Nat),some idxs = List.findIdx? (λ i => a i ≠ b i) listfin :=
+  by
+    match m:List.findIdx? (λ i => a i ≠ b i) listfin with
+    | some idfxx =>
+      -- idx が l の範囲内であることを証明
+      use idfxx
+    | none =>
+      -- この場合は isSome が矛盾する
+      --have : List.findIdx? (λ i => a i ≠ b i) listfin = none := m
+      --仮定のmとidxo.isSomeが矛盾する。
+      dsimp [idxo] at idxfsome
+      exfalso
+      rw [List.findIdx?_isSome] at idxfsome
+      rw [List.any_eq_true] at idxfsome
+      simp at idxfsome
+      obtain ⟨x, hx_mem, hx⟩ := idxfsome
+      let lf := List.findIdx?_of_eq_none m x
+      dsimp [listfin] at lf
+      simp at lf
+      contradiction
+
+  match m:List.findIdx? (λ i => a i ≠ b i) listfin with
+  | none =>
+    -- この場合は candidates が空であるため、矛盾
+    have : ¬ List.findIdx? (λ i => a i ≠ b i) listfin = none := by
+      by_contra hcontra
+      obtain ⟨w, h⟩ := idxf_eqn
+      rw [hcontra] at h
+      contradiction
+    contradiction
+
+  | some idx =>
+    have : idx < n := by
+      rw [←listlen]
+      apply List.findIdx?_le_length'
+      exact m
+
+    let idxff := Fin.mk idx this
+
+    have hidx: a idxff ≠ b idxff := by
+      let getE:= List.findIdx?_eq_some_iff_getElem.mp m
+      obtain ⟨hj2, hj3⟩ := getE
+      let hj31 := hj3.left
+      dsimp [listfin] at hj31
+      simp at hj31
+      dsimp [idxff]
+      exact hj31
+
+    have hminimal: ∀ j < idxff, a j = b j := by
+      obtain ⟨idxf, idxfsome⟩ := idxf_eqn
+      have :idxf < n := by
+        rw [←listlen]
+        apply List.findIdx?_le_length'
+        rw [idxfsome]
+
+      let idxff := Fin.mk idxf this
+
+      have before_eq: ∀ j < idxff, a j = b j := by
+        intro j hj
+        let getE:= List.findIdx?_eq_some_iff_getElem.mp idxfsome.symm
+        obtain ⟨hj2, hj3⟩ := getE
+        let hfj31 := hj3.left
+        let hfj32 := hj3.right j hj
+        dsimp [listfin] at hfj32
+        simp at hfj32
+        exact hfj32
+
+      rename_i idxff_1
+      intro j a_1
+      simp_all only [ne_eq, List.length_ofFn, Option.isSome_some, decide_not, Option.some.injEq, listfin, idxo,
+        idxff_1, idxff]
+
+    exact ⟨idxff, hidx, hminimal⟩
 /-
+-- 定義: P^n 上の辞書式順序 PreOrderから定義に変えようと思って取り組んだけど、却って失敗したから戻した。
+-- 練習9はまだできていない。Orderのinstanceの定義が複雑で難しすぎ。もっといろいろなleanに関する知識をつけてから再度、取り組む。
+-- Mathlib.Data.List.Lexを使って証明した方がよかった。
+
 def lexOrder {n : ℕ} [DecidableEq (Fin n → P)][DecidableRel fun (x x_1:Fin n) ↦ x ≤ x_1 ]: LinearOrder (Fin n → P) :=
 {
   le := λ x y => (∃ i : Fin n, (x i < y i) ∧ ∀ j : Fin n, j < i → x j = y j) ∨ x = y,
@@ -902,7 +1001,8 @@ def lexOrder {n : ℕ} [DecidableEq (Fin n → P)][DecidableRel fun (x x_1:Fin n
     by_cases h : a = b
     case pos =>
       right
-      exact h
+      subst h
+      simp_all only [lt_self_iff_false, implies_true, and_true, exists_false, or_true]
     case neg =>
       have : ∃ i : Fin n, ¬ (a i = b i) :=
       by
@@ -951,7 +1051,84 @@ def lexOrder {n : ℕ} [DecidableEq (Fin n → P)][DecidableRel fun (x x_1:Fin n
   },
   decidableLE := by infer_instance,
   decidableLT := by infer_instance,
-  decidableEq := inferInstance
+  decidableEq := inferInstance,
+
+  min_def := by
+    have :∀ (a b : Fin n → P) [Decidable (a ≤ b)], a ⊓ b = if a ≤ b then a else b:=
+    by
+      intro a b
+      intro i
+      by_cases h: a ≤ b
+      case pos =>
+        simp_all only [inf_of_le_left, ↓reduceIte]
+      case neg =>
+        simp_all only [↓reduceIte, inf_eq_right]
+        simp only [not_le] at h
+        let lt := @le_total (Fin n → P) (lexOrder) a b
+        cases lt with
+        | inl hlt =>
+          exfalso
+          exact h hlt
+        | inr hlt =>
+          exact hlt
+
+    exact this
+
+
+  max_def := by
+    sorry,
+
+  lt_iff_le_not_le := by
+    intro a b
+    constructor
+    · intro h
+      simp_all only [not_le, and_true]
+      simp_all
+      obtain ⟨left, right⟩ := h
+      obtain ⟨left_1, right⟩ := right
+      constructor
+      · intro x ba
+        by_cases hh: x >= left
+        case pos =>
+          by_cases hhh: x = left
+          case pos =>
+            subst hhh
+            exfalso
+            let lt := lt_trans left_1 ba
+            simp_all only [ge_iff_le, le_refl]
+            exact lt.not_lt lt
+
+          case neg =>
+            use left
+            constructor
+            · simp_all only [ge_iff_le]
+              omega
+            · intro hcont
+              rw [hcont] at left_1
+              simp_all only [lt_self_iff_false]
+
+        case neg =>
+          simp_all only [not_le, and_true]
+          simp_all
+      · intro hab
+        have :∀ j, a j = b j := by
+          intro j
+          rw [←hab]
+        let thisl := (this left)
+        rw [thisl] at left_1
+        subst hab
+        simp_all only [lt_self_iff_false]
+
+    · intro h
+      simp_all only [not_le, and_true]
+      simp_all
+      obtain ⟨left, right⟩ := h
+      obtain ⟨left_1, right⟩ := right
+      cases left with
+      | inl h => simp_all only
+      | inr h_1 =>
+        subst h_1
+        simp_all only [lt_self_iff_false, not_true_eq_false, and_true, IsEmpty.forall_iff, implies_true]
  }
 
 -- 全順序性の証明

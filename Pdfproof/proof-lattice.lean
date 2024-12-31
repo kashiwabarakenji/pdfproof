@@ -17,6 +17,7 @@ theorem my_inf_le_left (x y : α) : x ⊓ y ≤ x :=
 by
   simp_all only [inf_le_left] --定理を適用しただけ
 
+
 -- 2. x ≤ x ∨ y の証明
 theorem my_le_sup_left (x y : α) : x ≤ x ⊔ y :=
 by

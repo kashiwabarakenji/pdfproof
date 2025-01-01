@@ -1,11 +1,11 @@
 import Mathlib.Algebra.Group.Defs
-import Mathlib.Algebra.Group.Basic
+--import Mathlib.Algebra.Group.Basic
 import Mathlib.Algebra.Group.Subgroup.Basic
 import Mathlib.GroupTheory.OrderOfElement
 import Mathlib.GroupTheory.Finiteness
-import Mathlib.Data.Finset.Lattice -- lcm を使うために必要なインポート
+--import Mathlib.Data.Finset.Lattice -- lcm を使うために必要なインポート
 import LeanCopilot
-import Mathlib.Algebra.BigOperators.Group.Finset
+--import Mathlib.Algebra.BigOperators.Group.Finset
 --import Mathlib.Data.Equiv.Basic
 
 -----------
@@ -87,52 +87,59 @@ theorem subgroup_condition (H : Set G) :
   (H.Nonempty ∧ ∀ x y : G, x ∈ H → y∈ H → x * y⁻¹ ∈ H) ↔ (∃ S : Subgroup G, S.carrier = H) :=
 by
   constructor
+  case mp =>
+    intro h
+    have ⟨h_nonempty, h_condition⟩ := h
+    obtain ⟨h, hHnon⟩ := h_nonempty
+    -- 任意の x ∈ H を取得
+    -- H をキャリアとする部分群を構築
+    --この辺りも重複していて無駄だけど使っている。
+    have h1 : (1 : G) ∈ H := by
+        let tmp :=  h_condition h h hHnon hHnon
+        simp at tmp
+        exact tmp
 
-    -- (→)方向：新しい条件から部分群の条件を満たすことを証明
-  · intro h
-    obtain ⟨hH_nonempty, hH⟩ := h
-    -- 部分群の生成を定義
-    let S := Subgroup.closure H
+    have hinv : ∀ h : G, h ∈ H → h⁻¹ ∈ H := by
+      intro h hh
+      let tmp := h_condition 1 h h1 hh
+      simp at tmp
+      exact tmp
+
+    have hxy: ∀ x y : G, x ∈ H → y ∈ H → x * y ∈ H := by
+      intro x y hx hy
+      let tmp_inv: y⁻¹ ∈ H := hinv y hy
+      let tmp_mul: x * (y⁻¹)⁻¹ ∈ H := h_condition x y⁻¹ hx tmp_inv
+      simp at tmp_mul
+      exact tmp_mul
+
+    let S : Subgroup G :=
+    { carrier := H,
+      one_mem' := by
+        specialize h_condition h h hHnon hHnon
+        rw [mul_inv_cancel] at h_condition
+        exact h_condition,
+      inv_mem' := by
+        intro a ha
+        specialize h_condition a h ha hHnon
+        group at h_condition
+        simp_all only [implies_true, and_true, Int.reduceNeg, zpow_neg, zpow_one]
+      mul_mem' := by
+        intro a b ha hb
+        specialize h_condition a (b⁻¹)
+        simp_all only [true_and, inv_inv, forall_const]
+    }
     use S
-    ext x
-    constructor
-    -- (←) x ∈ S → x ∈ H
-    · intro hx
-      have h1 : (1 : G) ∈ H := by
-        obtain ⟨h, hHnon⟩ := hH_nonempty
-        let tmp := hH h h hHnon hHnon
-        simp at tmp
-        exact tmp
 
-      have hinv : ∀ h : G, h ∈ H → h⁻¹ ∈ H := by
-        intro h hh
-        let tmp := hH 1 h h1 hh
-        simp at tmp
-        exact tmp
-
-      have hxy: ∀ x y : G, x ∈ H → y ∈ H → x * y ∈ H := by
-        intro x y hx hy
-        let tmp_inv: y⁻¹ ∈ H := hinv y hy
-        let tmp_mul: x * (y⁻¹)⁻¹ ∈ H := hH x y⁻¹ hx tmp_inv
-        simp at tmp_mul
-        exact tmp_mul
-
-      exact Subgroup.closure_induction hx (fun h hH => hH) h1 hxy hinv
-      --exact @Subgroup.closure_induction G _ _ _ _ hx (fun h hH => hH) h1 hxy hinv
-
-    · intro a
-      simp_all only [Subsemigroup.mem_carrier, Submonoid.mem_toSubsemigroup, Subgroup.mem_toSubmonoid, S]
-      exact Subgroup.subset_closure a
-
-  -- (→) x ∈ H → x ∈ S
-  · intro h
+  case mpr =>
+    intro h
     obtain ⟨S, hS⟩ := h
+    rw [←hS]
     subst hS
     simp_all only [Subsemigroup.mem_carrier, Submonoid.mem_toSubsemigroup, Subgroup.mem_toSubmonoid]
     apply And.intro
-    · use 1
-      simp_all only [Subsemigroup.mem_carrier, Submonoid.mem_toSubsemigroup, Subgroup.mem_toSubmonoid]
-      apply OneMemClass.one_mem
+    · constructor
+      · simp_all only [Subsemigroup.mem_carrier, Submonoid.mem_toSubsemigroup, Subgroup.mem_toSubmonoid]
+        exact S.one_mem
     · intro x y a a_1
       apply MulMemClass.mul_mem
       · simp_all only

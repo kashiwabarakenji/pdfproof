@@ -149,7 +149,7 @@ instance : LT (Fin n → P) where
 
 -- `Preorder` のインスタンス定義
 --PreorderとPartialOrderとLinearOrderの順番に定義する。
-instance : Preorder (Fin n → P) where
+instance lexPreorder : Preorder (Fin n → P) where
   le := (· ≤ ·) -- `LE` 型クラスで定義した `le` を利用
   lt := (· < ·) -- `LT` 型クラスで定義した `lt` を利用
 
@@ -233,12 +233,12 @@ instance : Preorder (Fin n → P) where
     · exact h.left
     · exact h.right
 
-instance : PartialOrder (Fin n → P) where
+instance  lexPartialOrder : PartialOrder (Fin n → P) where
   le := (· ≤ ·) -- `LE` 型クラスで定義した `le` を利用
   lt := (· < ·)
   -- Preorder の反射律と推移律を再利用
-  le_refl := Preorder.le_refl
-  le_trans := Preorder.le_trans
+  le_refl := lexPreorder.le_refl
+  le_trans := lexPreorder.le_trans
 
   le_antisymm := by
     intro x y hxy hyx
@@ -277,14 +277,46 @@ instance : PartialOrder (Fin n → P) where
     | inr hxy2 =>
       rw [hxy2]
 
+/-minとmaxの計算可能性に関するいろいろなまちがいたち。
+もともとはlatticeのminとmaxが設定されているので、要素ごとにminとmaxがとられてしまう。
+lattice構造から定義すると大変なので、minとmaxだけを定義すればよい。
+instance lexLattice : Lattice (Fin n → P) where
 
-noncomputable instance : LinearOrder (Fin n → P) where
+Decidableにしようとすると、x >= yの判定の具体的なアルゴリズムを記述する必要があって、実現困難。
+instance decidableLeFinFun [DecidableEq P] :
+    DecidableRel ((· ≤ ·) : (Fin n → P) → (Fin n → P) → Prop) :=
+  fun x y =>
+    if h : (∃ i : Fin n, (x i < y i) ∧ ∀ j : Fin n, j < i → x j = y j) ∨ x = y
+    then isTrue h
+    else isFalse h
+
+Classical.emでなくて、Classical.decを使う必要があった。
+noncomputable def minFinFun (x y : Fin n → P) :  (Fin n → P) :=
+  match Classical.em (x ≤ y) with
+  | Or.inl _ => x
+  | Or.inr _ => y
+
+ifでなくてmatchを使う必要があった。
+noncomputable def minFinFun (x y : Fin n → P) :  (Fin n → P) :=
+  if Classical.dec (x ≤ y) then x else y
+  -/
+noncomputable def minFinFun (x y : Fin n → P) : Fin n → P :=
+  match Classical.dec (x ≤ y) with
+  | isTrue _  => x
+  | isFalse _ => y
+
+noncomputable def maxFinFun (x y : Fin n → P) : Fin n → P :=
+  match Classical.dec (x ≤ y) with
+  | isTrue _  => y
+  | isFalse _ => x
+
+noncomputable instance lexLinearOrder: LinearOrder (Fin n → P) where
   le := (· ≤ ·) -- `LE` 型クラスで定義した `le` を利用
   lt := (· < ·)
   -- Preorder の反射律と推移律を再利用
-  le_refl := Preorder.le_refl
-  le_trans := Preorder.le_trans
-  le_antisymm := PartialOrder.le_antisymm
+  le_refl := lexPreorder.le_refl
+  le_trans := lexPreorder.le_trans
+  le_antisymm := lexPartialOrder.le_antisymm
 
   le_total := by
     intro a b
@@ -336,14 +368,9 @@ noncomputable instance : LinearOrder (Fin n → P) where
         simp_all only [ne_eq]
         obtain ⟨w, h_1⟩ := this
         obtain ⟨left, right⟩ := hi
-        sorry
-        /-
+        dsimp [LE.le]
+        left
         use i_min
-        constructor
-        · exact hlt
-        · intros j hjw
-          exact hi.2 j hjw
-        -/
 
   lt_iff_le_not_le := by
     intro x y
@@ -357,21 +384,41 @@ noncomputable instance : LinearOrder (Fin n → P) where
     · exact h.left
     · exact h.right
 
+  min x y := minFinFun x y
+
   min_def := by
     intro x y
     by_cases h : x ≤ y
     case pos =>
-      sorry
+      simp_all only [↓reduceIte]
+      simp [minFinFun, h]
+      split
+      next x_1 h_1 heq => simp_all only
+      next x_1 h_1 heq => simp_all only
     case neg =>
-      sorry
+      simp_all only [↓reduceIte]
+      simp [minFinFun, h]
+      split
+      next x_1 h_1 heq => simp_all only [not_true_eq_false]
+      next x_1 h_1 heq => simp_all only [not_false_eq_true]
+
+  max x y := maxFinFun x y
 
   max_def := by
     intro x y
     by_cases h : x ≤ y
     case pos =>
-      sorry
+      simp_all only [↓reduceIte]
+      simp [maxFinFun, h]
+      split
+      next x_1 h_1 heq => simp_all only
+      next x_1 h_1 heq => simp_all only
     case neg =>
-      sorry
+      simp_all only [↓reduceIte]
+      simp [maxFinFun, h]
+      split
+      next x_1 h_1 heq => simp_all only [not_true_eq_false]
+      next x_1 h_1 heq => simp_all only [not_false_eq_true]
 
   decidableLE := by
     intro x y

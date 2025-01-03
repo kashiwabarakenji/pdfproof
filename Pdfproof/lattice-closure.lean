@@ -13,15 +13,6 @@ import Mathlib.Data.Finset.Lattice.Basic
 
 variable {α : Type}  [DecidableEq α] [Fintype α]
 
-/-
-structure LatticeClosure (α : Type) [PartialOrder α] where
-  (lattice : Lattice α)
-  (closure : Set α)
-  (closure_lattice : Lattice closure)
-  (closure_le : ∀ x y : α, x ≤ y → x ∈ closure → y ∈ closure)
-  (closure_sup : ∀ x y : closure, x.1 ⊔ y.1 ∈ closure)
--/
-
 structure SetFamily (α : Type) [DecidableEq α] [Fintype α] where
   (ground: Finset α)
   (sets : Finset α → Prop)
@@ -38,15 +29,6 @@ structure ClosureSystem (α : Type) [DecidableEq α]  [Fintype α] extends SetFa
   (intersection_closed : ∀ s t , sets s → sets t → sets (s ∩ t))
   (has_ground : sets ground)
 
-/--
-任意の有限集合族 `S` に対して、
-`S.fold (· ∩ ·) Finset.univ id` は「`S` のすべての要素(集合)の共通部分」を表す。
-
-- `S.fold` は Finset 上で定義されている畳み込み操作。
-- 第一引数 `(· ∩ ·)` は積集合(共通部分)演算子。
-- 第二引数 `Finset.univ` は畳み込みの初期値 (ここでは全体集合)。
-- 第三引数 `id` は要素をそのまま扱う関数。fold の定義上必須の引数です。
--/
 --使ってない。集合のほうにもってきて考えるのは、筋が良くないかも。Listのほうに変換して共通部分をとったほうがいい。それがこの次の補題。
 theorem finset_subfamily_intersection_closed {α : Type*} [DecidableEq α]
     (A : Finset α) (A0 : Finset (Finset α))
@@ -131,16 +113,16 @@ by
     intro h
     simp_all
 
-noncomputable def intersectionOfSubsets {α : Type} [DecidableEq α][Fintype α] (A0 : Finset (Finset α)) : Finset α :=
+noncomputable def finsetinter {α : Type} [DecidableEq α][Fintype α] (A0 : Finset (Finset α)) : Finset α :=
   A0.toList.foldr (fun x acc => x ∩ acc) Finset.univ
 
 lemma intersectionOfSubsets_def {α : Type} [DecidableEq α][Fintype α] (A0 : Finset (Finset α)) :
-  intersectionOfSubsets A0 = A0.toList.foldr (fun x acc => x ∩ acc) Finset.univ := by rfl
+  finsetinter A0 = A0.toList.foldr (fun x acc => x ∩ acc) Finset.univ := by rfl
 
 
 --帰納法を使わずに、finset_subfamily_intersection_closed_listで示す。
 lemma intersectioninground {α : Type} [DecidableEq α][Fintype α] (C: ClosureSystem α) [DecidablePred C.sets]:
-  ∀ s ∈ C.ground.powerset,  intersectionOfSubsets (C.ground.powerset.filter (fun (t:Finset α) => C.sets t ∧ s ⊆ t)) ⊆ C.ground :=
+  ∀ s ∈ C.ground.powerset,  finsetinter (C.ground.powerset.filter (fun (t:Finset α) => C.sets t ∧ s ⊆ t)) ⊆ C.ground :=
   by
     intro s
     intro hs
@@ -169,21 +151,120 @@ lemma intersectioninground {α : Type} [DecidableEq α][Fintype α] (C: ClosureS
     exact fslst hX
 
 --次の証明の目標はこれ。sを含むもので共通部分をとってもやはりsを含むことを証明する。どのような補題を示せばいいのか。集合族の大きさに関する帰納法が使える補題を設定する。
+
+
+lemma finset_inter_subset_iff_lem {α : Type} [DecidableEq α][Fintype α] (fl : List (Finset α)) (A : Finset α) :(∀ X ∈ fl, A ⊆ X ) → A ⊆ List.foldr (fun x acc ↦ x ∩ acc) Finset.univ fl := by
+      cases hc:fl with
+      | nil =>
+        intro h
+        subst hc
+        simp_all only [List.not_mem_nil, IsEmpty.forall_iff, implies_true, List.foldr_nil, Finset.subset_univ]
+      | cons hd tl =>
+        intro h
+        have hdin : hd ∈ fl := by
+          simp_all
+        have hda : A ⊆ hd  := by
+          apply h
+          subst hc
+          simp_all only [List.mem_cons, forall_eq_or_imp, true_or]
+        have ih0: ∀ X ∈ tl, A ⊆ X := by
+            intro XX
+            intro hXX
+            apply h
+            subst hc
+            simp_all only [List.mem_cons, forall_eq_or_imp, true_and, true_or, or_true]
+        simp
+        have ih: ∀ X ∈ tl, A ⊆ X → A ⊆ tl.foldr (fun x acc => x ∩ acc) Finset.univ := by
+          intro X HX hh
+          exact finset_inter_subset_iff_lem tl A ih0
+
+        subst hc
+        rw [@Finset.subset_inter_iff]
+        constructor
+        · simp_all only [List.mem_cons]
+
+        · exact finset_inter_subset_iff_lem tl A ih0
+
+lemma all_inters_subset_of_mem {α : Type} [DecidableEq α][Fintype α]
+  (fl : List (Finset α)) :
+  ∀ X ∈ fl,
+    (fl.foldr (fun x acc => x ∩ acc) Finset.univ) ⊆ X := by
+
+  -- リストに名前をつける
+
+  -- リスト l に対して帰納法
+  cases hl:fl with
+  | nil =>
+    -- このとき A0 が空なので，
+    -- 「X ∈ A0」が起きたら矛盾
+    intros X hX
+    subst hl
+    simp_all only [List.not_mem_nil]
+
+  | cons hd tl =>
+    -- 任意の X が hd :: tl に入るとき，
+    -- 交わり (hd ∩ foldr(...tl)) が X の部分集合であることを示したい
+    intros X hX
+    -- foldr の定義展開
+    simp_all only [List.foldr_cons]
+    -- hd :: tl に属している X は，「X = hd」か「X ∈ tl」
+    have hd_or_tl: X = hd ∨ X ∈ tl := by
+      subst hl
+      simp_all only [List.mem_cons]
+
+    cases hd_or_tl with
+    | inl hdc => -- X = hd の場合
+      subst hdc
+      subst hl
+      simp_all only [List.mem_cons, true_or, Finset.inter_subset_left]
+      -- hd ∩ (...) ⊆ hd は Finset.inter_subset_left で証明
+    | inr tlc => -- X ∈ tl の場合
+      -- まず，hd ∩ (...) は (...) の部分集合
+      -- 帰納法の仮定で tl の交わりが X の部分集合
+      let alli := all_inters_subset_of_mem tl X tlc
+      simp at alli
+      subst hl
+      simp_all only [List.mem_cons, or_true]
+      intro x hx
+      simp_all only [Finset.mem_inter]
+      obtain ⟨left, right⟩ := hx
+      exact alli right
+
+lemma finset_inter_subset_iff {α : Type} [DecidableEq α][Fintype α] (A0 : Finset (Finset α)) (A : Finset α) :
+  (∀ X ∈ A0, A ⊆ X )  ↔ A ⊆ finsetinter A0  :=
+  by
+    constructor
+    let fl := A0.toList
+    dsimp [finsetinter]
+    intro h
+    apply finset_inter_subset_iff_lem fl A
+    intro X a
+    simp_all only [Finset.mem_toList, fl]
+
+    intro h
+    intro X hX
+    have : finsetinter A0 ⊆ X:= by
+      dsimp [finsetinter]
+      apply all_inters_subset_of_mem A0.toList
+      rw [Finset.mem_toList]
+      exact hX
+    exact h.trans this
+
 lemma intersectionExtension {α : Type} [DecidableEq α][Fintype α] (C: ClosureSystem α) [DecidablePred C.sets]:
-  ∀ s ∈ C.ground.powerset, s ⊆ intersectionOfSubsets (C.ground.powerset.filter (fun (t:Finset α) => C.sets t ∧ s ⊆ t))  :=
+  ∀ s ∈ C.ground.powerset, s ⊆ finsetinter (C.ground.powerset.filter (fun (t:Finset α) => C.sets t ∧ s ⊆ t))  :=
   by
     intro s
     intro hs
     simp_all only [Finset.mem_powerset]
     intro x
     intro hx
-    --induction hs with
-    --| subset => exact hx
-    sorry
-
---def toSubtypeFinset {α : Type} [DecidableEq α][Fintype α] (C: ClosureSystem α) (s : Finset α) : Finset {x // x ∈ C.ground} :=
---  (s.filter (λ x => (x ∈ C.ground))).map ⟨λ x => ⟨x, filter_mem s C x (by simp_all)⟩, λ a b h => by simp_all⟩
-
+    let A0 := C.ground.powerset.filter (fun (t:Finset α) => C.sets t ∧ s ⊆ t)
+    have xall: ∀ X ∈ A0, s ⊆ X := by
+      intro X
+      intro hX
+      simp_all only [Finset.mem_filter, Finset.mem_powerset, subset_refl, and_true, true_and, A0]
+    let fi := (finset_inter_subset_iff A0 s).mp xall
+    exact fi hx
 
 noncomputable def closure_operator_from_CS  (C: ClosureSystem α) [DecidablePred C.sets]: SetFamily.closure_operator (C.toSetFamily) :=
   {   Family := C.toSetFamily,
@@ -192,12 +273,13 @@ noncomputable def closure_operator_from_CS  (C: ClosureSystem α) [DecidablePred
         let sval :=s.map ⟨Subtype.val, Subtype.val_injective⟩
         --#check intersectionOfSubsets (C.ground.powerset.filter (fun (t:Finset α) => C.sets t ∧ sval ⊆ t))
         --#check (s.map ⟨Subtype.val, Subtype.val_injective⟩).subtype (λ x => x ∈ C.ground)
-        let ios := (intersectionOfSubsets (C.ground.powerset.filter (fun (t:Finset α) => C.sets t ∧ sval ⊆ t)))
+        let ios := (finsetinter (C.ground.powerset.filter (fun (t:Finset α) => C.sets t ∧ sval ⊆ t)))
         exact ios.subtype (λ x => x ∈ C.ground)
 
       extensive :=
       by
         intro s
+        let sval :=s.map ⟨Subtype.val, Subtype.val_injective⟩
         intro x
         intro h
         --simp_all
@@ -208,11 +290,17 @@ noncomputable def closure_operator_from_CS  (C: ClosureSystem α) [DecidablePred
             exists_eq_right]
           obtain ⟨w, h_1⟩ := hx
           simp_all only
-        --obtain ⟨val, property⟩ := x
-        --simp_all only
-        --dsimp [intersectionOfSubsets]
-        simp
-        sorry
+        --simp
+        have : sval ∈ C.ground.powerset := by
+          simp_all only [Finset.mem_powerset]
+
+        have h2 := intersectionExtension C sval this
+        simp_all only [Finset.mem_powerset, Finset.mem_subtype, sval]
+        obtain ⟨val, property⟩ := x
+        simp_all only
+        apply h2
+        simp_all only [Finset.mem_map, Function.Embedding.coeFn_mk, Subtype.exists, exists_and_right, exists_eq_right,
+          exists_const]
 
       monotone := by sorry
       idempotent := by sorry

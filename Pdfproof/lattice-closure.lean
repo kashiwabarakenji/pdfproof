@@ -13,6 +13,8 @@ import Mathlib.Data.Finset.Lattice.Basic
 import Init.Data.List.MinMax
 import Mathlib.Data.List.MinMax
 
+set_option maxHeartbeats 1000000
+
 variable {α : Type}  [DecidableEq α] [Fintype α]
 
 structure SetFamily (α : Type) [DecidableEq α] [Fintype α] where
@@ -20,11 +22,13 @@ structure SetFamily (α : Type) [DecidableEq α] [Fintype α] where
   (sets : Finset α → Prop)
   (inc_ground : sets s → s ⊆ ground)
 
-structure SetFamily.closure_operator (F : SetFamily α) where
+structure SetFamily.preclosure_operator (F : SetFamily α) where
   (Family : SetFamily α)
   (cl : Finset F.ground → Finset F.ground)
   (extensive : ∀ s : Finset F.ground, s ⊆ cl s)
   (monotone : ∀ s t : Finset F.ground, s ⊆ t → cl s ⊆ cl t)
+
+structure SetFamily.closure_operator (F : SetFamily α) extends SetFamily.preclosure_operator F where
   (idempotent : ∀ s : Finset F.ground, cl s = cl (cl s))
 
 structure ClosureSystem (α : Type) [DecidableEq α]  [Fintype α] extends SetFamily α where
@@ -32,6 +36,7 @@ structure ClosureSystem (α : Type) [DecidableEq α]  [Fintype α] extends SetFa
   (has_ground : sets ground)
 
 --使ってない。集合のほうにもってきて考えるのは、筋が良くないかも。Listのほうに変換して共通部分をとったほうがいい。それがこの次の補題。
+--Finsetでない一般のSetの平行集合族の場合は別のファイルで考える。
 theorem finset_subfamily_intersection_closed {α : Type*} [DecidableEq α]
     (A : Finset α) (A0 : Finset (Finset α))
     (nonemptyA0 : A0.Nonempty)
@@ -252,15 +257,15 @@ lemma finset_inter_subset_iff {α : Type} [DecidableEq α][Fintype α] (A0 : Fin
       exact hX
     exact h.trans this
 
-lemma intersectionExtension {α : Type} [DecidableEq α][Fintype α] (C: ClosureSystem α) [DecidablePred C.sets]:
-  ∀ s ∈ C.ground.powerset, s ⊆ finsetInter (C.ground.powerset.filter (fun (t:Finset α) => C.sets t ∧ s ⊆ t))  :=
+lemma intersectionExtension {α : Type} [DecidableEq α][Fintype α] (F: SetFamily α) [DecidablePred F.sets]:
+  ∀ s ∈ F.ground.powerset, s ⊆ finsetInter (F.ground.powerset.filter (fun (t:Finset α) => F.sets t ∧ s ⊆ t))  :=
   by
     intro s
     intro hs
     simp_all only [Finset.mem_powerset]
     intro x
     intro hx
-    let A0 := C.ground.powerset.filter (fun (t:Finset α) => C.sets t ∧ s ⊆ t)
+    let A0 := F.ground.powerset.filter (fun (t:Finset α) => F.sets t ∧ s ⊆ t)
     have xall: ∀ X ∈ A0, s ⊆ X := by
       intro X
       intro hX
@@ -469,21 +474,50 @@ theorem finsetInter_mono'
     -- x ∈ A なら x ∈ A.toList なので、listInter_mono' の仮定を満たす
     simp_all only [Finset.mem_toList]
 
-noncomputable def closure_operator_from_CS {α :Type} [DecidableEq α][Fintype α] (C: ClosureSystem α) [DecidablePred C.sets]: SetFamily.closure_operator (C.toSetFamily) :=
+lemma extensive_from_SF {α : Type} [DecidableEq α] [Fintype α]
+  (F : SetFamily α)[DecidablePred F.sets]:
+  ∀ s : Finset F.ground, s ⊆
+    let cl := fun s =>
+    let sval := s.map ⟨Subtype.val, Subtype.val_injective⟩
+    let ios := (finsetInter (F.ground.powerset.filter (fun (t:Finset α) => F.sets t ∧ sval ⊆ t)))
+    ios.subtype (λ x => x ∈ F.ground)
+  cl s :=
+by
+  intro s
+  let sval :=s.map ⟨Subtype.val, Subtype.val_injective⟩
+  intro x
+  intro h
+  --simp_all
+  have h1 : s.map ⟨Subtype.val, Subtype.val_injective⟩ ⊆ F.ground := by
+    obtain ⟨val, property⟩ := x
+    intro x hx
+    simp_all only [Finset.mem_map, Function.Embedding.coeFn_mk, Subtype.exists, exists_and_right, exists_eq_right]--
+    obtain ⟨w, h_1⟩ := hx
+    simp_all only
+
+  have : sval ∈ F.ground.powerset := by
+    simp_all only [Finset.mem_powerset]
+
+  have h2 := intersectionExtension F sval this
+  simp_all only [Finset.mem_subtype, sval]
+  obtain ⟨val, property⟩ := x
+  simp_all only [Finset.mem_subtype]
+
+  apply h2
+  simp_all only [Finset.mem_map, Function.Embedding.coeFn_mk, Subtype.exists, exists_and_right, exists_eq_right, exists_const]--
+
+
+noncomputable def closure_operator_from_SF {α :Type} [DecidableEq α][Fintype α] (F: SetFamily α) [DecidablePred F.sets]: SetFamily.preclosure_operator F :=
   let cl := fun s =>
     let sval := s.map ⟨Subtype.val, Subtype.val_injective⟩
-    let ios := (finsetInter (C.ground.powerset.filter (fun (t:Finset α) => C.sets t ∧ sval ⊆ t)))
-    ios.subtype (λ x => x ∈ C.ground)
+    let ios := (finsetInter (F.ground.powerset.filter (fun (t:Finset α) => F.sets t ∧ sval ⊆ t)))
+    ios.subtype (λ x => x ∈ F.ground)
 {
-  Family := C.toSetFamily,
+  Family := F,
   cl := cl
-  /-by --定義をletに移動。
-    intro s
-    let sval :=s.map ⟨Subtype.val, Subtype.val_injective⟩
-    let ios := (finsetInter (C.ground.powerset.filter (fun (t:Finset α) => C.sets t ∧ sval ⊆ t)))
-    exact ios.subtype (λ x => x ∈ C.ground)
-  -/
-
+  extensive := extensive_from_SF F, -- 明示的に補題を渡す
+  --monotone := monotone_closure_operator F cl,   -- 明示的に補題を渡す
+  /-移動したのでここから消す。
   extensive :=
   by
     intro s
@@ -491,7 +525,7 @@ noncomputable def closure_operator_from_CS {α :Type} [DecidableEq α][Fintype �
     intro x
     intro h
     --simp_all
-    have h1 : s.map ⟨Subtype.val, Subtype.val_injective⟩ ⊆ C.ground := by
+    have h1 : s.map ⟨Subtype.val, Subtype.val_injective⟩ ⊆ F.ground := by
       obtain ⟨val, property⟩ := x
       intro x hx
       simp_all only [Finset.mem_map, Function.Embedding.coeFn_mk, Subtype.exists, exists_and_right,
@@ -499,10 +533,10 @@ noncomputable def closure_operator_from_CS {α :Type} [DecidableEq α][Fintype �
       obtain ⟨w, h_1⟩ := hx
       simp_all only
 
-    have : sval ∈ C.ground.powerset := by
+    have : sval ∈ F.ground.powerset := by
       simp_all only [Finset.mem_powerset]
 
-    have h2 := intersectionExtension C sval this
+    have h2 := intersectionExtension F sval this
     simp_all only [Finset.mem_powerset, Finset.mem_subtype, sval]
     obtain ⟨val, property⟩ := x
     simp_all only [Finset.mem_subtype, cl]
@@ -510,9 +544,10 @@ noncomputable def closure_operator_from_CS {α :Type} [DecidableEq α][Fintype �
     apply h2
     simp_all only [Finset.mem_map, Function.Embedding.coeFn_mk, Subtype.exists, exists_and_right, exists_eq_right,
       exists_const]
+  -/
 
   monotone := by
-    have h1 : ∀ s t : Finset C.ground, s ⊆ t → cl s ⊆ cl t := by
+    have h1 : ∀ s t : Finset F.ground, s ⊆ t → cl s ⊆ cl t := by
       intro s
       intro t
       intro h
@@ -521,20 +556,11 @@ noncomputable def closure_operator_from_CS {α :Type} [DecidableEq α][Fintype �
       intro hx
       unfold cl
 
-      /-have h2 : s.map ⟨Subtype.val, Subtype.val_injective⟩ ⊆ t.map ⟨Subtype.val, Subtype.val_injective⟩ := by
-        intro x
-        intro hx
-        simp_all only [Finset.mem_map, Function.Embedding.coeFn_mk, Subtype.exists, exists_and_right,
-          exists_eq_right]
-        obtain ⟨w, h_1⟩ := hx
-        simp_all only
-        simp_all
-      -/
-      let S := Finset.filter (fun (u:Finset α) => C.sets u ∧ s.map ⟨Subtype.val, Subtype.val_injective⟩ ⊆ u) C.ground.powerset
-      let T := Finset.filter (fun (u:Finset α) => C.sets u ∧ t.map ⟨Subtype.val, Subtype.val_injective⟩ ⊆ u) C.ground.powerset
+      let S := Finset.filter (fun (u:Finset α) => F.sets u ∧ s.map ⟨Subtype.val, Subtype.val_injective⟩ ⊆ u) F.ground.powerset
+      let T := Finset.filter (fun (u:Finset α) => F.sets u ∧ t.map ⟨Subtype.val, Subtype.val_injective⟩ ⊆ u) F.ground.powerset
 
-      let fs := fun (u:Finset α) => C.sets u ∧ s.map ⟨Subtype.val, Subtype.val_injective⟩ ⊆ u
-      let ft := fun (u:Finset α) => C.sets u ∧ t.map ⟨Subtype.val, Subtype.val_injective⟩ ⊆ u
+      let fs := fun (u:Finset α) => F.sets u ∧ s.map ⟨Subtype.val, Subtype.val_injective⟩ ⊆ u
+      let ft := fun (u:Finset α) => F.sets u ∧ t.map ⟨Subtype.val, Subtype.val_injective⟩ ⊆ u
       have : ∀ u, ft u → fs u := by
         intro u
         intro hu
@@ -570,10 +596,9 @@ noncomputable def closure_operator_from_CS {α :Type} [DecidableEq α][Fintype �
 
     exact h1
 
-  idempotent := by sorry
-  --下に、閉集合族からひとつ要素を除いても閉集合族であることを示しているので、それを使えば、帰納法でidempotentを示せる。
-  --clの像がsetsの元であることと、setsの元sがclにより、sに映ることを示せば良い。
+
   }
+
 
 --namespace max?exist
 
@@ -897,3 +922,17 @@ by
 
   -- 以上で (F.erase M) も「univ を含み、交わりが閉じている」と示せた
   simp_all only [subset_refl, Finset.subset_univ, ne_eq, not_true_eq_false]
+
+/-
+noncomputable def closure_operator_from_CS {α :Type} [DecidableEq α][Fintype α] (C: ClosureSystem α) [DecidablePred C.sets]: SetFamily.closure_operator (C.toSetFamily)
+  let cl := fun s =>
+    let sval := s.map ⟨Subtype.val, Subtype.val_injective⟩
+    let ios := (finsetInter (C.ground.powerset.filter (fun (t:Finset α) => C.sets t ∧ sval ⊆ t)))
+    ios.subtype (λ x => x ∈ C.ground)
+{
+  Family := C.toSetFamily,
+  cl := cl
+  idempotent := by sorry
+    --下に、閉集合族からひとつ要素を除いても閉集合族であることを示しているので、それを使えば、帰納法でidempotentを示せる。
+    --clの像がsetsの元であることと、setsの元sがclにより、sに映ることを示せば良い。
+-/

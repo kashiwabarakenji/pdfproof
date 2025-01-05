@@ -13,7 +13,7 @@ import Mathlib.Data.Finset.Lattice.Basic
 import Init.Data.List.MinMax
 import Mathlib.Data.List.MinMax
 
-set_option maxHeartbeats 1000000
+set_option maxHeartbeats 2000000
 
 variable {α : Type}  [DecidableEq α] [Fintype α]
 
@@ -269,7 +269,7 @@ lemma intersectionExtension {α : Type} [DecidableEq α][Fintype α] (F: SetFami
     have xall: ∀ X ∈ A0, s ⊆ X := by
       intro X
       intro hX
-      simp_all only [Finset.mem_filter, Finset.mem_powerset, subset_refl, and_true, true_and, A0]
+      simp_all only [Finset.mem_filter,   A0]
     let fi := (finset_inter_subset_iff A0 s).mp xall
     exact fi hx
 
@@ -483,6 +483,11 @@ lemma extensive_from_SF {α : Type} [DecidableEq α] [Fintype α]
     ios.subtype (λ x => x ∈ F.ground)
   cl s :=
 by
+
+  let cl := fun (s:Finset F.ground) =>
+    let sval := s.map ⟨Subtype.val, Subtype.val_injective⟩
+    let ios := (finsetInter (F.ground.powerset.filter (fun (t : Finset α) => F.sets t ∧ sval ⊆ t)))
+    ios.subtype (λ x => x ∈ F.ground)
   intro s
   let sval :=s.map ⟨Subtype.val, Subtype.val_injective⟩
   intro x
@@ -491,7 +496,7 @@ by
   have h1 : s.map ⟨Subtype.val, Subtype.val_injective⟩ ⊆ F.ground := by
     obtain ⟨val, property⟩ := x
     intro x hx
-    simp_all only [Finset.mem_map, Function.Embedding.coeFn_mk, Subtype.exists, exists_and_right, exists_eq_right]--
+    simp only [Finset.mem_map, Function.Embedding.coeFn_mk, Subtype.exists, exists_and_right, exists_eq_right] at hx--
     obtain ⟨w, h_1⟩ := hx
     simp_all only
 
@@ -506,7 +511,6 @@ by
   apply h2
   simp_all only [Finset.mem_map, Function.Embedding.coeFn_mk, Subtype.exists, exists_and_right, exists_eq_right, exists_const]--
 
-
 noncomputable def closure_operator_from_SF {α :Type} [DecidableEq α][Fintype α] (F: SetFamily α) [DecidablePred F.sets]: SetFamily.preclosure_operator F :=
   let cl := fun s =>
     let sval := s.map ⟨Subtype.val, Subtype.val_injective⟩
@@ -515,9 +519,9 @@ noncomputable def closure_operator_from_SF {α :Type} [DecidableEq α][Fintype �
 {
   Family := F,
   cl := cl
-  extensive := extensive_from_SF F, -- 明示的に補題を渡す
+  --extensive := extensive_from_SF F, -- 明示的に補題を渡す
   --monotone := monotone_closure_operator F cl,   -- 明示的に補題を渡す
-  /-移動したのでここから消す。
+  --/そとに出そうとしたがheartbeat問題が出たので、戻した。clの共用問題などなかなか難しい。
   extensive :=
   by
     intro s
@@ -544,7 +548,7 @@ noncomputable def closure_operator_from_SF {α :Type} [DecidableEq α][Fintype �
     apply h2
     simp_all only [Finset.mem_map, Function.Embedding.coeFn_mk, Subtype.exists, exists_and_right, exists_eq_right,
       exists_const]
-  -/
+
 
   monotone := by
     have h1 : ∀ s t : Finset F.ground, s ⊆ t → cl s ⊆ cl t := by

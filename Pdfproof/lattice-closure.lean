@@ -10,6 +10,8 @@ import Mathlib.Data.Real.Basic
 import Mathlib.Order.Basic
 import Mathlib.Order.Lattice
 import Mathlib.Data.Finset.Lattice.Basic
+import Init.Data.List.MinMax
+import Mathlib.Data.List.MinMax
 
 variable {α : Type}  [DecidableEq α] [Fintype α]
 
@@ -569,4 +571,329 @@ noncomputable def closure_operator_from_CS {α :Type} [DecidableEq α][Fintype �
     exact h1
 
   idempotent := by sorry
+  --下に、閉集合族からひとつ要素を除いても閉集合族であることを示しているので、それを使えば、帰納法でidempotentを示せる。
+  --clの像がsetsの元であることと、setsの元sがclにより、sに映ることを示せば良い。
   }
+
+--namespace max?exist
+
+open List
+
+--ここで証明したことは、List.max?に関して非空な場合の最大値の存在と、最大値であることを保証する定理を証明した。
+--当然、mathlibにあると思われるが、List.maximumのほうはあっても、max?のほうにはなく、等価性の証明もない。
+--と思ったら、以下のものがあった。
+ --List.max?_eq_some_iff.{u_1} {α : Type u_1} {a : α} [Max α] [LE α] [anti : Std.Antisymm fun x1 x2 ↦ x1 ≤ x2]
+    --(le_refl : ∀ (a : α), a ≤ a) (max_eq_or : ∀ (a b : α), a ⊔ b = a ∨ a ⊔ b = b)
+    --(max_le_iff : ∀ (a b c : α), b ⊔ c ≤ a ↔ b ≤ a ∧ c ≤ a) {xs : List α} : xs.max? = some a ↔ a ∈ xs ∧ ∀ b ∈ xs, b ≤ a
+--そのLinearOrder版を証明しようとしたが、途中で挫折した。
+--theorem List.max?_eq_some_iff_linear_order {α : Type _} [LinearOrder α] {a : α} {xs : List α} :
+--  xs.max? = some a ↔ a ∈ xs ∧ ∀ b ∈ xs, b ≤ a :=
+--List.max?_mem やList.max?_le_iffを使って証明しようとしたが挫折。
+
+--使ってない？
+omit [DecidableEq α] [Fintype α]
+lemma mini_lem [LinearOrder α] (a b:α) (bs:List α ): foldl max (a ⊔ b) bs = a ⊔ foldl max b bs :=
+  by
+    cases hb:bs with
+    | nil =>
+      -- ベースケース: bs = []
+      simp
+    | cons x xs =>
+      -- 帰納法ステップ: bs = x :: xs
+      simp [List.foldl]
+      have ih := mini_lem b x xs
+      simp [max_assoc]
+      rw [ih]
+      simp [←max_assoc]
+      exact mini_lem (a ⊔ b) x xs
+
+--exsts2に拡張されたので使ってない。
+theorem max?_exists [DecidableEq α] [LinearOrder α] {l : List α} (l_ne : l ≠ []) :
+  ∃ m : α, l.max? = some m :=
+by
+  cases l with
+  | nil =>
+    -- 空リストの場合は矛盾
+    contradiction
+  | cons a as =>
+    -- 非空リストの場合
+    use List.foldl max a as
+    simp [List.max?]
+
+theorem max?_exists2 [DecidableEq α] [LinearOrder α] {l : List α} (l_ne : l ≠ []) :
+ ∃ m : α, l.max? = some m ∧ m ∈ l :=
+ by
+  cases l with
+  | nil =>
+    -- 空リストの場合は矛盾
+    contradiction
+  | cons a as =>
+    -- 非空リストの場合
+    use List.foldl max a as
+    constructor
+    · simp [List.max?]
+    · dsimp [List.foldl]
+      induction as generalizing a with
+      | nil =>
+        -- ベースケース: 空リストの場合
+        simp [List.foldl]
+      | cons b bs ih =>
+        -- 帰納法ステップ: as = b :: bs の場合
+        simp [List.foldl]
+        -- max a b が a か b かで分岐
+        cases max_choice a b with
+        | inl h1 =>
+          -- max a b = a の場合
+          rw [h1]
+          -- 帰納法の仮定 ih : foldl max a bs ∈ a :: b :: bs
+          -- これを Or で場合分けしてそのまま詰める
+          simp_all only [ne_eq, reduceCtorEq, not_false_eq_true, mem_cons, forall_const, sup_eq_left]
+          specialize ih a
+          cases ih with
+          | inl h => simp_all only [true_or]
+          | inr h_1 => simp_all only [or_true]
+        | inr h2 =>
+          -- max a b = b の場合
+          rw [h2]
+          -- 帰納法の仮定 ih : foldl max a bs ∈ a :: b :: bs
+          -- ただし今度はアキュムレータが b に変わるので ih b を使う
+          right
+          simp_all only [ne_eq, reduceCtorEq, not_false_eq_true, mem_cons, forall_const, sup_eq_right]
+
+--List maxに対して、最大値の存在を保証する定理
+theorem List.max?_spec {β : Type} [DecidableEq β] [LinearOrder β] {l : List β} (l_ne : l ≠ []) :
+  ∃ m:β  , l.max? = some m ∧ (∀ x ∈ l, x ≤ m) ∧ m ∈ l :=
+by
+
+  cases l with
+    | nil =>
+      -- 空リストの場合、仮定に矛盾
+      contradiction
+    | cons a as =>
+      -- 非空リストの場合
+      obtain ⟨m, hm⟩ := max?_exists l_ne
+      by_cases as = []
+      case pos =>
+        rename_i h
+        subst h
+        simp_all only [ne_eq, cons_ne_self, not_false_eq_true, max?_cons, max?_nil, Option.elim_none,
+          Option.some.injEq, mem_singleton, forall_eq, exists_eq_left', le_refl, and_self]
+
+      case neg =>
+        have : as ≠ [] := by
+          intro c
+          subst c
+          simp_all only [ne_eq, cons_ne_self, not_false_eq_true]
+        obtain ⟨mm, hmm⟩ := max?_exists2 this
+        let hmm1 := hmm.1
+        let hmm2 := hmm.2
+        obtain ⟨mmx, hmmx,hmmxx⟩ := List.max?_spec this
+        use m
+        constructor
+        exact hm
+        constructor
+        · rename_i h
+          intro x a_1
+          simp_all only [ne_eq, reduceCtorEq, not_false_eq_true, max?_cons, Option.elim_some, Option.some.injEq,
+            mem_cons]
+          subst hm hmmx
+          simp_all only [and_true, le_sup_iff]
+          obtain ⟨left, right⟩ := hmm
+          cases a_1 with
+          | inl h =>
+            subst h
+            simp_all only [le_refl, true_or]
+          | inr h_1 => simp_all only [or_true]
+        · simp_all only [ne_eq, reduceCtorEq, not_false_eq_true, max?_cons, Option.elim_some, Option.some.injEq,
+          mem_cons]
+          subst hm hmmx
+          simp_all only [and_true, sup_eq_left]
+          obtain ⟨left, right⟩ := hmm
+          by_cases mm <= a
+          case pos =>
+            left
+            simp_all only [true_or]
+          case neg =>
+            right
+            have : mm = a ⊔ mm := by
+              rename_i h
+              simp_all only [not_le, right_eq_sup]
+              exact le_of_lt h
+            rw [←this]
+            exact right
+--end max?exist
+-----
+namespace ExampleUsingMaxEqSome
+
+/--/
+`maxCard l` : リスト `l : List (Finset α)` の各 `s.card` のうち最大値。
+-/
+def maxCard (l : List (Finset α)) : Nat :=
+  (l.map (·.card)).max?.getD 0
+
+--`maxCardElements l` :リスト `l` 内で要素数が `maxCard l` と一致する全ての集合をフィルタリングして返す。必要ない気もする。
+def maxCardElements (l : List (Finset α)) : List (Finset α) :=
+  l.filter (λ s => s.card = maxCard l)
+
+theorem card_eq_max  {l : List (Finset α)} {s : Finset α}
+  (hs_in_l : s ∈ l)
+  (hm_forall : ∀ a ∈ l, a.card ≤ s.card)
+  (hm_in : ∃ a ∈ l, a.card = s.card) :
+  s.card = (l.map (fun x ↦ x.card)).max?.getD 0 :=
+by
+  -- `hm_in` から `s.card` がリスト内のカード数に等しいことを取り出す
+  obtain ⟨a, ha_in_l, ha_eq⟩ := hm_in
+  -- `hm_forall` によって `s.card` はリスト内のすべてのカード数以上
+  have h_max : ∀ b ∈ l.map (fun x ↦ x.card), b ≤ s.card := by
+    intro b hb
+    obtain ⟨x, hx_in_l, rfl⟩ := List.mem_map.mp hb
+    exact hm_forall x hx_in_l
+  -- リストの最大値は `s.card` に等しい
+  let ls := l.map (fun x ↦ x.card)
+  have ls_ne : ls ≠ [] := by
+    simp_all only [ne_eq, List.map_eq_nil_iff, not_false_eq_true]
+    simp_all only [mem_map, forall_exists_index, and_imp, forall_apply_eq_imp_iff₂, implies_true, map_eq_nil_iff, ls]
+    apply Aesop.BuiltinRules.not_intro
+    intro a_1
+    subst a_1
+    simp_all only [not_mem_nil]
+  let lm := List.max?_spec ls_ne
+  obtain ⟨m, hm⟩ := lm
+  have :∃ ms:Finset α , ms ∈ l ∧ ms.card = m :=
+  by
+    use a
+    use ha_in_l
+    simp_all only [mem_map, forall_exists_index, and_imp, forall_apply_eq_imp_iff₂, implies_true, ne_eq,
+      map_eq_nil_iff, ls]
+    obtain ⟨left, right⟩ := hm
+    obtain ⟨left_1, right⟩ := right
+    obtain ⟨w, h⟩ := right
+    obtain ⟨left_2, right⟩ := h
+    subst right
+    refine le_antisymm ?_ ?_
+    · simp_all only
+    · simp_all only
+  obtain ⟨ms, hms⟩ := this
+  simp_all only [mem_map, forall_exists_index, and_imp, forall_apply_eq_imp_iff₂, implies_true, ne_eq, map_eq_nil_iff,
+    Option.getD_some, ls]
+  obtain ⟨left, right⟩ := hm
+  obtain ⟨left_1, right_1⟩ := hms
+  obtain ⟨left_2, right⟩ := right
+  obtain ⟨w, h⟩ := right
+  obtain ⟨left_3, right⟩ := h
+  subst right
+  refine le_antisymm ?_ ?_
+  · simp_all only
+  · simp_all only
+
+--最大値を持つ集合をとって、それが最大の大きさである保証をする定理。この形でなくて、maxCardElementsが空でないことを示せば十分かも。
+lemma largestCard_spec  (l : List (Finset α)) (hne : l ≠ []) :
+    maxCardElements l ≠ [] := by
+
+  -- 定義を開く
+  unfold maxCardElements maxCard
+
+  -- l.map (·.card) を一旦 l' としておく
+  set l' := l.map (·.card) with hl'
+
+  -- リスト l が空でないなら、l' も空でない
+  have l'_ne : l' ≠ [] := by
+    intro contra
+    -- map後のリストが空なら、元のリストも空になるはずなので矛盾
+    have : l.length = 0 := by
+      simp_all only [ne_eq, List.map_eq_nil_iff, l']
+    simp_all only [ne_eq, List.map_eq_nil_iff, l']
+  /-
+    ここで仮定されている補題 `List.max?_spec` を使う：
+      List.max?_spec l'_ne : ∃ m, l'.max? = some m ∧ (∀ x ∈ l', x ≤ m) ∧ m ∈ l'
+  -/
+  rcases max?_spec l'_ne with ⟨m, hm_eq, hm_forall, hm_in⟩
+  rw [← hm_eq] at *
+  simp only [Option.getD_some] at hm_eq
+
+  -- m ∈ l' とは ∃ s ∈ l, s.card = m の意味
+  rcases List.mem_map.mp hm_in with ⟨s, hs_in_l, rfl⟩
+
+  -- s.card = m かつ s ∈ l なので、filter で残る => maxCardElements l に含まれる。  -- つまり filter 結果は空でない
+  simp_all [l']
+
+  let ce := card_eq_max hs_in_l hm_forall hm_in
+  use s
+
+end ExampleUsingMaxEqSome
+
+--ここから下は、閉集合族から極大なものをひとつとっても閉集合族になることを示す部分。
+
+--`F : Finset (Finset α)` が「交わりで閉じている」ことを表す述語。どの2つ A, B ∈ F についても A ∩ B ∈ F
+def IntersectClosed [Fintype α] (F : Finset (Finset α)) : Prop :=
+  (Finset.univ ∈ F) ∧ ∀ A B, A ∈ F → B ∈ F → A ∩ B ∈ F
+
+--包含関係でこれ以上大きくならない（真の上位集合が無い）要素。
+def isMaximal (F : Finset (Finset α)) (M : Finset α) : Prop :=
+  M ∈ F ∧ ∀ (N : Finset α), N ∈ F → M ⊆ N → N = M
+
+/-
+--ほぼ同じ関数が同名で上にも定義されている。
+def largestCard : List (Finset α) → Finset α
+  | []      => ∅
+  | s :: ss =>
+    let rc := largestCard ss
+    if s.card > rc.card then s else rc
+-/
+
+--極大要素を除いても交わり閉が保たれる
+
+/-
+- F : Finset (Finset α) が交わり閉
+- M : Finset α が極大要素 (isMaximal F M)
+- ただし M ≠ univ  (全体集合でない極大要素)
+⇒ F.erase M も交わり閉
+   （すなわち (1) univ ∈ F.erase M, (2) A,B ∈ F.erase M ⇒ A ∩ B ∈ F.erase M）
+-/
+theorem removeMaximalPreservesIntersectClosed [Fintype α] [DecidableEq α]
+  (F : Finset (Finset α))
+  (hF : IntersectClosed F)
+  {M : Finset α} (hM : isMaximal F M)
+  (hMne : M ≠ Finset.univ)
+  : IntersectClosed (F.erase M) :=
+by
+  -- hF : univ ∈ F, ∀ A,B ∈ F, A ∩ B ∈ F
+  let ⟨univ_in_F, inter_closed⟩ := hF
+  let ⟨M_in_F, M_max⟩ := hM
+
+  /- (1) univ_mem: univ ∈ F.erase M
+       には M ≠ univ だから univ ∉ {M} ⇒ univ はまだ F.erase M に残る -/
+  --have univ_mem' : Finset.univ ∈ F.erase M := by
+  --  apply Finset.mem_erase_of_ne_of_mem
+  --  · exact hMne
+  --  · exact univ_in_F
+
+  /- (2) closed_inter: A, B ∈ (F.erase M) ⇒ A ∩ B ∈ (F.erase M)
+       ここで A,B ≠ M は明らかだが、「A ∩ B = M」になってしまったら困るので矛盾を導く
+   -/
+  have inter_closed' : ∀ A B, A ∈ F.erase M → B ∈ F.erase M → A ∩ B ∈ F.erase M :=
+    by
+      intros A B hA hB
+      -- A,B が元々 F に属すること & A≠M, B≠M
+      have A_in_F : A ∈ F := Finset.mem_of_mem_erase hA
+      have A_ne_M : A ≠ M := Finset.ne_of_mem_erase hA
+      have B_in_F : B ∈ F := Finset.mem_of_mem_erase hB
+      have B_ne_M : B ≠ M := Finset.ne_of_mem_erase hB
+
+      -- まず元々の交わり閉性: A∩B ∈ F
+      have AB_in_F : A ∩ B ∈ F := inter_closed A B A_in_F B_in_F
+
+      -- A ∩ B を "F.erase M" に入れるには、これが M でないことを示せばよい
+      apply Finset.mem_erase_of_ne_of_mem
+      · by_contra eqABM
+        -- eqABM: A ∩ B = M
+        -- ⇒ M ⊆ A, M ⊆ B
+        have MsubA : M ⊆ A := by rw [←eqABM]; apply Finset.inter_subset_left
+        have MsubB : M ⊆ B := by rw [←eqABM]; apply Finset.inter_subset_right
+        -- M_max: M ⊆ A ∧ A∈F ⇒ A=M, あるいは矛盾
+        let eqA := M_max A A_in_F MsubA
+        contradiction
+      · exact AB_in_F
+
+  -- 以上で (F.erase M) も「univ を含み、交わりが閉じている」と示せた
+  simp_all only [subset_refl, Finset.subset_univ, ne_eq, not_true_eq_false]

@@ -15,7 +15,7 @@ package "pdfproof" where
 
 require "leanprover-community" / "mathlib" @  "git#v4.15.0-rc1"
 
-require LeanCopilot from git "https://github.com/lean-dojo/LeanCopilot.git" @ "main"
+require LeanCopilot from git "https://github.com/lean-dojo/LeanCopilot.git" @ "v4.15.0"
 
 @[default_target]
 lean_lib «Pdfproof» where

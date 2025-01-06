@@ -14,7 +14,6 @@ import Mathlib.Analysis.InnerProductSpace.Basic
 import Mathlib.Analysis.SpecialFunctions.Sqrt
 import Mathlib.Algebra.Order.Monoid.Defs
 import Mathlib.Algebra.Order.BigOperators.Group.Finset
-import Mathlib.Algebra.Order.AbsoluteValue
 import Mathlib.Data.Finset.Basic
 import Mathlib.Data.Fin.Basic
 import Mathlib.Data.Real.Sqrt
@@ -24,13 +23,7 @@ import Mathlib.Order.ConditionallyCompleteLattice.Basic
 import Mathlib.Order.SetNotation
 import Mathlib.Data.Real.Archimedean
 import Mathlib.Data.Real.Basic
-import Mathlib.Data.Set.Defs
-
---import Mathlib.Integral.IntervalIntegral
-
 import Mathlib.Data.Fintype.Basic
---import Mathlib.Analysis.NormedSpace.Basic
---import Mathlib.Analysis.SpecialFunctions.Ineq
 import LeanCopilot
 
 ------------

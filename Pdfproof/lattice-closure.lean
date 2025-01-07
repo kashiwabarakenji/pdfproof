@@ -1083,16 +1083,18 @@ by
     obtain ⟨val, property⟩ := y
     sorry
 
+ --Fを定義しているので、subtypeもalpha->s in F.groundに絞ってもいいのではないか。
  theorem finite_intersection_in_C_subtype
   {α : Type} [DecidableEq α] [Fintype α]
-  (F : ClosureSystem α) [DecidablePred F.sets]
-  {p : α → Prop} [DecidablePred p] :
+  (F : ClosureSystem α) [DecidablePred F.sets]:
+  let p := fun x => x ∈ F.ground
   ∀ S : Finset (Finset (Subtype p)), S.Nonempty → (∀ s ∈ S, F.sets (s.image Subtype.val)) → F.sets ((finsetInter S).map ⟨Subtype.val,Subtype.val_injective⟩) :=
 by
   -- 定理の主張：帰納法により証明する
-  intro S h_nonempty h_all
+  intro p S h_nonempty h_all
   -- サブタイプの集合族 S を通常の集合族に変換
-  let S_val := S.image (fun t => t.image Subtype.val)
+  --let p : α → Prop := fun x => x ∈ F.ground
+  let S_val := (S : Finset (Finset (Subtype p))).image (fun s => s.image Subtype.val)
   -- S_val は Finset (Finset α)
   have h_S_val_nonempty : S_val.Nonempty :=
     by
@@ -1115,7 +1117,8 @@ by
   -- finsetInter S の値が finsetInter S_val に対応することを示す
   have : (finsetInter S).map ⟨Subtype.val, Subtype.val_injective⟩ =  finsetInter (S.image (fun t => t.map ⟨Subtype.val, Subtype.val_injective⟩ )):=
   by
-    apply intersection_lemma p S
+    let il := intersection_lemma p S
+    sorry
     --これが成り立ちそうだが、証明できないので、なんらかの回避の方法を考える必要がある。
   have : (finsetInter S).map ⟨Subtype.val, Subtype.val_injective⟩ = finsetInter S_val :=
     by
@@ -1171,47 +1174,35 @@ by
   --これはsubtypeに関する命題 これは、intersection_lemmaで証明するものでなさそう。finite_intersection_in_C_subtypeで証明するものの可能性はある。そもそも成り立つかどうか考える。
   --補題の意味がよくわからない。ssを特に限定しなくても、F.setsになるというのが、定理の主張なので、前提はssはsubtypeであれば、なんでもよいはずで、
   --candidatesの元である必要はない。finite_intersection_in_C_subtypeを利用して証明したいが、これはssにsubtypeであることしか要求してない。
-  have:  ∀ (ss : Finset F.ground), ss.map ⟨Subtype.val, Subtype.val_injective⟩ ∈ candidates → F.sets ((clcs F ss).map ⟨Subtype.val, Subtype.val_injective⟩) :=
+  have:  ∀ (ss : Finset F.ground), F.sets ((clcs F ss).map ⟨Subtype.val, Subtype.val_injective⟩) :=
   by
-    dsimp [candidates]
-    intro ss h
-    simp_all only [Finset.mem_filter, Finset.mem_powerset]
-    obtain ⟨left, right⟩ := h
-    obtain ⟨w, h⟩ := right
-    let fi := @finite_intersection_in_C_subtype _ _ _ F _ (fun s => s ∈ F.ground) _
-    rw [clcs]
-    exact fi ss h w
-
-
-    --S.Nonempty →
-    --(∀ s ∈ S, F.sets (Finset.image Subtype.val s)) →
-    --  F.sets (Finset.map { toFun := Subtype.val, inj' := ⋯ } (finsetInter S))
-
-
-
-
-
-
-
-
-  --dsimp [clcs] at this
-  have eq_candidates : candidates = Finset.filter (fun t => F.sets t ∧ sval ⊆ t) F.ground.powerset := rfl
-  rw [eq_candidates] at this
-
-  let fi := finite_intersection_in_C F candidates h_nonempty fiarg
-  rw [eq_candidates] at fi
+    --intro ss
+    have S_val := (Finset.filter (fun s => F.sets s) F.ground.powerset).image (λ s => s.subtype (λ x => x ∈ F.ground))
+    set S_val := (Finset.filter (fun s => F.sets s) F.ground.powerset).image (λ s => s.subtype (λ x => x ∈ F.ground)) with hS_val
+    have h_nonempty : S_val.Nonempty :=
+      by
+        sorry
+    let fi := @finite_intersection_in_C_subtype _ _ _ F _ S_val h_nonempty
+    dsimp [clcs]
+    simp at fi
+    intro ss
+    have : ∀ s ∈ S_val, F.sets (Finset.image Subtype.val s) := by
+      intro s hs
+      simp_all only [Finset.mem_filter, Finset.mem_powerset, implies_true, candidates, sval]
+      sorry
+    let ft := fi this
+    --ftとゴールはまだ随分と違う。
+    --simp_all only [Finset.mem_filter, Finset.mem_powerset, implies_true, candidates, sval]
+    simp at ft
+    convert ft
+    dsimp [clcs]
+    simp only [hS_val]
+    simp_all
+    sorry  --解消できない。
 
   let ts :=this s
   simp at ts
   apply ts
-
-  simp_all only [Finset.mem_filter, Finset.mem_powerset, implies_true, Finset.map_subset_map, and_imp, subset_refl,
-    candidates, sval]
-  intro x hx
-  simp_all only [Finset.mem_map, Function.Embedding.coeFn_mk, Subtype.exists, exists_and_right, exists_eq_right]
-  obtain ⟨w, h⟩ := hx
-  simp_all only
-
 
   lemma finsetInter_insert {α : Type} [DecidableEq α][DecidableEq α] [Fintype α] (A' : Finset (Finset α)) (x s : Finset α)
   (h_mem : s ∈ insert x A') (h_subset : ∀ t ∈ insert x A', s ⊆ t)

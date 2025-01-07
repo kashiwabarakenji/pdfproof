@@ -1115,7 +1115,7 @@ by
   -- finsetInter S の値が finsetInter S_val に対応することを示す
   have : (finsetInter S).map ⟨Subtype.val, Subtype.val_injective⟩ =  finsetInter (S.image (fun t => t.map ⟨Subtype.val, Subtype.val_injective⟩ )):=
   by
-    sorry
+    apply intersection_lemma p S
     --これが成り立ちそうだが、証明できないので、なんらかの回避の方法を考える必要がある。
   have : (finsetInter S).map ⟨Subtype.val, Subtype.val_injective⟩ = finsetInter S_val :=
     by
@@ -1135,7 +1135,85 @@ by
   intro h_mem
   exact Finset.not_mem_empty s h_mem
 
-lemma finsetInter_insert {α : Type} [DecidableEq α][DecidableEq α] [Fintype α] (A' : Finset (Finset α)) (x s : Finset α)
+-- `cl` の定義
+noncomputable def clcs {α : Type} [DecidableEq α] [Fintype α] (F : ClosureSystem α) [DecidablePred F.sets]
+  (s : Finset { x // x ∈ F.ground }) : Finset { x // x ∈ F.ground } :=
+  let sval := s.map ⟨Subtype.val, Subtype.val_injective⟩
+  let ios := finsetInter (F.ground.powerset.filter (fun (t : Finset α) => F.sets t ∧ sval ⊆ t))
+  ios.subtype (λ x => x ∈ F.ground)
+
+-- `F.sets (clcs s)` の証明
+theorem cl_in_F_sets {α : Type} [DecidableEq α] [Fintype α]
+  (F : ClosureSystem α) [DecidablePred F.sets] :
+  ∀ (s : Finset { x // x ∈ F.ground }), F.sets ((clcs F s).map ⟨Subtype.val, Subtype.val_injective⟩) :=
+by
+  intro s
+  let sval := s.map ⟨Subtype.val, Subtype.val_injective⟩
+  let candidates := F.ground.powerset.filter (fun t => F.sets t ∧ sval ⊆ t)
+  have h_nonempty : candidates.Nonempty :=
+    by
+      use F.ground
+      dsimp [candidates]
+      simp [Finset.mem_filter, Finset.mem_powerset]
+      constructor
+      exact F.has_ground
+      simp_all only [sval]
+      intro t ht
+      simp_all only [Finset.mem_map, Function.Embedding.coeFn_mk, Subtype.exists, exists_and_right, exists_eq_right]
+      obtain ⟨w, h⟩ := ht
+      simp_all only
+
+  have fiarg:  (∀ s ∈ candidates, F.sets s) :=
+  by
+    intro s_1 a
+    simp_all only [Finset.mem_filter, Finset.mem_powerset, candidates, sval]
+
+  --これはsubtypeに関する命題 これは、intersection_lemmaで証明するものでなさそう。finite_intersection_in_C_subtypeで証明するものの可能性はある。そもそも成り立つかどうか考える。
+  --補題の意味がよくわからない。ssを特に限定しなくても、F.setsになるというのが、定理の主張なので、前提はssはsubtypeであれば、なんでもよいはずで、
+  --candidatesの元である必要はない。finite_intersection_in_C_subtypeを利用して証明したいが、これはssにsubtypeであることしか要求してない。
+  have:  ∀ (ss : Finset F.ground), ss.map ⟨Subtype.val, Subtype.val_injective⟩ ∈ candidates → F.sets ((clcs F ss).map ⟨Subtype.val, Subtype.val_injective⟩) :=
+  by
+    dsimp [candidates]
+    intro ss h
+    simp_all only [Finset.mem_filter, Finset.mem_powerset]
+    obtain ⟨left, right⟩ := h
+    obtain ⟨w, h⟩ := right
+    let fi := @finite_intersection_in_C_subtype _ _ _ F _ (fun s => s ∈ F.ground) _
+    rw [clcs]
+    exact fi ss h w
+
+
+    --S.Nonempty →
+    --(∀ s ∈ S, F.sets (Finset.image Subtype.val s)) →
+    --  F.sets (Finset.map { toFun := Subtype.val, inj' := ⋯ } (finsetInter S))
+
+
+
+
+
+
+
+
+  --dsimp [clcs] at this
+  have eq_candidates : candidates = Finset.filter (fun t => F.sets t ∧ sval ⊆ t) F.ground.powerset := rfl
+  rw [eq_candidates] at this
+
+  let fi := finite_intersection_in_C F candidates h_nonempty fiarg
+  rw [eq_candidates] at fi
+
+  let ts :=this s
+  simp at ts
+  apply ts
+
+  simp_all only [Finset.mem_filter, Finset.mem_powerset, implies_true, Finset.map_subset_map, and_imp, subset_refl,
+    candidates, sval]
+  intro x hx
+  simp_all only [Finset.mem_map, Function.Embedding.coeFn_mk, Subtype.exists, exists_and_right, exists_eq_right]
+  obtain ⟨w, h⟩ := hx
+  simp_all only
+
+
+  lemma finsetInter_insert {α : Type} [DecidableEq α][DecidableEq α] [Fintype α] (A' : Finset (Finset α)) (x s : Finset α)
   (h_mem : s ∈ insert x A') (h_subset : ∀ t ∈ insert x A', s ⊆ t)
   (ih : s ∈ A' → finsetInter A' = s) :
   finsetInter (insert x A') = s :=
@@ -1181,6 +1259,8 @@ by
         --このケースは、帰納法の仮定を使う。A 'がAよりもひとつ短いものなので。帰納法の仮定は、ihに入っている。
         sorry
 
+--ここから下は、sets sがclでs自身に映ること。
+
 theorem finsetInter_eq_s {α : Type} [DecidableEq α] [Fintype α]
   (A : Finset (Finset α)) (s : Finset α)
   (h_mem : s ∈ A) (h_subset : ∀ t ∈ A, s ⊆ t) :
@@ -1211,50 +1291,6 @@ by
           rw [ih h_mem (fun t ht => h_subset t (Finset.mem_insert_of_mem ht))]
           exact Finset.eq_of_subset_of_subset h_s_subset_inter (h_subset s h_mem)
       -/
-
--- `cl` の定義
-noncomputable def clcs {α : Type} [DecidableEq α] [Fintype α] (F : ClosureSystem α) [DecidablePred F.sets]
-  (s : Finset { x // x ∈ F.ground }) : Finset { x // x ∈ F.ground } :=
-  let sval := s.map ⟨Subtype.val, Subtype.val_injective⟩
-  let ios := finsetInter (F.ground.powerset.filter (fun (t : Finset α) => F.sets t ∧ sval ⊆ t))
-  ios.subtype (λ x => x ∈ F.ground)
-
--- `F.sets (clcs s)` の証明
-theorem cl_in_F_sets {α : Type} [DecidableEq α] [Fintype α]
-  (F : ClosureSystem α) [DecidablePred F.sets] :
-  ∀ (s : Finset { x // x ∈ F.ground }), F.sets ((clcs F s).map ⟨Subtype.val, Subtype.val_injective⟩) :=
-by
-  intro s
-  let sval := s.map ⟨Subtype.val, Subtype.val_injective⟩
-  let candidates := F.ground.powerset.filter (fun t => F.sets t ∧ sval ⊆ t)
-  have h_nonempty : candidates.Nonempty :=
-    by
-      use F.ground
-      dsimp [candidates]
-      simp [Finset.mem_filter, Finset.mem_powerset]
-      constructor
-      exact F.has_ground
-      simp_all only [sval]
-      intro t ht
-      simp_all only [Finset.mem_map, Function.Embedding.coeFn_mk, Subtype.exists, exists_and_right, exists_eq_right]
-      obtain ⟨w, h⟩ := ht
-      simp_all only
-
-  dsimp only [clcs]
-  have fiarg:  (∀ s ∈ candidates, F.sets s) :=
-  by
-    intro s_1 a
-    simp_all only [Finset.mem_filter, Finset.mem_powerset, candidates, sval]
-  let fi := finite_intersection_in_C F candidates h_nonempty fiarg
-  have:  ∀ (ss : Finset F.ground), ss.map ⟨Subtype.val, Subtype.val_injective⟩ ∈ candidates → F.sets ((clcs F ss).map ⟨Subtype.val, Subtype.val_injective⟩) :=
-  by
-    intro ss hss
-    dsimp [candidates] at hss fi
-    simp [Finset.mem_filter] at hss
-    dsimp [clcs]
-    --dsimp [Finset.map]
-    sorry
-  sorry
 
   /-
 noncomputable def closure_operator_from_CS {α :Type} [DecidableEq α][Fintype α] (C: ClosureSystem α) [DecidablePred C.sets]: SetFamily.closure_operator (C.toSetFamily)

@@ -1204,12 +1204,102 @@ by
     --convert this --比べると結構違う。thisで、Finset.image subtype.val tとなっているところがgoalでは、飛ばされている。
     --thisのほうがあとから設定した割には、無駄なところが多い。証明すべき命題をゴールに合わせて変えた方がいいのかも。
 
+    have : Finset.image (fun t ↦ Finset.filter (fun x ↦ x ∈ F.ground) t) filtered = filtered :=
+    by
+      simp_all only [Finset.mem_filter, Finset.mem_powerset]
+      ext x
+      simp
+      dsimp [filtered]
+      apply Iff.intro
+      · intro a
+        simp_all only [Finset.mem_filter, Finset.mem_powerset]
+        constructor
+        simp_all only [Function.Embedding.coeFn_mk, filtered, tmpimage2, tmp]
+        obtain ⟨w, h⟩ := a
+        obtain ⟨left, right⟩ := h
+        obtain ⟨left, right_1⟩ := left
+        obtain ⟨left_1, right_1⟩ := right_1
+        subst right
+        intro x hx
+        simp_all only [Finset.mem_filter]
+        constructor
+        · simp_all only [Function.Embedding.coeFn_mk, filtered, tmpimage2, tmp]
+          obtain ⟨w, h⟩ := a
+          obtain ⟨left, right⟩ := h
+          obtain ⟨left, right_1⟩ := left
+          obtain ⟨left_1, right_1⟩ := right_1
+          subst right
+          rwa [Finset.filter_true_of_mem left]
+        ·
+          simp_all only [Function.Embedding.coeFn_mk, filtered, tmpimage2, tmp]
+          obtain ⟨w, h⟩ := a
+          obtain ⟨left, right⟩ := h
+          obtain ⟨left, right_1⟩ := left
+          obtain ⟨left_1, right_1⟩ := right_1
+          subst right
+          intro x hx
+          simp_all only [Finset.mem_map, Function.Embedding.coeFn_mk, Subtype.exists, exists_and_right, exists_eq_right,
+            Finset.mem_filter]
+          obtain ⟨w_1, h⟩ := hx
+          simp_all only [and_true]
+          apply right_1
+          simp_all only [Finset.mem_map, Function.Embedding.coeFn_mk, Subtype.exists, exists_and_right, exists_eq_right,
+            exists_const]
+      · intro a
+        simp_all only [Finset.mem_filter, Finset.mem_powerset]
+        constructor
+        simp_all only [Function.Embedding.coeFn_mk, filtered, tmpimage2, tmp]
+        obtain ⟨w, h⟩ := a
+        obtain ⟨left, right⟩ := h
+        apply And.intro
+        · apply And.intro
+          · exact w
+          · simp_all only [Function.Embedding.coeFn_mk, and_self, filtered, tmpimage2, tmp]
+        · simp_all only [Function.Embedding.coeFn_mk, and_self, filtered, tmpimage2, tmp]
+          ext a : 1
+          simp_all only [Finset.mem_filter, and_iff_left_iff_imp]
+          intro a_1
+          exact w a_1
+
+    have : Finset.image (fun t ↦ Finset.image Subtype.val t) (Finset.image (fun t ↦ Finset.subtype (fun x ↦ x ∈ F.ground) t) filtered) = filtered := by
+      simp_all only [Finset.mem_image, Function.Embedding.coeFn_mk, Subtype.exists, exists_and_right, exists_eq_right]
+      ext x
+      simp
+      dsimp [filtered]
+      apply Iff.intro
+      · intro a
+        obtain ⟨w, h⟩ := a
+        obtain ⟨left, right⟩ := h
+        subst right
+        simp_all only [Finset.mem_filter, Finset.mem_powerset, filtered, tmpimage2, tmp]
+        obtain ⟨left, right⟩ := left
+        obtain ⟨left_1, right⟩ := right
+        apply And.intro
+        · sorry
+        · apply And.intro
+          · sorry
+          · sorry
+      · intro a
+        sorry
+
     have :finsetInter (Finset.image (fun t ↦ Finset.subtype (fun x ↦ x ∈ F.ground) t) filtered) =
       Finset.subtype (fun x ↦ x ∈ F.ground) (finsetInter filtered) :=
     by
       simp at il
       simp_all
+      dsimp [tmpimage2,tmp,tmp_right] at lem2
+      rw [this] at lem2
+      --#check lem2
+      --finsetInter (Finset.image (fun t ↦ Finset.image Subtype.val t) (Finset.image (fun t ↦ Finset.subtype (fun x ↦ x ∈ F.ground) t) filtered)) =
+      --Finset.image Subtype.val (finsetInter (Finset.image (fun t ↦ Finset.subtype (fun x ↦ x ∈ F.ground) t) filtered))
       --ilとゴールを比べる必要がある。
+      #check Finset.image Subtype.val (finsetInter (Finset.image (fun t ↦ Finset.subtype (fun x ↦ x ∈ F.ground) t) filtered))
+      --Finset.image Subtype.val (finsetInter (Finset.image (fun t ↦ Finset.subtype (fun x ↦ x ∈ F.ground) t) filtered)) : Finset α
+      sorry
+
+
+
+
 
     --Finset.map { toFun := Subtype.val, inj' := ⋯ } (finsetInter (Finset.image (fun t ↦ Finset.subtype (fun x ↦ x ∈ F.ground) t) filtered)) =
     --finsetInter (Finset.image (fun t ↦ Finset.map { toFun := Subtype.val, inj' := ⋯ } t) (Finset.image (fun t ↦ Finset.subtype (fun x ↦ x ∈ F.ground) t) filtered))

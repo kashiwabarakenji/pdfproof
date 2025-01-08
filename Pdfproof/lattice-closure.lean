@@ -1134,15 +1134,90 @@ lemma cl_in_F_sets_lemma  {α : Type} [DecidableEq α] [Fintype α]
   (F : ClosureSystem α) [DecidablePred F.sets] (s : Finset { x // x ∈ F.ground }):
    Finset.subtype (fun x ↦ x ∈ F.ground) (finsetInter (Finset.filter (fun t ↦ F.sets t ∧ s.map ⟨Subtype.val, Subtype.val_injective⟩ ⊆ t) F.ground.powerset)) = finsetInter (Finset.image (fun t ↦ Finset.subtype (fun x ↦ x ∈ F.ground) t) (Finset.filter (fun t ↦ F.sets t ∧ s.map ⟨Subtype.val, Subtype.val_injective⟩ ⊆ t) F.ground.powerset)) :=
 by
-  -- `Finset.filter` を両辺で共有しているので、共通部分を取り出す
+  --intersection_lemma {α : Type} [DecidableEq α] [Fintype α] (p : α → Prop) [DecidablePred p] (S : Finset (Finset (Subtype p))) :
+  --Finset.map { toFun := Subtype.val, inj' := ⋯ } (finsetInter S) =
+  -- finsetInter (Finset.image (fun t ↦ Finset.map { toFun := Subtype.val, inj' := ⋯ } t) S)
+
+  --goal
+  --Finset.subtype (fun x ↦ x ∈ F.ground) (finsetInter (Finset.filter (fun t ↦ F.sets t ∧ Finset.map { toFun := Subtype.val, inj' := ⋯ } s ⊆ t) F.ground.powerset)) =
+  --finsetInter (Finset.image (fun t ↦ Finset.subtype (fun x ↦ x ∈ F.ground) t) (Finset.filter (fun t ↦ F.sets t ∧ Finset.map { toFun := Subtype.val, inj' := ⋯ } s ⊆ t) F.ground.powerset))
+  --右辺はmapじゃなくて、単なるsubtypeになっている。これは証明が難しくならないのか。
+
   set filtered := Finset.filter (fun t ↦ F.sets t ∧ s.map ⟨Subtype.val, Subtype.val_injective⟩ ⊆ t) F.ground.powerset
   -- ゴールを簡略化
+
   have : Finset.subtype (fun x ↦ x ∈ F.ground) (finsetInter filtered) =
              finsetInter (Finset.image (fun t ↦ Finset.subtype (fun x ↦ x ∈ F.ground) t) filtered) := by
-    simp only [Finset.mem_subtype, Finset.mem_image, Finset.mem_filter, Finset.mem_powerset, finsetInter, List.foldr]
-    dsimp [filtered]
-    sorry
-    --exact intersection_lemma (fun x => x ∈ F.ground) (filtered.map (λ t => t.subtype (λ x => x ∈ F.ground)))
+
+    let il := (intersection_lemma (fun x => x ∈ F.ground) (filtered.image (λ t => t.subtype (λ x => x ∈ F.ground)))).symm
+
+    let tmp :=  (Finset.image (fun t ↦ Finset.subtype (fun x ↦ x ∈ F.ground) t) filtered)
+    let tmpimage := tmp.image (fun t ↦ t.map ⟨Subtype.val, Subtype.val_injective⟩)
+    let tmp_right := (Finset.image (fun t ↦ Finset.subtype (fun x ↦ x ∈ F.ground) t) filtered)
+    --これをコメントアウトするとエラーになる。simpで利用しているのか。
+    have lem1:finsetInter tmpimage = Finset.map ⟨Subtype.val, Subtype.val_injective⟩ (finsetInter tmp_right) :=
+    by
+      simp_all only [Finset.map_inj, tmpimage, tmp, filtered, il, tmp_right]
+      ext a : 1
+      obtain ⟨val, property⟩ := a
+      apply Iff.intro
+      · intro a
+        convert a
+      · intro a
+        convert a
+
+    dsimp [tmpimage, tmp, tmp_right] at lem1
+
+    rw [Finset.map_eq_image] at lem1 --これはimageを増やす方向。simpによって、mapができてしまた。
+
+
+    rw [Finset.map_eq_image] at il
+
+    let tmpimage2 := tmp.image (fun t ↦ t.image Subtype.val)
+    have lem2:finsetInter tmpimage2 = Finset.image Subtype.val (finsetInter tmp_right) :=
+    by
+      simp_all only [Finset.map_inj, tmpimage2, tmp, filtered, il, tmp_right]
+      rw [Finset.map_eq_image]  --これはimageを増やす方向。simpによって、mapができてしまた。
+      rw [Finset.map_eq_image] at il
+      simp
+      simp at il
+      rw [il]
+      simp_all
+      convert lem1
+      · ext x a : 2
+        simp_all only [Finset.mem_image, Subtype.exists, exists_and_right, exists_eq_right, Finset.mem_map,
+          Function.Embedding.coeFn_mk]
+      · ext x a : 2
+        simp_all only [Finset.mem_image, Subtype.exists, exists_and_right, exists_eq_right, Finset.mem_map,
+          Function.Embedding.coeFn_mk]
+      · ext x a : 2
+        simp_all only [Finset.mem_image, Subtype.exists, exists_and_right, exists_eq_right, Finset.mem_map,
+          Function.Embedding.coeFn_mk]
+
+    dsimp [tmpimage2, tmp, tmp_right] at lem1
+
+    --let tmp_right2 := (Finset.image (fun t => t.subtype (fun x => x ∈ F.ground)) filtered)
+    symm
+    --rw [←Finset.map_eq_image] at this
+    --rw [Finset.map_eq_image]
+
+    --convert this --比べると結構違う。thisで、Finset.image subtype.val tとなっているところがgoalでは、飛ばされている。
+    --thisのほうがあとから設定した割には、無駄なところが多い。証明すべき命題をゴールに合わせて変えた方がいいのかも。
+
+    have :finsetInter (Finset.image (fun t ↦ Finset.subtype (fun x ↦ x ∈ F.ground) t) filtered) =
+      Finset.subtype (fun x ↦ x ∈ F.ground) (finsetInter filtered) :=
+    by
+      simp at il
+      simp_all
+      --ilとゴールを比べる必要がある。
+
+    --Finset.map { toFun := Subtype.val, inj' := ⋯ } (finsetInter (Finset.image (fun t ↦ Finset.subtype (fun x ↦ x ∈ F.ground) t) filtered)) =
+    --finsetInter (Finset.image (fun t ↦ Finset.map { toFun := Subtype.val, inj' := ⋯ } t) (Finset.image (fun t ↦ Finset.subtype (fun x ↦ x ∈ F.ground) t) filtered))
+
+
+
+
+
   -- `lemma intersection_lemma` を適用
   simp_all only [filtered]
 

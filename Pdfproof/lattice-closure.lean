@@ -1049,7 +1049,9 @@ by
 --Finset.image Subtype.val (foldr (fun x acc ↦ x ∩ acc) Finset.univ S.toList) =
 --  foldr (fun x acc ↦ x ∩ acc) Finset.univ (Finset.image (fun t ↦ Finset.image Subtype.val t) S).toList
 
-
+--下のfinite_intersection_in_C_subtypeで使っている。今の方針では証明できそうにない。最初からfintypeで照明した方が早いかも。
+--もしくは、2つの場合には示せているので、それを利用して帰納法で示すというのはあるかもしれない。その証明をChatGPT o1に作ってもらうとよいかも。
+--finsetInterをとってからsubtypeにするのと、subtypeにしてからfinsetInterとるのは同じであることの定理。
 lemma intersection_lemma  {α : Type} [DecidableEq α] [Fintype α] (p : α → Prop) [DecidablePred p] (S : Finset (Finset (Subtype p)))
  : (finsetInter S).map ⟨Subtype.val, Subtype.val_injective⟩ = finsetInter (S.image (fun t => t.map ⟨Subtype.val, Subtype.val_injective⟩ )) :=
 by
@@ -1083,7 +1085,7 @@ by
     obtain ⟨val, property⟩ := y
     sorry
 
- --Fを定義しているので、subtypeもalpha->s in F.groundに絞ってもいいのではないか。
+ --下で使っている。上の補題を使っていて、それが未解決なので、これも未解決になっている。
  theorem finite_intersection_in_C_subtype
   {α : Type} [DecidableEq α] [Fintype α]
   (F : ClosureSystem α) [DecidablePred F.sets]:
@@ -1118,25 +1120,57 @@ by
   have : (finsetInter S).map ⟨Subtype.val, Subtype.val_injective⟩ =  finsetInter (S.image (fun t => t.map ⟨Subtype.val, Subtype.val_injective⟩ )):=
   by
     let il := intersection_lemma p S
-    sorry
-    --これが成り立ちそうだが、証明できないので、なんらかの回避の方法を考える必要がある。
-  have : (finsetInter S).map ⟨Subtype.val, Subtype.val_injective⟩ = finsetInter S_val :=
-    by
-      dsimp [S_val]
-
-      unfold finsetInter
-      sorry
-
-  rw [←this] at h_finset_inter
+    convert il
 
   simp_all only [Finset.image_nonempty, Finset.mem_image, forall_exists_index, and_imp, forall_apply_eq_imp_iff₂,
-    implies_true, S_val]
+    implies_true, p, S_val]
+  convert h_finset_inter
+  ext x a : 2
+  simp_all only [Finset.mem_map, Function.Embedding.coeFn_mk, Subtype.exists, exists_and_right, exists_eq_right,
+    Finset.mem_image]
+
+--intersection_lemmaと内容がかぶっているので統一するか、片方から片方を示す。
+lemma cl_in_F_sets_lemma  {α : Type} [DecidableEq α] [Fintype α]
+  (F : ClosureSystem α) [DecidablePred F.sets] (s : Finset { x // x ∈ F.ground }):
+   Finset.subtype (fun x ↦ x ∈ F.ground) (finsetInter (Finset.filter (fun t ↦ F.sets t ∧ s.map ⟨Subtype.val, Subtype.val_injective⟩ ⊆ t) F.ground.powerset)) = finsetInter (Finset.image (fun t ↦ Finset.subtype (fun x ↦ x ∈ F.ground) t) (Finset.filter (fun t ↦ F.sets t ∧ s.map ⟨Subtype.val, Subtype.val_injective⟩ ⊆ t) F.ground.powerset)) :=
+by
+  -- `Finset.filter` を両辺で共有しているので、共通部分を取り出す
+  set filtered := Finset.filter (fun t ↦ F.sets t ∧ s.map ⟨Subtype.val, Subtype.val_injective⟩ ⊆ t) F.ground.powerset
+  -- ゴールを簡略化
+  have : Finset.subtype (fun x ↦ x ∈ F.ground) (finsetInter filtered) =
+             finsetInter (Finset.image (fun t ↦ Finset.subtype (fun x ↦ x ∈ F.ground) t) filtered) := by
+    simp only [Finset.mem_subtype, Finset.mem_image, Finset.mem_filter, Finset.mem_powerset, finsetInter, List.foldr]
+    dsimp [filtered]
+    sorry
+    --exact intersection_lemma (fun x => x ∈ F.ground) (filtered.map (λ t => t.subtype (λ x => x ∈ F.ground)))
+  -- `lemma intersection_lemma` を適用
+  simp_all only [filtered]
+
+  --let il := intersection_lemma (fun x => x ∈ F.ground)
+  --sorry
 
 lemma finsetInter_empty {α : Type} [DecidableEq α] (s : Finset α) :
   s ∈ (∅ : Finset (Finset α)) → False :=
 by
   intro h_mem
   exact Finset.not_mem_empty s h_mem
+
+lemma subtype_image_val_eq_filter {α : Type} [DecidableEq α]
+  (p : α → Prop) [DecidablePred p] (s : Finset α) :
+  Finset.image Subtype.val (Finset.subtype p s) = s.filter p :=
+by
+  ext x
+  simp [Finset.mem_image, Finset.mem_filter, Finset.mem_subtype]
+
+lemma filter_eq_self_of_subset {α : Type} [DecidableEq α] [Fintype α]
+  (p : α → Prop) [DecidablePred p] (s : Finset α) (h_subset : s ⊆ (Finset.univ.filter p)) :
+  s.filter p = s :=
+by
+  ext x
+  simp [Finset.mem_filter]
+  intro a
+  simpa using h_subset a
+
 
 -- `cl` の定義
 noncomputable def clcs {α : Type} [DecidableEq α] [Fintype α] (F : ClosureSystem α) [DecidablePred F.sets]
@@ -1145,14 +1179,14 @@ noncomputable def clcs {α : Type} [DecidableEq α] [Fintype α] (F : ClosureSys
   let ios := finsetInter (F.ground.powerset.filter (fun (t : Finset α) => F.sets t ∧ sval ⊆ t))
   ios.subtype (λ x => x ∈ F.ground)
 
--- `F.sets (clcs s)` の証明
+-- `F.sets (clcs s)` の証明。 subtypeがらみで難しい。
 theorem cl_in_F_sets {α : Type} [DecidableEq α] [Fintype α]
   (F : ClosureSystem α) [DecidablePred F.sets] :
   ∀ (s : Finset { x // x ∈ F.ground }), F.sets ((clcs F s).map ⟨Subtype.val, Subtype.val_injective⟩) :=
 by
   intro s
   let sval := s.map ⟨Subtype.val, Subtype.val_injective⟩
-  let candidates := F.ground.powerset.filter (fun t => F.sets t ∧ sval ⊆ t)
+  let candidates := F.ground.powerset.filter (fun t => F.sets t ∧ sval ⊆ t) --sを含むhyperedgeたち。
   have h_nonempty : candidates.Nonempty :=
     by
       use F.ground
@@ -1166,91 +1200,84 @@ by
       obtain ⟨w, h⟩ := ht
       simp_all only
 
-  have fiarg:  (∀ s ∈ candidates, F.sets s) :=
+  have fiarg:  (∀ s ∈ candidates, F.sets s) := --candidatesの元が本当にhyperedgeである保証
   by
     intro s_1 a
     simp_all only [Finset.mem_filter, Finset.mem_powerset, candidates, sval]
 
-  --これはsubtypeに関する命題 これは、intersection_lemmaで証明するものでなさそう。finite_intersection_in_C_subtypeで証明するものの可能性はある。そもそも成り立つかどうか考える。
-  --補題の意味がよくわからない。ssを特に限定しなくても、F.setsになるというのが、定理の主張なので、前提はssはsubtypeであれば、なんでもよいはずで、
-  --candidatesの元である必要はない。finite_intersection_in_C_subtypeを利用して証明したいが、これはssにsubtypeであることしか要求してない。
-  have:  ∀ (ss : Finset F.ground), F.sets ((clcs F ss).map ⟨Subtype.val, Subtype.val_injective⟩) :=
-  by
-    --intro ss
-    have S_val := (Finset.filter (fun s => F.sets s) F.ground.powerset).image (λ s => s.subtype (λ x => x ∈ F.ground))
-    set S_val := (Finset.filter (fun s => F.sets s) F.ground.powerset).image (λ s => s.subtype (λ x => x ∈ F.ground)) with hS_val
-    have h_nonempty : S_val.Nonempty :=
-      by
-        sorry
-    let fi := @finite_intersection_in_C_subtype _ _ _ F _ S_val h_nonempty
-    dsimp [clcs]
-    simp at fi
-    intro ss
-    have : ∀ s ∈ S_val, F.sets (Finset.image Subtype.val s) := by
+  have : F.sets ((clcs F s).map ⟨Subtype.val, Subtype.val_injective⟩) := by
+    dsimp [clcs] --clcsを展開する必要があるが、本当は補題で済ませたい。
+    --subtypeでなければ、hyperedgeの共通部分がhyperedgeになるのは、
+    --theorem finite_intersection_in_C {α : Type} [DecidableEq α][Fintype α]
+    --(F : ClosureSystem α) [DecidablePred F.sets]:
+    --∀ S : Finset (Finset α), S.Nonempty → (∀ s ∈ S, F.sets s) → F.sets (finsetInter S)
+    --で示せている。clcsは単にsubtype版と思われる。
+    --finite_intersection_in_C_subtypeを適用したいが、subtypeの場合に使えるかわからない。
+    --∀ S : Finset (Finset α)に当たる部分は、
+    let fi := finite_intersection_in_C F candidates h_nonempty fiarg
+    dsimp [candidates] at fi
+    -- ゴールとfiは似ているが、subtypeかどうかの違いがあるので、このアプローチではうまくいかないように思う。
+    -- finite_intersection_in_C_subtypeを使うべき。
+
+    --以下は頑張って示した。
+    let candidates_subtype := candidates.image (λ t => t.subtype (λ x => x ∈ F.ground))
+    have h_candidates_subtype_nonempty : candidates_subtype.Nonempty := by
+      simp only [Finset.Nonempty, Finset.mem_image]
+      use F.ground.subtype (λ x => x ∈ F.ground)
+      dsimp [candidates]
+      dsimp [candidates_subtype]
+      dsimp [candidates]
+      rw [Finset.mem_image]
+      use F.ground
+      rw [Finset.mem_filter]
+      constructor
+      constructor
+      simp_all only [Finset.mem_powerset, subset_refl]
+      constructor
+      exact F.has_ground
+
+      simp_all only [sval]
+
+      intro x hx
+      simp_all only [Finset.mem_map, Function.Embedding.coeFn_mk, Subtype.exists, exists_and_right, exists_eq_right]
+      obtain ⟨w, h⟩ := hx
+      simp_all only
+
+      simp_all only
+
+    --以下は頑張って示した。
+    let fiarg_subtype : ∀ s ∈ candidates_subtype, F.sets (Finset.image Subtype.val s) := by
       intro s hs
-      simp_all only [Finset.mem_filter, Finset.mem_powerset, implies_true, candidates, sval]
-      sorry
-    let ft := fi this
-    --ftとゴールはまだ随分と違う。
-    --simp_all only [Finset.mem_filter, Finset.mem_powerset, implies_true, candidates, sval]
-    simp at ft
-    convert ft
-    dsimp [clcs]
-    simp only [hS_val]
-    simp_all
-    sorry  --解消できない。
+      dsimp [candidates_subtype] at hs
+      simp only [Finset.mem_image] at hs
+      obtain ⟨t, ht, rfl⟩ := hs
+      rw [subtype_image_val_eq_filter]
+      have : t ⊆ F.ground := by
+        simp_all only [Finset.image_nonempty, Finset.mem_filter, Finset.mem_powerset, candidates_subtype, candidates,
+          sval]
+      rw [filter_eq_self_of_subset]
+      simp_all only [Finset.image_nonempty, Finset.mem_filter, Finset.mem_powerset, true_and, and_self,
+        candidates_subtype, candidates, sval]
+      simp_all only [Finset.image_nonempty, Finset.mem_filter, Finset.mem_powerset, true_and, Finset.filter_univ_mem,
+        candidates_subtype, candidates, sval]
 
-  let ts :=this s
-  simp at ts
-  apply ts
+    let fis := finite_intersection_in_C_subtype F candidates_subtype h_candidates_subtype_nonempty fiarg_subtype
+    dsimp [candidates_subtype] at fis
+    dsimp [candidates] at fis
+    have : (finsetInter (Finset.filter (fun t ↦ F.sets t ∧ sval ⊆ t) F.ground.powerset)).subtype (λ x => x ∈ F.ground) = finsetInter (Finset.image (fun t ↦ t.subtype (λ x => x ∈ F.ground)) (Finset.filter (fun t ↦ F.sets t ∧ sval ⊆ t) F.ground.powerset)) := by
+      dsimp [sval]
+      exact cl_in_F_sets_lemma F s
+      --exact intersection_lemma (fun x => x ∈ F.ground) (Finset.filter (fun t ↦ F.sets (t.map (Function.Embedding.subtype (fun x => x ∈ F.ground))) ∧ s.map ⟨Subtype.val, Subtype.val_injective⟩ ⊆ t.map (Function.Embedding.subtype (fun x => x ∈ F.ground))) F.ground.powerset)
+      --この代わりにintersection_lemmaを使う方向で考える。今はまだうまくいっていない。
+      --Finset.subtype (fun x ↦ x ∈ F.ground) (finsetInter (Finset.filter (fun t ↦ F.sets t ∧ sval ⊆ t) F.ground.powerset)) = finsetInter (Finset.image (fun t ↦ Finset.subtype (fun x ↦ x ∈ F.ground) t) (Finset.filter (fun t ↦ F.sets t ∧ s.map ⟨Subtype.val, Subtype.val_injective⟩ ⊆ t) F.ground.powerset))
 
-  lemma finsetInter_insert {α : Type} [DecidableEq α][DecidableEq α] [Fintype α] (A' : Finset (Finset α)) (x s : Finset α)
-  (h_mem : s ∈ insert x A') (h_subset : ∀ t ∈ insert x A', s ⊆ t)
-  (ih : s ∈ A' → finsetInter A' = s) :
-  finsetInter (insert x A') = s :=
-by
-  rw [finsetInter, Finset.insert_eq]
-  cases A'.eq_empty_or_nonempty with
-  | inl h_empty =>
-      -- サブケース: A' = ∅ の場合
-      rw [h_empty]
-      subst h_empty
-      simp_all only [insert_emptyc_eq, Finset.mem_singleton, subset_refl, implies_true, Finset.not_mem_empty,
-        IsEmpty.forall_iff, Finset.union_empty, Finset.toList_singleton, foldr_cons, foldr_nil, Finset.inter_univ]
-  | inr h_nonempty =>
-      -- サブケース: A' ≠ ∅ の場合
-      have h_s_subset_x : s ⊆ x := h_subset x (Finset.mem_insert_self x A')
+    rw [← this] at fis
+    exact fis
 
-      by_cases x_neq_s : x = s
-      case pos =>--こっちが簡単な場合で、帰納法の仮定も使わないかも。ただし、foldrを分解する必要がある。
-        -- サブケース: x = s の場合
-        --この補題は、caseに関係なく成り立つ。extensiveの証明に使った補題で証明。
-        --lemma finset_inter_subset_iff {α : Type} [DecidableEq α][Fintype α] (A0 : Finset (Finset α)) (A : Finset α) : (∀ X ∈ A0, A ⊆ X )  ↔ A ⊆ finsetInter A0  :=
-        have h_s_subset_inter : s ⊆ finsetInter A' := by
-          apply (finset_inter_subset_iff A' s).mp
-          intro X a
-          subst x_neq_s
-          simp_all only [Finset.mem_insert, true_or, forall_eq_or_imp, subset_refl, true_and]
-        --rw [List.foldr_cons]順序の問題でうまくいかないのかも。permの議論が必要なのか。insert_foldr_interを再び使うのか。
-        --rw [insert_foldr_inter x A' h_mem]
-        sorry
-        /-
-        induction A' using Finset.induction_on with
-        | empty =>
-            -- 矛盾: A' が空集合の場合、s ∈ A' が成り立たない
-            exfalso
-            subst x_neq_s
-            simp_all only [Finset.not_nonempty_empty]
-        | insert A'' ih =>
-            -- サブケース: A' = insert A'' A''' の場合
-            --search_proof
-        -/
+  simp_all only [Finset.mem_filter, Finset.mem_powerset, implies_true, candidates, sval]
 
-      case neg =>
-        --このケースは、帰納法の仮定を使う。A 'がAよりもひとつ短いものなので。帰納法の仮定は、ihに入っている。
-        sorry
-
---ここから下は、sets sがclでs自身に映ること。
+-----------------------------------------------------------------------------------------
+--ここから下は、sets sがclでs自身に映ること。ただし、この言明は、subtypeを考慮してないので最終的につかえるかわからない。
 
 theorem finsetInter_eq_s {α : Type} [DecidableEq α] [Fintype α]
   (A : Finset (Finset α)) (s : Finset α)
@@ -1262,26 +1289,46 @@ by
       -- 矛盾: A が空集合の場合、s ∈ A が成り立たない
       exfalso
       exact Finset.not_mem_empty s h_mem
-  | insert x  ih =>
+  | insert a_not_s  ih =>
+      rename_i ft  s' A' -- ftはFintype。使わないかも。
+
       -- A = insert x A' の場合
       rw [finsetInter]
-      simp [Finset.insert_eq]
-      sorry
-      /-
-      have h_s_subset_x : s ⊆ x := h_subset x (Finset.mem_insert_self x A')
-      cases A'.eq_empty_or_nonempty with
-      | inl h_empty =>
-          -- サブケース: A' = ∅ の場合
-          rw [h_empty, Finset.inter_univ]
-          exact Finset.eq_of_subset_of_subset h_s_subset_x (h_subset s h_mem)
-      | inr h_nonempty =>
-          -- サブケース: A' ≠ ∅ の場合
-          have h_s_subset_inter : s ⊆ finsetInter A' :=
-            Finset.subset_inter h_s_subset_x (ih h_mem (fun t ht => h_subset t (Finset.mem_insert_of_mem ht)))
-          rw [Finset.inter_assoc]
-          rw [ih h_mem (fun t ht => h_subset t (Finset.mem_insert_of_mem ht))]
-          exact Finset.eq_of_subset_of_subset h_s_subset_inter (h_subset s h_mem)
-      -/
+      --simp [Finset.insert_eq]
+      let ifi := insert_foldr_inter s' A' a_not_s
+      rw [←ifi]
+      by_cases h_eq : s ∈ A'
+      case pos =>
+        have :foldr (fun x acc ↦ x ∩ acc) Finset.univ A'.toList = s := by
+          apply ih h_eq
+          intro t ht
+          exact h_subset t (Finset.mem_insert_of_mem ht)
+        rw [this]
+        have : s ⊆ s' := by
+          apply h_subset s' (Finset.mem_insert_self s' A')
+        ext
+        simp [subset_def]
+        rename_i this_1 a_1
+        intro a_2
+        subst this_1
+        simp_all only [Finset.mem_insert, or_true, implies_true, forall_const, forall_eq_or_imp, true_and]
+        exact this a_2
+
+      case neg =>
+        -- サブケース: a ≠ s の場合
+        -- この場合、s ⊆ a が成り立たない
+        have : s = s' := by
+          simp_all only [Finset.insert_eq_of_mem, implies_true, forall_const, IsEmpty.forall_iff, Finset.mem_insert,
+            or_false, forall_eq_or_imp, subset_refl, true_and, not_false_eq_true]
+        rw [←this]
+        have : s ⊆ foldr (fun x acc ↦ x ∩ acc) Finset.univ A'.toList := by
+          apply (finset_inter_subset_iff A' s).mp
+          intro X a
+          subst this
+          simp_all only [Finset.insert_eq_of_mem, implies_true, forall_const, IsEmpty.forall_iff, not_false_eq_true,
+            Finset.mem_insert, or_false, forall_eq_or_imp, subset_refl, true_and]
+        rw [@Finset.inter_eq_left]
+        exact this
 
   /-
 noncomputable def closure_operator_from_CS {α :Type} [DecidableEq α][Fintype α] (C: ClosureSystem α) [DecidablePred C.sets]: SetFamily.closure_operator (C.toSetFamily)

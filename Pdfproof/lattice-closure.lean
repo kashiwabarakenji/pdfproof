@@ -1052,40 +1052,45 @@ by
 --下のfinite_intersection_in_C_subtypeで使っている。今の方針では証明できそうにない。最初からfintypeで照明した方が早いかも。
 --もしくは、2つの場合には示せているので、それを利用して帰納法で示すというのはあるかもしれない。その証明をChatGPT o1に作ってもらうとよいかも。
 --finsetInterをとってからsubtypeにするのと、subtypeにしてからfinsetInterとるのは同じであることの定理。
+lemma finsetInter_nil {α : Type} [DecidableEq α] [Fintype α] (p : α → Prop) [DecidablePred p] [Fintype {x // p x}] :
+  (finsetInter (∅ : Finset (Finset {x // p x}))).map ⟨Subtype.val, Subtype.val_injective⟩ = finsetInter (∅ : Finset (Finset α)) :=
+by
+  have :(finsetInter (∅ : Finset (Finset {x // p x}))).map ⟨Subtype.val, Subtype.val_injective⟩ = Finset.univ := by
+    --haveI : Fintype { x // p x } := inferInstance
+    have : finsetInter (∅ : Finset (Finset {x // p x})) = (Finset.univ: Finset {x // p x}) := by
+      simp [finsetInter]
+    dsimp [finsetInter]
+    cases h : (∅ : Finset (Finset {x // p x})) with
+    | mk =>
+      sorry
+  simp_all only
+  ext a : 1
+  simp_all only [Finset.mem_univ, true_iff]
+  simp [finsetInter]
+
+
 lemma intersection_lemma  {α : Type} [DecidableEq α] [Fintype α] (p : α → Prop) [DecidablePred p] (S : Finset (Finset (Subtype p)))
  : (finsetInter S).map ⟨Subtype.val, Subtype.val_injective⟩ = finsetInter (S.image (fun t => t.map ⟨Subtype.val, Subtype.val_injective⟩ )) :=
 by
-  --せっかく、ChatGPT o1に証明してもらったのに、使い物にならなさそう。subtypeのことを勉強して、自分で証明しよう
-  --2項の場合が、inter_lemmaで、これは成り立つので、こっちのほうも成り立つのではないか。
-  -- 要素ベースの証明のため、ext を使って両辺の「要素に属すること」を同値に示す
-  ext x
-  simp only [mem_map, Finset.mem_image, finsetInter, List.foldr, Finset.mem_univ, and_true]
-  constructor
-  · -- (→) 方向: 左辺に属するなら右辺にも属する。
-    intro hx
-    rw [Finset.mem_map] at hx
-    obtain ⟨y, hy, rfl⟩ := hx
-    simp_all only [Function.Embedding.coeFn_mk]
-    obtain ⟨val, property⟩ := y
-    simp_all only
-    sorry
+  -- 帰納法を用いるため、`S` のリスト表現に基づいて進めます。
+  let L := S.toList
+  -- `L` に基づいて帰納法を開始します。
+  set originaL := L with hL
+  induction L generalizing L S with
+  | nil =>
+    have : S = ∅ := by
+      ext x
+      sorry
+    subst this
+    exact finsetInter_nil p
 
-  · -- (←) 方向: 右辺に属するなら左辺にも属する
-    intro hx
-    have px : p x := by
-      -- x が t.map(...) に属するためには、∃ y ∈ t, y.val = x
-      induction S using Finset.induction_on with
-        | empty => sorry
-        | insert t ih =>
-          sorry
-    -- x を Subtype p に持ち上げる
-    set y := (⟨x, px⟩ : Subtype p)
-    simp_all only [Finset.mem_map, Function.Embedding.coeFn_mk, Subtype.exists, exists_and_right, exists_eq_right,
-      exists_true_left]
-    obtain ⟨val, property⟩ := y
-    sorry
+  | cons head tail ih =>
+    -- 再帰ステップ (`S = {head} ∪ tail`)
+    simp [finsetInter, List.foldr]
+    -- 帰納仮定を適用
+    simp_all only [forall_const, originaL, L]
+    apply ih
 
---使ってないかも。
 lemma intersection_lemma_image  {α : Type} [DecidableEq α] [Fintype α] (p : α → Prop) [DecidablePred p] (S : Finset (Finset (Subtype p)))
  : (finsetInter S).image Subtype.val = finsetInter (S.image (fun t => t.image Subtype.val)) :=
 by
@@ -1220,6 +1225,7 @@ by
   -/
 
   set filtered := Finset.filter (fun t ↦ F.sets t ∧ s.map ⟨Subtype.val, Subtype.val_injective⟩ ⊆ t) F.ground.powerset
+  --iliはlem2の証明で暗黙につかっている。
   let ili := (intersection_lemma_image (fun x => x ∈ F.ground) (filtered.image (λ t => t.subtype (λ x => x ∈ F.ground)))).symm
   let tmp :=  (Finset.image (fun t ↦ Finset.subtype (fun x ↦ x ∈ F.ground) t) filtered)
   let tmp_right := (Finset.image (fun t ↦ Finset.subtype (fun x ↦ x ∈ F.ground) t) filtered)
@@ -1228,13 +1234,11 @@ by
   --lem2はlem5の証明に使っている。lem 5の直前に移動すると何故かエラー。
   have lem2:finsetInter tmpimage2 = Finset.image Subtype.val (finsetInter tmp_right) :=
   by
-    simp_all only [Finset.map_inj, tmpimage2, tmp, filtered, il, ili, tmp_right]
+    simp_all only [Finset.map_inj, tmpimage2, tmp, filtered, tmp_right]
     rw [Finset.map_eq_image]  --これはimageを増やす方向。simpによって、mapができてしまた。
-    --rw [Finset.map_eq_image] at il
     simp_all only [Function.Embedding.coeFn_mk]
-    --simp_all only [filtered]
     ext a : 1
-    simp_all only [Finset.mem_image, Subtype.exists, exists_and_right, exists_eq_right]
+    simp_all only [Finset.mem_image, Subtype.exists, exists_and_right, exists_eq_right]--
     apply Iff.intro
     · intro a_1
       obtain ⟨w, h⟩ := a_1
@@ -1251,7 +1255,7 @@ by
    simp_all only [filtered, tmpimage2, tmp, tmp_right]
    ext a : 1
    simp_all only [Finset.mem_image, Finset.mem_subtype, Subtype.exists, exists_and_left, exists_prop,
-     exists_eq_right_right, Finset.mem_filter]
+     exists_eq_right_right, Finset.mem_filter]--
 
   --lem 4の証明で使っている。
   have lem4_lem :∀ (s: Finset α), Finset.image Subtype.val (Finset.subtype (fun t => t∈ F.ground) s) = s.filter (fun t => t∈ F.ground) :=
@@ -1557,10 +1561,14 @@ by
 
 theorem example0 (n : Nat) : n + 0 = n :=
 by
+  let original := n
   induction n with
   | zero =>
-      -- このブランチでは n = 0
-      rw [Nat.zero_add] -- 直接証明を進める
+    have: original = 0 := by
+      simp
+    dsimp [original]
+
+
   | succ n ih =>
       -- このブランチでは n = succ k
       rw [Nat.succ_add]

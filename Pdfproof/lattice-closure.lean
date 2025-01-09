@@ -1085,6 +1085,26 @@ by
     obtain ⟨val, property⟩ := y
     sorry
 
+--使ってないかも。
+lemma intersection_lemma_image  {α : Type} [DecidableEq α] [Fintype α] (p : α → Prop) [DecidablePred p] (S : Finset (Finset (Subtype p)))
+ : (finsetInter S).image Subtype.val = finsetInter (S.image (fun t => t.image Subtype.val)) :=
+by
+  -- 補題 `intersection_lemma` を利用して証明
+  dsimp [finsetInter]
+  --unfold List.foldr
+  rw [Finset.image]
+  rw [Finset.image]
+  let il := intersection_lemma p S
+  convert il
+  rw [@Finset.map_eq_image]
+  simp_all only [Function.Embedding.coeFn_mk]
+  rfl
+
+  congr
+  ext x a : 2
+  simp_all only [Finset.mem_image, Subtype.exists, exists_and_right, exists_eq_right, Finset.mem_map,
+    Function.Embedding.coeFn_mk]
+
  --下で使っている。上の補題を使っていて、それが未解決なので、これも未解決になっている。
  theorem finite_intersection_in_C_subtype
   {α : Type} [DecidableEq α] [Fintype α]
@@ -1134,185 +1154,172 @@ lemma cl_in_F_sets_lemma  {α : Type} [DecidableEq α] [Fintype α]
   (F : ClosureSystem α) [DecidablePred F.sets] (s : Finset { x // x ∈ F.ground }):
    Finset.subtype (fun x ↦ x ∈ F.ground) (finsetInter (Finset.filter (fun t ↦ F.sets t ∧ s.map ⟨Subtype.val, Subtype.val_injective⟩ ⊆ t) F.ground.powerset)) = finsetInter (Finset.image (fun t ↦ Finset.subtype (fun x ↦ x ∈ F.ground) t) (Finset.filter (fun t ↦ F.sets t ∧ s.map ⟨Subtype.val, Subtype.val_injective⟩ ⊆ t) F.ground.powerset)) :=
 by
-  --intersection_lemma {α : Type} [DecidableEq α] [Fintype α] (p : α → Prop) [DecidablePred p] (S : Finset (Finset (Subtype p))) :
-  --Finset.map { toFun := Subtype.val, inj' := ⋯ } (finsetInter S) =
-  -- finsetInter (Finset.image (fun t ↦ Finset.map { toFun := Subtype.val, inj' := ⋯ } t) S)
+  have lem0 :∀ (s: Finset α), Finset.image Subtype.val (Finset.subtype (fun t => t∈ F.ground) s) = s.filter (fun t => t∈ F.ground) :=
+  by
+    intro s_1
+    ext a : 1
+    simp_all only [Finset.mem_image, Finset.mem_subtype, Subtype.exists, exists_and_left, exists_prop,
+      exists_eq_right_right, Finset.mem_filter]
 
-  --goal
-  --Finset.subtype (fun x ↦ x ∈ F.ground) (finsetInter (Finset.filter (fun t ↦ F.sets t ∧ Finset.map { toFun := Subtype.val, inj' := ⋯ } s ⊆ t) F.ground.powerset)) =
-  --finsetInter (Finset.image (fun t ↦ Finset.subtype (fun x ↦ x ∈ F.ground) t) (Finset.filter (fun t ↦ F.sets t ∧ Finset.map { toFun := Subtype.val, inj' := ⋯ } s ⊆ t) F.ground.powerset))
-  --右辺はmapじゃなくて、単なるsubtypeになっている。これは証明が難しくならないのか。
-
+  --mapでなくて、imageで定義した方が良くないか。
   set filtered := Finset.filter (fun t ↦ F.sets t ∧ s.map ⟨Subtype.val, Subtype.val_injective⟩ ⊆ t) F.ground.powerset
-  -- ゴールを簡略化
 
-  have : Finset.subtype (fun x ↦ x ∈ F.ground) (finsetInter filtered) =
-             finsetInter (Finset.image (fun t ↦ Finset.subtype (fun x ↦ x ∈ F.ground) t) filtered) := by
-
-    let il := (intersection_lemma (fun x => x ∈ F.ground) (filtered.image (λ t => t.subtype (λ x => x ∈ F.ground)))).symm
-
-    let tmp :=  (Finset.image (fun t ↦ Finset.subtype (fun x ↦ x ∈ F.ground) t) filtered)
-    let tmpimage := tmp.image (fun t ↦ t.map ⟨Subtype.val, Subtype.val_injective⟩)
-    let tmp_right := (Finset.image (fun t ↦ Finset.subtype (fun x ↦ x ∈ F.ground) t) filtered)
-    --これをコメントアウトするとエラーになる。simpで利用しているのか。
-    have lem1:finsetInter tmpimage = Finset.map ⟨Subtype.val, Subtype.val_injective⟩ (finsetInter tmp_right) :=
-    by
-      simp_all only [Finset.map_inj, tmpimage, tmp, filtered, il, tmp_right]
-      ext a : 1
-      obtain ⟨val, property⟩ := a
-      apply Iff.intro
-      · intro a
-        convert a
-      · intro a
-        convert a
-
-    dsimp [tmpimage, tmp, tmp_right] at lem1
-
-    rw [Finset.map_eq_image] at lem1 --これはimageを増やす方向。simpによって、mapができてしまた。
-
-
-    rw [Finset.map_eq_image] at il
-
-    let tmpimage2 := tmp.image (fun t ↦ t.image Subtype.val)
-    have lem2:finsetInter tmpimage2 = Finset.image Subtype.val (finsetInter tmp_right) :=
-    by
-      simp_all only [Finset.map_inj, tmpimage2, tmp, filtered, il, tmp_right]
-      rw [Finset.map_eq_image]  --これはimageを増やす方向。simpによって、mapができてしまた。
-      rw [Finset.map_eq_image] at il
-      simp
-      simp at il
-      rw [il]
-      simp_all
-      convert lem1
-      · ext x a : 2
-        simp_all only [Finset.mem_image, Subtype.exists, exists_and_right, exists_eq_right, Finset.mem_map,
-          Function.Embedding.coeFn_mk]
-      · ext x a : 2
-        simp_all only [Finset.mem_image, Subtype.exists, exists_and_right, exists_eq_right, Finset.mem_map,
-          Function.Embedding.coeFn_mk]
-      · ext x a : 2
-        simp_all only [Finset.mem_image, Subtype.exists, exists_and_right, exists_eq_right, Finset.mem_map,
-          Function.Embedding.coeFn_mk]
-
-    dsimp [tmpimage2, tmp, tmp_right] at lem1
-
-    --let tmp_right2 := (Finset.image (fun t => t.subtype (fun x => x ∈ F.ground)) filtered)
-    symm
-    --rw [←Finset.map_eq_image] at this
-    --rw [Finset.map_eq_image]
-
-    --convert this --比べると結構違う。thisで、Finset.image subtype.val tとなっているところがgoalでは、飛ばされている。
-    --thisのほうがあとから設定した割には、無駄なところが多い。証明すべき命題をゴールに合わせて変えた方がいいのかも。
-
-    have : Finset.image (fun t ↦ Finset.filter (fun x ↦ x ∈ F.ground) t) filtered = filtered :=
-    by
-      simp_all only [Finset.mem_filter, Finset.mem_powerset]
-      ext x
-      simp
-      dsimp [filtered]
-      apply Iff.intro
-      · intro a
-        simp_all only [Finset.mem_filter, Finset.mem_powerset]
-        constructor
-        simp_all only [Function.Embedding.coeFn_mk, filtered, tmpimage2, tmp]
-        obtain ⟨w, h⟩ := a
-        obtain ⟨left, right⟩ := h
-        obtain ⟨left, right_1⟩ := left
-        obtain ⟨left_1, right_1⟩ := right_1
-        subst right
+  have lemf: Finset.image (fun tt => Finset.filter (fun t => t ∈ F.ground) tt) filtered = filtered :=
+  by
+    simp_all only [filtered]
+    rw [Finset.map_eq_image]
+    ext x
+    simp_all only [Finset.mem_image, Finset.mem_filter, Finset.mem_powerset]
+    apply Iff.intro
+    · intro a
+      obtain ⟨w, h⟩ := a
+      obtain ⟨left, right⟩ := h
+      obtain ⟨left, right_1⟩ := left
+      obtain ⟨left_1, right_1⟩ := right_1
+      subst right
+      apply And.intro
+      · simp_all only [Function.Embedding.coeFn_mk]
         intro x hx
         simp_all only [Finset.mem_filter]
-        constructor
-        · simp_all only [Function.Embedding.coeFn_mk, filtered, tmpimage2, tmp]
-          obtain ⟨w, h⟩ := a
-          obtain ⟨left, right⟩ := h
-          obtain ⟨left, right_1⟩ := left
-          obtain ⟨left_1, right_1⟩ := right_1
-          subst right
+      · apply And.intro
+        · simp_all only [Function.Embedding.coeFn_mk]
           rwa [Finset.filter_true_of_mem left]
         ·
-          simp_all only [Function.Embedding.coeFn_mk, filtered, tmpimage2, tmp]
-          obtain ⟨w, h⟩ := a
-          obtain ⟨left, right⟩ := h
-          obtain ⟨left, right_1⟩ := left
-          obtain ⟨left_1, right_1⟩ := right_1
-          subst right
+          simp_all only [Function.Embedding.coeFn_mk]
           intro x hx
-          simp_all only [Finset.mem_map, Function.Embedding.coeFn_mk, Subtype.exists, exists_and_right, exists_eq_right,
-            Finset.mem_filter]
+          simp_all only [Finset.mem_image, Subtype.exists, exists_and_right, exists_eq_right, Finset.mem_filter]
           obtain ⟨w_1, h⟩ := hx
           simp_all only [and_true]
           apply right_1
-          simp_all only [Finset.mem_map, Function.Embedding.coeFn_mk, Subtype.exists, exists_and_right, exists_eq_right,
-            exists_const]
-      · intro a
-        simp_all only [Finset.mem_filter, Finset.mem_powerset]
-        constructor
-        simp_all only [Function.Embedding.coeFn_mk, filtered, tmpimage2, tmp]
-        obtain ⟨w, h⟩ := a
-        obtain ⟨left, right⟩ := h
-        apply And.intro
+          simp_all only [Finset.mem_image, Subtype.exists, exists_and_right, exists_eq_right, exists_const]
+    · intro a
+      simp_all only [Function.Embedding.coeFn_mk]
+      obtain ⟨left, right⟩ := a
+      obtain ⟨left_1, right⟩ := right
+      apply Exists.intro
+      · apply And.intro
         · apply And.intro
-          · exact w
-          · simp_all only [Function.Embedding.coeFn_mk, and_self, filtered, tmpimage2, tmp]
-        · simp_all only [Function.Embedding.coeFn_mk, and_self, filtered, tmpimage2, tmp]
+          on_goal 2 => apply And.intro
+          on_goal 2 => {exact left_1
+          }
+          · simp_all only
+          · simp_all only
+        · rw [Finset.filter_true_of_mem left]
+
+  --lem2の証明に使ってそう。
+  let il := (intersection_lemma (fun x => x ∈ F.ground) (filtered.image (λ t => t.subtype (λ x => x ∈ F.ground)))).symm
+  let ili := (intersection_lemma_image (fun x => x ∈ F.ground) (filtered.image (λ t => t.subtype (λ x => x ∈ F.ground)))).symm
+
+  let tmp :=  (Finset.image (fun t ↦ Finset.subtype (fun x ↦ x ∈ F.ground) t) filtered)
+  let tmpimage := tmp.image (fun t ↦ t.map ⟨Subtype.val, Subtype.val_injective⟩)
+  let tmp_right := (Finset.image (fun t ↦ Finset.subtype (fun x ↦ x ∈ F.ground) t) filtered)
+  --lem 1をコメントアウトするとエラーになる。simpで利用しているのか。
+  have lem1:finsetInter tmpimage = Finset.map ⟨Subtype.val, Subtype.val_injective⟩ (finsetInter tmp_right) :=
+  by
+    simp_all only [Finset.map_inj, tmpimage, tmp, filtered, il, tmp_right]
+    ext a : 1
+    obtain ⟨val, property⟩ := a
+    apply Iff.intro
+    · intro a
+      convert a
+    · intro a
+      convert a
+
+  dsimp [tmpimage, tmp, tmp_right] at lem1
+
+  rw [Finset.map_eq_image] at lem1 --コメントアウトするとエラ〜
+  rw [Finset.map_eq_image] at il --コメントアウトするとエラ〜
+
+  let tmpimage2 := tmp.image (fun t ↦ t.image Subtype.val)
+
+  --lem2はlem5の証明に使っている。
+  have lem2:finsetInter tmpimage2 = Finset.image Subtype.val (finsetInter tmp_right) :=
+  by
+    simp_all only [Finset.map_inj, tmpimage2, tmp, filtered, il, ili, tmp_right]
+    rw [Finset.map_eq_image]  --これはimageを増やす方向。simpによって、mapができてしまた。
+    rw [Finset.map_eq_image] at il
+    simp_all only [Function.Embedding.coeFn_mk]
+
+  --dsimp [tmpimage2, tmp, tmp_right] at lem1
+  --dsimp [tmpimage2, tmp, tmp_right] at lem2
+  --simp at lem2
+  --lem3はlem 5の証明に使っている。
+  have lem3 :∀ (ss :Finset α), Finset.image (fun t ↦ Subtype.val t) (Finset.subtype (fun x ↦ x ∈ F.ground) ss) = Finset.filter (fun t ↦ t ∈ F.ground) ss := by
+   intro ss
+   simp_all only [filtered, tmpimage2, tmp, tmp_right]
+
+   -- lem4はlem 5の証明中で使っている。ただし、lem　4もlem 5もlem_mainの証明は使っている。
+  have lem4: Finset.image (fun t ↦ Finset.image Subtype.val t) (Finset.image (fun t ↦ Finset.subtype (fun x ↦ x ∈ F.ground) t) filtered) = filtered := by
+    simp_all only [Finset.mem_image, Function.Embedding.coeFn_mk, Subtype.exists, exists_and_right, exists_eq_right]
+    ext x
+    simp
+    dsimp [filtered]
+    apply Iff.intro
+    · intro a
+      obtain ⟨w, h⟩ := a
+      obtain ⟨left, right⟩ := h
+      subst right
+      simp_all only [Finset.mem_filter, Finset.mem_powerset, filtered, tmpimage2, tmp]
+      obtain ⟨left, right⟩ := left
+      obtain ⟨left_1, right⟩ := right
+      apply And.intro
+      ·
+        simp_all only [implies_true]
+        intro x hx
+        simp_all only [Finset.mem_filter]
+      · apply And.intro
+        simp_all only [implies_true]
+        rwa [Finset.filter_true_of_mem left]
+
+        simp_all only [implies_true]
+        intro x hx
+        simp_all only [Finset.mem_map, Function.Embedding.coeFn_mk, Subtype.exists, exists_and_right, exists_eq_right,
+          Finset.mem_filter]
+        obtain ⟨w_1, h⟩ := hx
+        simp_all only [and_true]
+        apply right
+        simp_all only [Finset.mem_map, Function.Embedding.coeFn_mk, Subtype.exists, exists_and_right, exists_eq_right,
+          exists_const]
+    · intro a
+      apply Exists.intro
+      · apply And.intro
+        ·
+          simp_all only [implies_true, Finset.mem_filter, Finset.mem_powerset, filtered]
+          apply And.intro
+          on_goal 2 => apply And.intro
+          on_goal 2 => {exact a.2.1
+          }
+          · simp_all only [implies_true, Finset.mem_filter, Finset.mem_powerset, and_self, filtered]
+          · simp_all only [implies_true, Finset.mem_filter, Finset.mem_powerset, and_self, filtered]
+        ·
+          simp_all only [implies_true, Finset.mem_filter, Finset.mem_powerset, filtered]
+          obtain ⟨left, right⟩ := a
+          obtain ⟨left_1, right⟩ := right
           ext a : 1
           simp_all only [Finset.mem_filter, and_iff_left_iff_imp]
           intro a_1
-          exact w a_1
+          exact left a_1
 
-    have : Finset.image (fun t ↦ Finset.image Subtype.val t) (Finset.image (fun t ↦ Finset.subtype (fun x ↦ x ∈ F.ground) t) filtered) = filtered := by
-      simp_all only [Finset.mem_image, Function.Embedding.coeFn_mk, Subtype.exists, exists_and_right, exists_eq_right]
-      ext x
-      simp
-      dsimp [filtered]
-      apply Iff.intro
-      · intro a
-        obtain ⟨w, h⟩ := a
-        obtain ⟨left, right⟩ := h
-        subst right
-        simp_all only [Finset.mem_filter, Finset.mem_powerset, filtered, tmpimage2, tmp]
-        obtain ⟨left, right⟩ := left
-        obtain ⟨left_1, right⟩ := right
-        apply And.intro
-        · sorry
-        · apply And.intro
-          · sorry
-          · sorry
-      · intro a
-        sorry
-
-    have :finsetInter (Finset.image (fun t ↦ Finset.subtype (fun x ↦ x ∈ F.ground) t) filtered) =
+  have lem5:finsetInter (Finset.image (fun t ↦ Finset.subtype (fun x ↦ x ∈ F.ground) t) filtered) =
       Finset.subtype (fun x ↦ x ∈ F.ground) (finsetInter filtered) :=
     by
-      simp at il
-      simp_all
-      dsimp [tmpimage2,tmp,tmp_right] at lem2
-      rw [this] at lem2
-      --#check lem2
-      --finsetInter (Finset.image (fun t ↦ Finset.image Subtype.val t) (Finset.image (fun t ↦ Finset.subtype (fun x ↦ x ∈ F.ground) t) filtered)) =
-      --Finset.image Subtype.val (finsetInter (Finset.image (fun t ↦ Finset.subtype (fun x ↦ x ∈ F.ground) t) filtered))
-      --ilとゴールを比べる必要がある。
-      #check Finset.image Subtype.val (finsetInter (Finset.image (fun t ↦ Finset.subtype (fun x ↦ x ∈ F.ground) t) filtered))
-      --Finset.image Subtype.val (finsetInter (Finset.image (fun t ↦ Finset.subtype (fun x ↦ x ∈ F.ground) t) filtered)) : Finset α
-      sorry
+      simp_all only [filtered, tmpimage2, tmp, tmp_right]
+      rw [Finset.map_eq_image]
+      ext x
+      simp_all only [Finset.mem_image, Function.Embedding.coeFn_mk, Subtype.exists, exists_and_right, exists_eq_right]
+      apply Iff.intro
+      · intro a
+        simp_all only [implies_true, Finset.mem_subtype, Finset.mem_image, Subtype.exists, exists_and_right,
+          exists_eq_right, Subtype.coe_eta, Finset.coe_mem, exists_const]
+      · intro a
+        simp_all only [implies_true, Finset.mem_subtype, Finset.mem_image, Subtype.exists, exists_and_right,
+          exists_eq_right, Subtype.coe_eta, Finset.coe_mem, exists_const]
 
+  have lem_main: finsetInter (Finset.image (fun t ↦ Finset.subtype (fun x ↦ x ∈ F.ground) t) filtered)
+   = Finset.subtype (fun x ↦ x ∈ F.ground) (finsetInter filtered) := by
 
-
-
-
-    --Finset.map { toFun := Subtype.val, inj' := ⋯ } (finsetInter (Finset.image (fun t ↦ Finset.subtype (fun x ↦ x ∈ F.ground) t) filtered)) =
-    --finsetInter (Finset.image (fun t ↦ Finset.map { toFun := Subtype.val, inj' := ⋯ } t) (Finset.image (fun t ↦ Finset.subtype (fun x ↦ x ∈ F.ground) t) filtered))
-
-
-
-
-
-  -- `lemma intersection_lemma` を適用
+    simp_all only [implies_true, filtered]
   simp_all only [filtered]
-
-  --let il := intersection_lemma (fun x => x ∈ F.ground)
-  --sorry
 
 lemma finsetInter_empty {α : Type} [DecidableEq α] (s : Finset α) :
   s ∈ (∅ : Finset (Finset α)) → False :=
@@ -1335,7 +1342,6 @@ by
   simp [Finset.mem_filter]
   intro a
   simpa using h_subset a
-
 
 -- `cl` の定義
 noncomputable def clcs {α : Type} [DecidableEq α] [Fintype α] (F : ClosureSystem α) [DecidablePred F.sets]
@@ -1372,16 +1378,8 @@ by
 
   have : F.sets ((clcs F s).map ⟨Subtype.val, Subtype.val_injective⟩) := by
     dsimp [clcs] --clcsを展開する必要があるが、本当は補題で済ませたい。
-    --subtypeでなければ、hyperedgeの共通部分がhyperedgeになるのは、
-    --theorem finite_intersection_in_C {α : Type} [DecidableEq α][Fintype α]
-    --(F : ClosureSystem α) [DecidablePred F.sets]:
-    --∀ S : Finset (Finset α), S.Nonempty → (∀ s ∈ S, F.sets s) → F.sets (finsetInter S)
-    --で示せている。clcsは単にsubtype版と思われる。
-    --finite_intersection_in_C_subtypeを適用したいが、subtypeの場合に使えるかわからない。
-    --∀ S : Finset (Finset α)に当たる部分は、
     let fi := finite_intersection_in_C F candidates h_nonempty fiarg
     dsimp [candidates] at fi
-    -- ゴールとfiは似ているが、subtypeかどうかの違いがあるので、このアプローチではうまくいかないように思う。
     -- finite_intersection_in_C_subtypeを使うべき。
 
     --以下は頑張って示した。
@@ -1432,10 +1430,6 @@ by
     have : (finsetInter (Finset.filter (fun t ↦ F.sets t ∧ sval ⊆ t) F.ground.powerset)).subtype (λ x => x ∈ F.ground) = finsetInter (Finset.image (fun t ↦ t.subtype (λ x => x ∈ F.ground)) (Finset.filter (fun t ↦ F.sets t ∧ sval ⊆ t) F.ground.powerset)) := by
       dsimp [sval]
       exact cl_in_F_sets_lemma F s
-      --exact intersection_lemma (fun x => x ∈ F.ground) (Finset.filter (fun t ↦ F.sets (t.map (Function.Embedding.subtype (fun x => x ∈ F.ground))) ∧ s.map ⟨Subtype.val, Subtype.val_injective⟩ ⊆ t.map (Function.Embedding.subtype (fun x => x ∈ F.ground))) F.ground.powerset)
-      --この代わりにintersection_lemmaを使う方向で考える。今はまだうまくいっていない。
-      --Finset.subtype (fun x ↦ x ∈ F.ground) (finsetInter (Finset.filter (fun t ↦ F.sets t ∧ sval ⊆ t) F.ground.powerset)) = finsetInter (Finset.image (fun t ↦ Finset.subtype (fun x ↦ x ∈ F.ground) t) (Finset.filter (fun t ↦ F.sets t ∧ s.map ⟨Subtype.val, Subtype.val_injective⟩ ⊆ t) F.ground.powerset))
-
     rw [← this] at fis
     exact fis
 
@@ -1459,7 +1453,6 @@ by
 
       -- A = insert x A' の場合
       rw [finsetInter]
-      --simp [Finset.insert_eq]
       let ifi := insert_foldr_inter s' A' a_not_s
       rw [←ifi]
       by_cases h_eq : s ∈ A'

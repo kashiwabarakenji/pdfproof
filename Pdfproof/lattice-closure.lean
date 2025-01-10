@@ -1002,7 +1002,7 @@ by
       -- 矛盾: S が空集合で Nonempty を満たすことはない
       intro h_nonempty
       exfalso
-      exact Finset.not_nonempty_empty h_nonempty
+      exact False.elim (Finset.not_nonempty_empty h_nonempty)
   | @insert a s a_notin_s S'  =>
       -- 帰納ステップ: S = insert x S'
       --protected theorem induction_on {α : Type*} {p : Finset α → Prop} [DecidableEq α] (s : Finset α)
@@ -1052,54 +1052,65 @@ by
 --下のfinite_intersection_in_C_subtypeで使っている。今の方針では証明できそうにない。最初からfintypeで照明した方が早いかも。
 --もしくは、2つの場合には示せているので、それを利用して帰納法で示すというのはあるかもしれない。その証明をChatGPT o1に作ってもらうとよいかも。
 --finsetInterをとってからsubtypeにするのと、subtypeにしてからfinsetInterとるのは同じであることの定理。
+--右辺は、全体集合で
 lemma finsetInter_nil {α : Type} [DecidableEq α] [Fintype α] (p : α → Prop) [DecidablePred p] [Fintype {x // p x}] :
   (finsetInter (∅ : Finset (Finset {x // p x}))).map ⟨Subtype.val, Subtype.val_injective⟩ = finsetInter (∅ : Finset (Finset α)) :=
 by
-  have :(finsetInter (∅ : Finset (Finset {x // p x}))).map ⟨Subtype.val, Subtype.val_injective⟩ = Finset.univ := by
+  have :(finsetInter (∅ : Finset (Finset {x // p x}))).map ⟨Subtype.val, Subtype.val_injective⟩ = Finset.image Subtype.val  (Finset.univ: Finset {x // p x}) := by
     --haveI : Fintype { x // p x } := inferInstance
     have : finsetInter (∅ : Finset (Finset {x // p x})) = (Finset.univ: Finset {x // p x}) := by
       simp [finsetInter]
     dsimp [finsetInter]
-    cases h : (∅ : Finset (Finset {x // p x})) with
-    | mk =>
-      sorry
-  simp_all only
-  ext a : 1
-  simp_all only [Finset.mem_univ, true_iff]
-  simp [finsetInter]
+    rw [Finset.map_eq_image]
+    simp
+
+  rw [this]
 
 
+
+
+--このままだとSが空集合のときに成り立ってないよう。Subtypeを先にとるとunicになって、subtypeをあとにとると、F.groundになる。
+--空でないという仮定を入れるのが良さそう。
 lemma intersection_lemma  {α : Type} [DecidableEq α] [Fintype α] (p : α → Prop) [DecidablePred p] (S : Finset (Finset (Subtype p)))
- : (finsetInter S).map ⟨Subtype.val, Subtype.val_injective⟩ = finsetInter (S.image (fun t => t.map ⟨Subtype.val, Subtype.val_injective⟩ )) :=
+ :  S.Nonempty → (finsetInter S).map ⟨Subtype.val, Subtype.val_injective⟩ = finsetInter (S.image (fun t => t.map ⟨Subtype.val, Subtype.val_injective⟩ )) :=
 by
   -- 帰納法を用いるため、`S` のリスト表現に基づいて進めます。
   let L := S.toList
+  /-have nonnil : L ≠ [] := by
+    simp_all only [ne_eq, Finset.toList_eq_nil, L]
+    apply Aesop.BuiltinRules.not_intro
+    intro a
+    subst a
+  -/
   -- `L` に基づいて帰納法を開始します。
-  set originaL := L with hL
-  induction L generalizing L S with
+  induction S.toList generalizing S with
   | nil =>
-    have : S = ∅ := by
-      ext x
-      sorry
-    subst this
-    exact finsetInter_nil p
+    have snil: S = ∅ := by
+      simp_all only [Finset.toList_eq_nil, Finset.eq_empty_iff_forall_not_mem]
+      --search_proof
+    intro h_nonempty
+    exfalso
+    subst snil
+    simp_all only [Finset.not_nonempty_empty]
+
 
   | cons head tail ih =>
     -- 再帰ステップ (`S = {head} ∪ tail`)
     simp [finsetInter, List.foldr]
     -- 帰納仮定を適用
-    simp_all only [forall_const, originaL, L]
+    simp_all only [forall_const, S]
     apply ih
 
-lemma intersection_lemma_image  {α : Type} [DecidableEq α] [Fintype α] (p : α → Prop) [DecidablePred p] (S : Finset (Finset (Subtype p)))
- : (finsetInter S).image Subtype.val = finsetInter (S.image (fun t => t.image Subtype.val)) :=
+lemma intersection_lemma_image  {α : Type} [DecidableEq α] [Fintype α] (p : α → Prop) [DecidablePred p] (S : Finset (Finset (Subtype p))) (Snonemp: S.Nonempty) :
+  (finsetInter S).image Subtype.val = finsetInter (S.image (fun t => t.image Subtype.val)) :=
+
 by
   -- 補題 `intersection_lemma` を利用して証明
   dsimp [finsetInter]
   --unfold List.foldr
   rw [Finset.image]
   rw [Finset.image]
-  let il := intersection_lemma p S
+  let il := intersection_lemma p S Snonemp
   convert il
   rw [@Finset.map_eq_image]
   simp_all only [Function.Embedding.coeFn_mk]
@@ -1144,7 +1155,7 @@ by
   -- finsetInter S の値が finsetInter S_val に対応することを示す
   have : (finsetInter S).map ⟨Subtype.val, Subtype.val_injective⟩ =  finsetInter (S.image (fun t => t.map ⟨Subtype.val, Subtype.val_injective⟩ )):=
   by
-    let il := intersection_lemma p S
+    let il := intersection_lemma p S h_nonempty
     convert il
 
   simp_all only [Finset.image_nonempty, Finset.mem_image, forall_exists_index, and_imp, forall_apply_eq_imp_iff₂,
@@ -1155,6 +1166,7 @@ by
     Finset.mem_image]
 
 --intersection_lemmaと内容がかぶっているので、intersection_lemmaを使って証明する。
+--空集合を排除する条件は必要か。
 lemma cl_in_F_sets_lemma  {α : Type} [DecidableEq α] [Fintype α]
   (F : ClosureSystem α) [DecidablePred F.sets] (s : Finset { x // x ∈ F.ground }):
    Finset.subtype (fun x ↦ x ∈ F.ground) (finsetInter (Finset.filter (fun t ↦ F.sets t ∧ s.map ⟨Subtype.val, Subtype.val_injective⟩ ⊆ t) F.ground.powerset)) = finsetInter (Finset.image (fun t ↦ Finset.subtype (fun x ↦ x ∈ F.ground) t) (Finset.filter (fun t ↦ F.sets t ∧ s.map ⟨Subtype.val, Subtype.val_injective⟩ ⊆ t) F.ground.powerset)) :=
@@ -1225,114 +1237,125 @@ by
   -/
 
   set filtered := Finset.filter (fun t ↦ F.sets t ∧ s.map ⟨Subtype.val, Subtype.val_injective⟩ ⊆ t) F.ground.powerset
-  --iliはlem2の証明で暗黙につかっている。
-  let ili := (intersection_lemma_image (fun x => x ∈ F.ground) (filtered.image (λ t => t.subtype (λ x => x ∈ F.ground)))).symm
-  let tmp :=  (Finset.image (fun t ↦ Finset.subtype (fun x ↦ x ∈ F.ground) t) filtered)
-  let tmp_right := (Finset.image (fun t ↦ Finset.subtype (fun x ↦ x ∈ F.ground) t) filtered)
-  let tmpimage2 := tmp.image (fun t ↦ t.image Subtype.val)
-
-  --lem2はlem5の証明に使っている。lem 5の直前に移動すると何故かエラー。
-  have lem2:finsetInter tmpimage2 = Finset.image Subtype.val (finsetInter tmp_right) :=
-  by
-    simp_all only [Finset.map_inj, tmpimage2, tmp, filtered, tmp_right]
-    rw [Finset.map_eq_image]  --これはimageを増やす方向。simpによって、mapができてしまた。
-    simp_all only [Function.Embedding.coeFn_mk]
-    ext a : 1
-    simp_all only [Finset.mem_image, Subtype.exists, exists_and_right, exists_eq_right]--
-    apply Iff.intro
-    · intro a_1
-      obtain ⟨w, h⟩ := a_1
-      simp_all only [exists_true_left]
-      convert h
-    · intro a_1
-      obtain ⟨w, h⟩ := a_1
-      simp_all only [exists_true_left]
-      convert h
-
-  --lem3はlem 5の証明に使っている。
-  have lem3 :∀ (ss :Finset α), Finset.image (fun t ↦ Subtype.val t) (Finset.subtype (fun x ↦ x ∈ F.ground) ss) = Finset.filter (fun t ↦ t ∈ F.ground) ss := by
-   intro ss
-   simp_all only [filtered, tmpimage2, tmp, tmp_right]
-   ext a : 1
-   simp_all only [Finset.mem_image, Finset.mem_subtype, Subtype.exists, exists_and_left, exists_prop,
-     exists_eq_right_right, Finset.mem_filter]--
-
-  --lem 4の証明で使っている。
-  have lem4_lem :∀ (s: Finset α), Finset.image Subtype.val (Finset.subtype (fun t => t∈ F.ground) s) = s.filter (fun t => t∈ F.ground) :=
-  by
-    intro s_1
-    ext a : 1
-    simp_all only [Finset.mem_image, Finset.mem_subtype, Subtype.exists, exists_and_left, exists_prop,
-      exists_eq_right_right, Finset.mem_filter]
-
-   -- lem4はlem 5の証明中で使っている。ただし、lem　4もlem 5もlem_mainの証明で使っている。
-  have lem4: Finset.image (fun t ↦ Finset.image Subtype.val t) (Finset.image (fun t ↦ Finset.subtype (fun x ↦ x ∈ F.ground) t) filtered) = filtered := by
-    simp_all only [Finset.mem_image, Function.Embedding.coeFn_mk, Subtype.exists, exists_and_right, exists_eq_right]
-    ext x
-    simp
-    dsimp [filtered]
-    apply Iff.intro
-    · intro a
-      obtain ⟨w, h⟩ := a
-      obtain ⟨left, right⟩ := h
-      subst right
-      simp_all only [Finset.mem_filter, Finset.mem_powerset, filtered, tmpimage2, tmp]
-      obtain ⟨left, right⟩ := left
-      obtain ⟨left_1, right⟩ := right
-      apply And.intro
-      ·
-        simp_all only [implies_true]
-        intro x hx
-        simp_all only [Finset.mem_filter]
-      · apply And.intro
-        simp_all only [implies_true]
-        rwa [Finset.filter_true_of_mem left]
-
-        simp_all only [implies_true]
-        intro x hx
-        simp_all only [Finset.mem_map, Function.Embedding.coeFn_mk, Subtype.exists, exists_and_right, exists_eq_right,
-          Finset.mem_filter]
-        obtain ⟨w_1, h⟩ := hx
-        simp_all only [and_true]
-        apply right
-        simp_all only [Finset.mem_map, Function.Embedding.coeFn_mk, Subtype.exists, exists_and_right, exists_eq_right,
-          exists_const]
-    · intro a
-      apply Exists.intro
-      · apply And.intro
-        ·
-          simp_all only [implies_true, Finset.mem_filter, Finset.mem_powerset, filtered]
-          apply And.intro
-          on_goal 2 => apply And.intro
-          on_goal 2 => {exact a.2.1
-          }
-          · simp_all only [implies_true, Finset.mem_filter, Finset.mem_powerset, and_self, filtered]
-          · simp_all only [implies_true, Finset.mem_filter, Finset.mem_powerset, and_self, filtered]
-        ·
-          simp_all only [implies_true, Finset.mem_filter, Finset.mem_powerset, filtered]
-          obtain ⟨left, right⟩ := a
-          obtain ⟨left_1, right⟩ := right
-          ext a : 1
-          simp_all only [Finset.mem_filter, and_iff_left_iff_imp]
-          intro a_1
-          exact left a_1
-
-  have lem5:finsetInter (Finset.image (fun t ↦ Finset.subtype (fun x ↦ x ∈ F.ground) t) filtered) =
-      Finset.subtype (fun x ↦ x ∈ F.ground) (finsetInter filtered) :=
+  by_cases filtered.image (λ t => t.subtype (λ x => x ∈ F.ground)) = ∅
+  case pos =>
+    simp_all only [Finset.image_eq_empty, Finset.image_empty, filtered]
+    simp [finsetInter]
+  case neg nonemp =>
+     --iliはlem2の証明で暗黙につかっている。
+    have nonemp2: (Finset.image (fun t ↦ t.subtype (λ x => x ∈ F.ground)) filtered).Nonempty :=
     by
+      simp_all only [nonemp, Finset.image_eq_empty, Finset.image_empty, filtered]
+      simp_all only [Finset.image_nonempty]
+      rwa [Finset.nonempty_iff_ne_empty]
+    let ili := (intersection_lemma_image (fun x => x ∈ F.ground) (filtered.image (λ t => t.subtype (λ x => x ∈ F.ground))) nonemp2).symm
+    let tmp :=  (Finset.image (fun t ↦ Finset.subtype (fun x ↦ x ∈ F.ground) t) filtered)
+    let tmp_right := (Finset.image (fun t ↦ Finset.subtype (fun x ↦ x ∈ F.ground) t) filtered)
+    let tmpimage2 := tmp.image (fun t ↦ t.image Subtype.val)
+
+    --lem2はlem5の証明に使っている。lem 5の直前に移動すると何故かエラー。
+    have lem2:finsetInter tmpimage2 = Finset.image Subtype.val (finsetInter tmp_right) :=
+    by
+      simp_all only [Finset.map_inj, tmpimage2, tmp, filtered, tmp_right]
+      rw [Finset.map_eq_image]  --これはimageを増やす方向。simpによって、mapができてしまた。
+      simp_all only [Function.Embedding.coeFn_mk]
+      ext a : 1
+      simp_all only [Finset.mem_image, Subtype.exists, exists_and_right, exists_eq_right]--
+      apply Iff.intro
+      · intro a_1
+        obtain ⟨w, h⟩ := a_1
+        simp_all only [exists_true_left]
+        convert h
+      · intro a_1
+        obtain ⟨w, h⟩ := a_1
+        simp_all only [exists_true_left]
+        convert h
+
+    --lem3はlem 5の証明に使っている。
+    have lem3 :∀ (ss :Finset α), Finset.image (fun t ↦ Subtype.val t) (Finset.subtype (fun x ↦ x ∈ F.ground) ss) = Finset.filter (fun t ↦ t ∈ F.ground) ss :=
+    by
+      intro ss
       simp_all only [filtered, tmpimage2, tmp, tmp_right]
-      rw [Finset.map_eq_image]
-      ext x
+      ext a : 1
+      simp_all only [Finset.mem_image, Finset.mem_subtype, Subtype.exists, exists_and_left, exists_prop,
+        exists_eq_right_right, Finset.mem_filter]--
+
+    --lem 4の証明で使っている。
+    have lem4_lem :∀ (s: Finset α), Finset.image Subtype.val (Finset.subtype (fun t => t∈ F.ground) s) = s.filter (fun t => t∈ F.ground) :=
+    by
+      intro s_1
+      ext a : 1
+      simp_all only [Finset.mem_image, Finset.mem_subtype, Subtype.exists, exists_and_left, exists_prop,
+        exists_eq_right_right, Finset.mem_filter]
+
+    -- lem4はlem 5の証明中で使っている。ただし、lem　4もlem 5もlem_mainの証明で使っている。
+    have lem4: Finset.image (fun t ↦ Finset.image Subtype.val t) (Finset.image (fun t ↦ Finset.subtype (fun x ↦ x ∈ F.ground) t) filtered) = filtered := by
       simp_all only [Finset.mem_image, Function.Embedding.coeFn_mk, Subtype.exists, exists_and_right, exists_eq_right]
+      ext x
+      simp
+      dsimp [filtered]
       apply Iff.intro
       · intro a
-        simp_all only [implies_true, Finset.mem_subtype, Finset.mem_image, Subtype.exists, exists_and_right,
-          exists_eq_right, Subtype.coe_eta, Finset.coe_mem, exists_const]
-      · intro a
-        simp_all only [implies_true, Finset.mem_subtype, Finset.mem_image, Subtype.exists, exists_and_right,
-          exists_eq_right, Subtype.coe_eta, Finset.coe_mem, exists_const]
+        obtain ⟨w, h⟩ := a
+        obtain ⟨left, right⟩ := h
+        subst right
+        simp_all only [Finset.mem_filter, Finset.mem_powerset, filtered, tmpimage2, tmp]
+        obtain ⟨left, right⟩ := left
+        obtain ⟨left_1, right⟩ := right
+        apply And.intro
+        ·
+          simp_all only [implies_true]
+          intro x hx
+          simp_all only [Finset.mem_filter]
+        · apply And.intro
+          simp_all only [implies_true]
+          rwa [Finset.filter_true_of_mem left]
 
-  simp_all only [filtered]
+          simp_all only [implies_true]
+          intro x hx
+          simp_all only [Finset.mem_map, Function.Embedding.coeFn_mk, Subtype.exists, exists_and_right, exists_eq_right,
+            Finset.mem_filter]
+          obtain ⟨w_1, h⟩ := hx
+          simp_all only [and_true]
+          apply right
+          simp_all only [Finset.mem_map, Function.Embedding.coeFn_mk, Subtype.exists, exists_and_right, exists_eq_right,
+            exists_const]
+      · intro a
+        apply Exists.intro
+        · apply And.intro
+          ·
+            simp_all only [implies_true, Finset.mem_filter, Finset.mem_powerset, filtered]
+            apply And.intro
+            on_goal 2 => apply And.intro
+            on_goal 2 => {exact a.2.1
+            }
+            · simp_all only [implies_true, Finset.mem_filter, Finset.mem_powerset, and_self, filtered]
+            · simp_all only [implies_true, Finset.mem_filter, Finset.mem_powerset, and_self, filtered]
+          ·
+            simp_all only [implies_true, Finset.mem_filter, Finset.mem_powerset, filtered]
+            obtain ⟨left, right⟩ := a
+            obtain ⟨left_1, right⟩ := right
+            ext a : 1
+            simp_all only [Finset.mem_filter, and_iff_left_iff_imp]
+            intro a_1
+            exact left a_1
+
+    have lem5:finsetInter (Finset.image (fun t ↦ Finset.subtype (fun x ↦ x ∈ F.ground) t) filtered) =
+        Finset.subtype (fun x ↦ x ∈ F.ground) (finsetInter filtered) :=
+      by
+        simp_all only [filtered, tmpimage2, tmp, tmp_right]
+        rw [Finset.map_eq_image]
+        ext x
+        simp_all only [Finset.mem_image, Function.Embedding.coeFn_mk, Subtype.exists, exists_and_right, exists_eq_right]
+        apply Iff.intro
+        · intro a
+          simp_all only [implies_true, Finset.mem_subtype, Finset.mem_image, Subtype.exists, exists_and_right,
+            exists_eq_right, Subtype.coe_eta, Finset.coe_mem, exists_const]
+        · intro a
+          simp_all only [implies_true, Finset.mem_subtype, Finset.mem_image, Subtype.exists, exists_and_right,
+            exists_eq_right, Subtype.coe_eta, Finset.coe_mem, exists_const]
+
+    simp_all only [filtered]
 
 lemma finsetInter_empty {α : Type} [DecidableEq α] (s : Finset α) :
   s ∈ (∅ : Finset (Finset α)) → False :=
@@ -1515,7 +1538,7 @@ noncomputable def closure_operator_from_CS {α :Type} [DecidableEq α][Fintype �
     --clの像がsetsの元であることと、setsの元sがclにより、sに映ることを示せば良い。
 -/
 
-/- 帰納法の練習。消して良い。
+-- 帰納法の練習。消して良い。
 theorem length_ge_one_implies_nonempty (xs : List α) :
   xs.length ≥ 1 → xs ≠ [] :=
 by
@@ -1572,4 +1595,27 @@ by
   | succ n ih =>
       -- このブランチでは n = succ k
       rw [Nat.succ_add]
--/
+
+theorem nonempty_list_induction {α : Type} (P : List α → Prop) :
+  (∀ x xs, P (x :: xs)) → ∀ l, l ≠ [] → P l :=
+by
+  intro h_base
+  intro l h_nonempty
+  induction l with
+  | nil =>
+      -- 空リストのケースでは矛盾を示す
+      exfalso
+      exact h_nonempty rfl
+  | cons head tail =>
+      -- 非空リストのケース
+      exact h_base head tail
+
+theorem example2 {α : Type} (L : List α) : L = [] ∨ ∃ x xs, L = x :: xs :=
+by
+  induction L with
+  | nil =>
+      -- `L = []` が成立するが、コンテキストには明示されない
+      exact Or.inl rfl
+  | cons head tail ih =>
+      -- `L = head :: tail` が成立するが、コンテキストには明示されない
+      exact Or.inr ⟨head, tail, rfl⟩

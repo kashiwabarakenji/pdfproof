@@ -1046,29 +1046,6 @@ by
     obtain ⟨val, property⟩ := yB
     simp_all only
 
---Finset.image Subtype.val (foldr (fun x acc ↦ x ∩ acc) Finset.univ S.toList) =
---  foldr (fun x acc ↦ x ∩ acc) Finset.univ (Finset.image (fun t ↦ Finset.image Subtype.val t) S).toList
-
---下のfinite_intersection_in_C_subtypeで使っている。今の方針では証明できそうにない。最初からfintypeで照明した方が早いかも。
---もしくは、2つの場合には示せているので、それを利用して帰納法で示すというのはあるかもしれない。その証明をChatGPT o1に作ってもらうとよいかも。
---finsetInterをとってからsubtypeにするのと、subtypeにしてからfinsetInterとるのは同じであることの定理。
---右辺は、全体集合で
-lemma finsetInter_nil {α : Type} [DecidableEq α] [Fintype α] (p : α → Prop) [DecidablePred p] [Fintype {x // p x}] :
-  (finsetInter (∅ : Finset (Finset {x // p x}))).map ⟨Subtype.val, Subtype.val_injective⟩ = finsetInter (∅ : Finset (Finset α)) :=
-by
-  have :(finsetInter (∅ : Finset (Finset {x // p x}))).map ⟨Subtype.val, Subtype.val_injective⟩ = Finset.image Subtype.val  (Finset.univ: Finset {x // p x}) := by
-    --haveI : Fintype { x // p x } := inferInstance
-    have : finsetInter (∅ : Finset (Finset {x // p x})) = (Finset.univ: Finset {x // p x}) := by
-      simp [finsetInter]
-    dsimp [finsetInter]
-    rw [Finset.map_eq_image]
-    simp
-
-  rw [this]
-
-
-
-
 --このままだとSが空集合のときに成り立ってないよう。Subtypeを先にとるとunicになって、subtypeをあとにとると、F.groundになる。
 --空でないという仮定を入れるのが良さそう。
 lemma intersection_lemma  {α : Type} [DecidableEq α] [Fintype α] (p : α → Prop) [DecidablePred p] (S : Finset (Finset (Subtype p)))
@@ -1082,24 +1059,35 @@ by
     intro a
     subst a
   -/
+  have main: L ≠ [] → (finsetInter S).map ⟨Subtype.val, Subtype.val_injective⟩ = finsetInter (S.image (fun t => t.map ⟨Subtype.val, Subtype.val_injective⟩ )) :=
+  by
   -- `L` に基づいて帰納法を開始します。
-  induction S.toList generalizing S with
-  | nil =>
-    have snil: S = ∅ := by
-      simp_all only [Finset.toList_eq_nil, Finset.eq_empty_iff_forall_not_mem]
-      --search_proof
-    intro h_nonempty
-    exfalso
-    subst snil
-    simp_all only [Finset.not_nonempty_empty]
+    induction L generalizing S with
+    | nil =>
+      intro h_nonempty
+      contradiction
 
+    | cons head tail ih =>
+      -- 再帰ステップ (`S = {head} ∪ tail`)
+      intro h_nonempty
+      simp [finsetInter, List.foldr]
+      -- 帰納仮定を適用
 
-  | cons head tail ih =>
-    -- 再帰ステップ (`S = {head} ∪ tail`)
-    simp [finsetInter, List.foldr]
-    -- 帰納仮定を適用
-    simp_all only [forall_const, S]
-    apply ih
+      simp_all only [forall_const]
+      simp_all only [ne_eq, reduceCtorEq, not_false_eq_true]
+      by_cases h_empty : tail = []
+      case pos =>
+        --subst h_empty
+        --simp_all only [not_true_eq_false, IsEmpty.forall_iff, implies_true]
+        --L = head:: tail
+        have :S = {head} := by
+        --L= head:tailであることはどうやったらわかるか？
+
+      case neg =>
+
+        let iht := ih tail.toFinset h_empty
+        apply ih
+        simp_all only [not_false_eq_true]
 
 lemma intersection_lemma_image  {α : Type} [DecidableEq α] [Fintype α] (p : α → Prop) [DecidablePred p] (S : Finset (Finset (Subtype p))) (Snonemp: S.Nonempty) :
   (finsetInter S).image Subtype.val = finsetInter (S.image (fun t => t.image Subtype.val)) :=

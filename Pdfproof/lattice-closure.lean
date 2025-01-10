@@ -13,6 +13,7 @@ import Mathlib.Data.Finset.Lattice.Basic
 import Init.Data.List.MinMax
 import Mathlib.Data.List.MinMax
 import Mathlib.Algebra.BigOperators.Group.Finset
+import Init.Data.List.Lemmas
 
 set_option maxHeartbeats 2000000
 
@@ -1046,9 +1047,119 @@ by
     obtain ⟨val, property⟩ := yB
     simp_all only
 
+
+--o1作成
+
+lemma intersection_lemma
+  {α : Type} [DecidableEq α] [Fintype α]
+  (p : α → Prop) [DecidablePred p]
+  (S : Finset (Finset (Subtype p)))
+  (h : S.Nonempty)
+  : (finsetInter S).map ⟨Subtype.val, Subtype.val_injective⟩
+    = finsetInter (S.image (fun t => t.map ⟨Subtype.val, Subtype.val_injective⟩)) := by
+  -- finsetInter S = foldr (· ∩ ·) univ (S.toList)
+  -- であることを展開して扱います。
+
+  -- Step 1. S が空の場合は仮定 h: S.Nonempty と矛盾。
+  --         よって空でないリスト (S.toList) を得ます。
+  set l := S.toList with l_def
+  have : l ≠ [] := by
+    intro hl
+    simp_all only [Finset.toList_eq_nil, Finset.not_nonempty_empty, l]
+
+  -- Step 2. S.image (λ t => t.map val) の toList は
+  --         l.map (λ t => t.map val) と同じ要素からなる (順序は不問)。
+  --         intersection (∩) は可換・結合的なので
+  --         リストの順序に依存せず foldr の結果が同じになることを使います。
+  set l' := (S.image (fun t => t.map ⟨Subtype.val, Subtype.val_injective⟩)).toList with l'_def
+
+  -- ここで、l' は l.map (...) の要素と同値 (順序のみ違う) であることを使い、
+  -- foldr (· ∩ ·) が可換・結合的な演算であるので
+  -- foldr の結果が対応することを示せば十分です。
+
+  -- Step 3. l による帰納法で証明します。
+  --         (実際には l が空でないのでパターンは cons だけ考えればよい)
+
+  -- 補助定義：foldInter の略記 (Subtype p 版) とそれを map val したもの
+  let foldInterSubtype : List (Finset (Subtype p)) → Finset (Subtype p)
+    := fun xs => xs.foldr (· ∩ ·) Finset.univ
+  let foldInterSubtypeMapVal : List (Finset (Subtype p)) → Finset α
+    := fun xs => (foldInterSubtype xs).map ⟨Subtype.val, Subtype.val_injective⟩
+
+  -- 同様に α 版
+  let foldInterAlpha : List (Finset α) → Finset α
+    := fun xs => xs.foldr (· ∩ ·) Finset.univ
+
+  -- 目標は foldInterSubtypeMapVal l = foldInterAlpha (l.map (·.map val))
+  -- ただし順序が S.image (...) と一致しなくてもよい(順序の違いは可換性で吸収)。
+
+  -- 帰納法に必要な補題を作り、同時に証明します。
+  -- list が要素 t :: ts の形に分解できる場合のみ示せば十分です。
+  suffices fold_map_eq : ∀ (xs : List (Finset (Subtype p))),
+    xs ≠ [] → (foldInterSubtype xs).map ⟨Subtype.val, Subtype.val_injective⟩
+      = foldInterAlpha (xs.map (fun A => A.map ⟨Subtype.val, Subtype.val_injective⟩))
+  from by
+    -- 最終的にこの補題 fold_map_eq を使ってゴールを示します。
+    -- S.toList = l なのでちょうど適用できます。
+    -- S.image (...) の toList = l' は l.map (...) の要素と同値なので
+    -- foldMap の可換性から両者の foldr 結果は一致します。
+    rw [finsetInter, finsetInter]
+    --search_proof
+    let fm := fold_map_eq S.toList this
+    dsimp [foldInterSubtypeMapVal, foldInterSubtype, foldInterAlpha] at fm
+    rw [←l_def, ←l'_def]
+
+    convert fm
+    rw [l'_def]
+    congr
+    simp_all
+
+
+
+
+  -- fold_map_eq の本体を証明
+  intro xs hxs
+  match xs with
+  | [] => contradiction  -- hxs との矛盾
+  | x :: ys =>
+    -- foldInterSubtype (x :: ys) = x ∩ foldInterSubtype ys
+    -- map val すると inter_lemma から
+    -- map val x ∩ map val (foldInterSubtype ys)
+    -- 帰納法的に map val (foldInterSubtype ys) = foldInterAlpha (ys.map (·.map val)) が成り立てばよい。
+    calc
+      (foldInterSubtype (x :: ys)).map ⟨Subtype.val, Subtype.val_injective⟩
+        = (x ∩ foldInterSubtype ys).map ⟨Subtype.val, Subtype.val_injective⟩
+          := by rfl
+      _ = x.map ⟨Subtype.val, Subtype.val_injective⟩
+            ∩ (foldInterSubtype ys).map ⟨Subtype.val, Subtype.val_injective⟩
+          := by rw [inter_lemma]
+      _ = x.map ⟨Subtype.val, Subtype.val_injective⟩
+            ∩ foldInterAlpha (ys.map (fun A => A.map ⟨Subtype.val, Subtype.val_injective⟩))
+          := by
+              simp_all only [ne_eq, Finset.toList_eq_nil, reduceCtorEq, not_false_eq_true, l, l']
+              simp_all only [foldInterSubtype, foldInterAlpha]
+              --exact @Finset.univ_inter α _
+              -- 帰納法呼び出し
+              have ih : (foldInterSubtype ys).map ⟨Subtype.val, Subtype.val_injective⟩
+                    = foldInterAlpha (ys.map (fun A => A.map ⟨Subtype.val, Subtype.val_injective⟩))
+                := by fold_map_eq ys (by
+                       intro h'
+                       contradiction  -- ys が空の場合、このパターンには来ない
+                      )
+              rw [ih]
+      -- いま x.map val と foldInterAlpha (ys.map (·.map val)) がある。
+      -- これを foldInterAlpha ((x.map val) :: (ys.map (·.map val))) と等しくするには
+      -- foldInterAlpha (x.map val :: list) = x.map val ∩ foldInterAlpha list
+      -- の定義通り。
+      _ = foldInterAlpha ((x.map ⟨Subtype.val, Subtype.val_injective⟩)
+                        :: ys.map (fun A => A.map ⟨Subtype.val, Subtype.val_injective⟩))
+          := by rfl
+
+-- 以上で証明完了
+
 --このままだとSが空集合のときに成り立ってないよう。Subtypeを先にとるとunicになって、subtypeをあとにとると、F.groundになる。
 --空でないという仮定を入れるのが良さそう。
-lemma intersection_lemma  {α : Type} [DecidableEq α] [Fintype α] (p : α → Prop) [DecidablePred p] (S : Finset (Finset (Subtype p)))
+lemma intersection_lemma2  {α : Type} [DecidableEq α] [Fintype α] (p : α → Prop) [DecidablePred p] (S : Finset (Finset (Subtype p)))
  :  S.Nonempty → (finsetInter S).map ⟨Subtype.val, Subtype.val_injective⟩ = finsetInter (S.image (fun t => t.map ⟨Subtype.val, Subtype.val_injective⟩ )) :=
 by
   -- 帰納法を用いるため、`S` のリスト表現に基づいて進めます。
@@ -1083,7 +1194,7 @@ by
         subst h_empty
         simp_all only [ne_eq, not_true_eq_false, toFinset_nil, Finset.image_empty, IsEmpty.forall_iff, cons_ne_self,
           not_false_eq_true, insert_emptyc_eq, Finset.toList_singleton, foldr_cons, foldr_nil, Finset.inter_univ]
-      case neg =>
+      case neg => --tail ≠ []のケース
         let iht := ih h_empty
         rw [finsetInter] at iht
         dsimp [finsetInter] at iht
@@ -1093,17 +1204,39 @@ by
         unfold List.foldr
         rw [insert]
         simp at iht
-        simp_all only [ne_eq, not_false_eq_true, forall_const, reduceCtorEq]
-        split
-        next x heq =>
+        --simp_all only [ne_eq, not_false_eq_true, forall_const, reduceCtorEq]
+        split--ゴールを上のmatchで分解
+        next x heq => --heqを見ると、空の場合。空の場合は考えなくても良い？
           simp_all only [Finset.toList_eq_nil]
+          simp_all only [ne_eq, not_false_eq_true, forall_const, reduceCtorEq]
           split
           next x_1 heq_1 => simp_all only [Finset.toList_eq_nil, Finset.insert_ne_empty]
-          next x_1 a as heq_1 => sorry --exact inter_lemma
+          next x_1 a as heq_1 => search_proof
+            --contradiction heqとheq_1がなんらかの矛盾が起こるのでは。
+            --simp at heq_1
+
+            --sorry --heq_1によると、こちらが帰納ケース
+            --(insert (Finset.map { toFun := Subtype.val, inj' := ⋯ } head)   (Finset.image (fun t ↦ Finset.map { toFun := Subtype.val, inj' := ⋯ } t) tail.toFinset)).toList = a :: as
+          --heq1 Finset.image Subtype.val Finset.univ = a ∩ foldr (fun x acc ↦ x ∩ acc) Finset.univ as
+          --heq: Finset.instInsert.1 head tail.toFinset = ∅
+          --左辺は全体集合。heq1だけで、矛盾が起きそう。a=Finset.univとなる。
         next x a as heq =>
           split
           next x_1 heq_1 => simp_all only [Finset.toList_eq_nil, Finset.insert_ne_empty]
-          next x_1 a_1 as_1 heq_1 => sorry --exact inter_lemma
+          next x_1 a_1 as_1 heq_1 =>
+            let il := inter_lemma p (a_1.subtype p) ((foldr (fun x acc ↦ x ∩ acc) Finset.univ as_1).subtype p)
+            rw [List.foldr.eq_def]
+            --rw [← @Function.Embedding.coe_subtype]
+            split
+            sorry
+            rw [Finset.map_eq_image] at il
+            --convert il.symm
+            --search_proof
+            sorry
+
+
+
+          --sorry --exact inter_lemma
   intro Snonempty
   have Lnonempty: L ≠ [] :=
   by

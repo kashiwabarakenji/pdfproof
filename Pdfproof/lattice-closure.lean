@@ -1059,35 +1059,63 @@ by
     intro a
     subst a
   -/
-  have main: L ≠ [] → (finsetInter S).map ⟨Subtype.val, Subtype.val_injective⟩ = finsetInter (S.image (fun t => t.map ⟨Subtype.val, Subtype.val_injective⟩ )) :=
+  have main: ∀ L:List (Finset (Subtype p)) ,L ≠ [] → (finsetInter L.toFinset).map ⟨Subtype.val, Subtype.val_injective⟩ = finsetInter (L.toFinset.image (fun t => t.map ⟨Subtype.val, Subtype.val_injective⟩ )) :=
   by
   -- `L` に基づいて帰納法を開始します。
-    induction L generalizing S with
+    intro L
+    induction L with
     | nil =>
       intro h_nonempty
-      contradiction
+      simp_all only [ne_eq, not_true_eq_false]
 
     | cons head tail ih =>
       -- 再帰ステップ (`S = {head} ∪ tail`)
       intro h_nonempty
       simp [finsetInter, List.foldr]
       -- 帰納仮定を適用
-
-      simp_all only [forall_const]
-      simp_all only [ne_eq, reduceCtorEq, not_false_eq_true]
+      --simp_all only [forall_const]
+      --simp_all only [ne_eq, reduceCtorEq, not_false_eq_true]
       by_cases h_empty : tail = []
       case pos =>
-        --subst h_empty
         --simp_all only [not_true_eq_false, IsEmpty.forall_iff, implies_true]
         --L = head:: tail
-        have :S = {head} := by
-        --L= head:tailであることはどうやったらわかるか？
-
+        --subst h_empty
+        subst h_empty
+        simp_all only [ne_eq, not_true_eq_false, toFinset_nil, Finset.image_empty, IsEmpty.forall_iff, cons_ne_self,
+          not_false_eq_true, insert_emptyc_eq, Finset.toList_singleton, foldr_cons, foldr_nil, Finset.inter_univ]
       case neg =>
-
-        let iht := ih tail.toFinset h_empty
-        apply ih
-        simp_all only [not_false_eq_true]
+        let iht := ih h_empty
+        rw [finsetInter] at iht
+        dsimp [finsetInter] at iht
+        rw [Finset.map_eq_image]
+        rw [Finset.map_eq_image] at iht
+        dsimp [List.foldr]
+        unfold List.foldr
+        rw [insert]
+        simp at iht
+        simp_all only [ne_eq, not_false_eq_true, forall_const, reduceCtorEq]
+        split
+        next x heq =>
+          simp_all only [Finset.toList_eq_nil]
+          split
+          next x_1 heq_1 => simp_all only [Finset.toList_eq_nil, Finset.insert_ne_empty]
+          next x_1 a as heq_1 => sorry --exact inter_lemma
+        next x a as heq =>
+          split
+          next x_1 heq_1 => simp_all only [Finset.toList_eq_nil, Finset.insert_ne_empty]
+          next x_1 a_1 as_1 heq_1 => sorry --exact inter_lemma
+  intro Snonempty
+  have Lnonempty: L ≠ [] :=
+  by
+    simp_all only [ne_eq, Finset.toList_eq_nil, L]
+    apply Aesop.BuiltinRules.not_intro
+    intro a
+    subst a
+    simp_all only [Finset.not_nonempty_empty]
+  have :L.toFinset = S := by
+    simp_all only [ne_eq, Finset.toList_eq_nil, Finset.toList_toFinset, L]
+  rw [←this]
+  exact main L Lnonempty
 
 lemma intersection_lemma_image  {α : Type} [DecidableEq α] [Fintype α] (p : α → Prop) [DecidablePred p] (S : Finset (Finset (Subtype p))) (Snonemp: S.Nonempty) :
   (finsetInter S).image Subtype.val = finsetInter (S.image (fun t => t.image Subtype.val)) :=

@@ -515,7 +515,7 @@ by
   apply h2
   simp_all only [Finset.mem_map, Function.Embedding.coeFn_mk, Subtype.exists, exists_and_right, exists_eq_right, exists_const]--
 
-noncomputable def closure_operator_from_SF {α :Type} [DecidableEq α][Fintype α] (F: SetFamily α) [DecidablePred F.sets]: SetFamily.preclosure_operator F :=
+noncomputable def preclosure_operator_from_SF {α :Type} [DecidableEq α][Fintype α] (F: SetFamily α) [DecidablePred F.sets]: SetFamily.preclosure_operator F :=
   let cl := fun s =>
     let sval := s.map ⟨Subtype.val, Subtype.val_injective⟩
     let ios := (finsetInter (F.ground.powerset.filter (fun (t:Finset α) => F.sets t ∧ sval ⊆ t)))
@@ -607,11 +607,6 @@ noncomputable def closure_operator_from_SF {α :Type} [DecidableEq α][Fintype �
 
   }
 
-
---namespace max?exist
-
-open List
-
 --ここで証明したことは、List.max?に関して非空な場合の最大値の存在と、最大値であることを保証する定理を証明した。List.max?_spec
 --当然、mathlibにあると思われるが、List.maximumのほうはあっても、max?のほうにはなく、等価性の証明もない。
 --と思ったら、以下のものがあった。
@@ -625,7 +620,7 @@ open List
 
 --使ってない？
 omit [DecidableEq α] [Fintype α]
-lemma mini_lem [LinearOrder α] (a b:α) (bs:List α ): foldl max (a ⊔ b) bs = a ⊔ foldl max b bs :=
+lemma mini_lem [LinearOrder α] (a b:α) (bs:List α ): List.foldl max (a ⊔ b) bs = a ⊔ List.foldl max b bs :=
   by
     cases hb:bs with
     | nil =>
@@ -680,7 +675,7 @@ theorem max?_exists2 [DecidableEq α] [LinearOrder α] {l : List α} (l_ne : l �
           rw [h1]
           -- 帰納法の仮定 ih : foldl max a bs ∈ a :: b :: bs
           -- これを Or で場合分けしてそのまま詰める
-          simp_all only [ne_eq, reduceCtorEq, not_false_eq_true, mem_cons, forall_const, sup_eq_left]
+          simp_all only [ne_eq, reduceCtorEq, not_false_eq_true, List.mem_cons, forall_const, sup_eq_left]
           specialize ih a
           cases ih with
           | inl h => simp_all only [true_or]
@@ -691,7 +686,7 @@ theorem max?_exists2 [DecidableEq α] [LinearOrder α] {l : List α} (l_ne : l �
           -- 帰納法の仮定 ih : foldl max a bs ∈ a :: b :: bs
           -- ただし今度はアキュムレータが b に変わるので ih b を使う
           right
-          simp_all only [ne_eq, reduceCtorEq, not_false_eq_true, mem_cons, forall_const, sup_eq_right]
+          simp_all only [ne_eq, reduceCtorEq, not_false_eq_true, List.mem_cons, forall_const, sup_eq_right]
 
 --List maxに対して、最大値の存在を保証する定理
 theorem List.max?_spec {β : Type} [DecidableEq β] [LinearOrder β] {l : List β} (l_ne : l ≠ []) :
@@ -786,19 +781,19 @@ by
   let ls := l.map (fun x ↦ x.card)
   have ls_ne : ls ≠ [] := by
     simp_all only [ne_eq, List.map_eq_nil_iff, not_false_eq_true]
-    simp_all only [mem_map, forall_exists_index, and_imp, forall_apply_eq_imp_iff₂, implies_true, map_eq_nil_iff, ls]
+    simp_all only [List.mem_map, forall_exists_index, and_imp, forall_apply_eq_imp_iff₂, implies_true, List.map_eq_nil_iff, ls]
     apply Aesop.BuiltinRules.not_intro
     intro a_1
     subst a_1
-    simp_all only [not_mem_nil]
+    simp_all only [List.not_mem_nil]
   let lm := List.max?_spec ls_ne
   obtain ⟨m, hm⟩ := lm
   have :∃ ms:Finset α , ms ∈ l ∧ ms.card = m :=
   by
     use a
     use ha_in_l
-    simp_all only [mem_map, forall_exists_index, and_imp, forall_apply_eq_imp_iff₂, implies_true, ne_eq,
-      map_eq_nil_iff, ls]
+    simp_all only [List.mem_map, forall_exists_index, and_imp, forall_apply_eq_imp_iff₂, implies_true, ne_eq,
+      List.map_eq_nil_iff, ls]
     obtain ⟨left, right⟩ := hm
     obtain ⟨left_1, right⟩ := right
     obtain ⟨w, h⟩ := right
@@ -808,7 +803,7 @@ by
     · simp_all only
     · simp_all only
   obtain ⟨ms, hms⟩ := this
-  simp_all only [mem_map, forall_exists_index, and_imp, forall_apply_eq_imp_iff₂, implies_true, ne_eq, map_eq_nil_iff,
+  simp_all only [List.mem_map, forall_exists_index, and_imp, forall_apply_eq_imp_iff₂, implies_true, ne_eq, List.map_eq_nil_iff,
     Option.getD_some, ls]
   obtain ⟨left, right⟩ := hm
   obtain ⟨left_1, right_1⟩ := hms
@@ -841,7 +836,7 @@ theorem largestCard_spec  (l : List (Finset α)) (hne : l ≠ []) :
     ここで仮定されている補題 `List.max?_spec` を使う：
       List.max?_spec l'_ne : ∃ m, l'.max? = some m ∧ (∀ x ∈ l', x ≤ m) ∧ m ∈ l'
   -/
-  rcases max?_spec l'_ne with ⟨m, hm_eq, hm_forall, hm_in⟩
+  rcases List.max?_spec l'_ne with ⟨m, hm_eq, hm_forall, hm_in⟩
   rw [← hm_eq] at *
   simp only [Option.getD_some] at hm_eq
 
@@ -927,8 +922,8 @@ by
 
 lemma insert_foldr_inter {α : Type} [DecidableEq α] [Fintype α]
   (x : Finset α) (S' : Finset (Finset α)) (x_not_mem : x ∉ S') :
-  x ∩ foldr (fun x acc ↦ x ∩ acc) Finset.univ S'.toList =
-  foldr (fun x acc ↦ x ∩ acc) Finset.univ (insert x S').toList :=
+  x ∩ List.foldr (fun x acc ↦ x ∩ acc) Finset.univ S'.toList =
+  List.foldr (fun x acc ↦ x ∩ acc) Finset.univ (insert x S').toList :=
 by
   -- `Finset.toList_insert` を利用して順序が置換であることを取得
   have h_perm : List.Perm (insert x S').toList (x :: S'.toList) :=
@@ -953,7 +948,7 @@ by
 
   -- `List.Perm.foldr_eq` を適用して両辺を比較
   rw [List.Perm.foldr_eq h_perm]
-  simp_all only [foldr_cons]
+  simp_all only [List.foldr_cons]
 
   -- F.setsはintersection_closedだが、S'はintersection closedとは限らない。
   -- Fは帰納法で大きくなったり、小さくなったりせずに、Sが変わる。
@@ -1106,70 +1101,6 @@ lemma cl_in_F_sets_lemma  {α : Type} [DecidableEq α] [Fintype α]
   (F : ClosureSystem α) [DecidablePred F.sets] (s : Finset { x // x ∈ F.ground }):
    Finset.subtype (fun x ↦ x ∈ F.ground) (finsetInter (Finset.filter (fun t ↦ F.sets t ∧ s.map ⟨Subtype.val, Subtype.val_injective⟩ ⊆ t) F.ground.powerset)) = finsetInter (Finset.image (fun t ↦ Finset.subtype (fun x ↦ x ∈ F.ground) t) (Finset.filter (fun t ↦ F.sets t ∧ s.map ⟨Subtype.val, Subtype.val_injective⟩ ⊆ t) F.ground.powerset)) :=
 by
-  --mapでなくて、imageで定義したので、map関係をコメントアウト。消して良い。
-  /- 証明は完了しているが使ってない。
-  have lemf: Finset.image (fun tt => Finset.filter (fun t => t ∈ F.ground) tt) filtered = filtered :=
-  by
-    simp_all only [filtered]
-    rw [Finset.map_eq_image]
-    ext x
-    simp_all only [Finset.mem_image, Finset.mem_filter, Finset.mem_powerset]
-    apply Iff.intro
-    · intro a
-      obtain ⟨w, h⟩ := a
-      obtain ⟨left, right⟩ := h
-      obtain ⟨left, right_1⟩ := left
-      obtain ⟨left_1, right_1⟩ := right_1
-      subst right
-      apply And.intro
-      · simp_all only [Function.Embedding.coeFn_mk]
-        intro x hx
-        simp_all only [Finset.mem_filter]
-      · apply And.intro
-        · simp_all only [Function.Embedding.coeFn_mk]
-          rwa [Finset.filter_true_of_mem left]
-        ·
-          simp_all only [Function.Embedding.coeFn_mk]
-          intro x hx
-          simp_all only [Finset.mem_image, Subtype.exists, exists_and_right, exists_eq_right, Finset.mem_filter]
-          obtain ⟨w_1, h⟩ := hx
-          simp_all only [and_true]
-          apply right_1
-          simp_all only [Finset.mem_image, Subtype.exists, exists_and_right, exists_eq_right, exists_const]
-    · intro a
-      simp_all only [Function.Embedding.coeFn_mk]
-      obtain ⟨left, right⟩ := a
-      obtain ⟨left_1, right⟩ := right
-      apply Exists.intro
-      · apply And.intro
-        · apply And.intro
-          on_goal 2 => apply And.intro
-          on_goal 2 => {exact left_1
-          }
-          · simp_all only
-          · simp_all only
-        · rw [Finset.filter_true_of_mem left]
-  -/
-  --ilはlem1の証明に使っているがlem1がそもそもいらないのかも。
-  --let il := (intersection_lemma (fun x => x ∈ F.ground) (filtered.image (λ t => t.subtype (λ x => x ∈ F.ground)))).symm
-  --let tmpimage := tmp.image (fun t ↦ t.map ⟨Subtype.val, Subtype.val_injective⟩)
-  --lem 1をコメントアウトするとエラーになる。simpで利用しているよう。なしでも証明は通るように書き換えた。
-  /-
-  have lem1:finsetInter tmpimage = Finset.map ⟨Subtype.val, Subtype.val_injective⟩ (finsetInter tmp_right) :=
-  by
-    simp_all only [Finset.map_inj, tmpimage, tmp, filtered,tmp_right]
-    ext a : 1
-    obtain ⟨val, property⟩ := a
-    apply Iff.intro
-    · intro a
-      convert a
-    · intro a
-      convert a
-
-  dsimp [tmpimage, tmp, tmp_right] at lem1
-  rw [Finset.map_eq_image] at lem1 --コメントアウトするとエラ〜
-  --rw [Finset.map_eq_image] at il --コメントアウトするとエラ〜
-  -/
 
   set filtered := Finset.filter (fun t ↦ F.sets t ∧ s.map ⟨Subtype.val, Subtype.val_injective⟩ ⊆ t) F.ground.powerset
   by_cases filtered.image (λ t => t.subtype (λ x => x ∈ F.ground)) = ∅
@@ -1428,7 +1359,7 @@ by
       rw [←ifi]
       by_cases h_eq : s ∈ A'
       case pos =>
-        have :foldr (fun x acc ↦ x ∩ acc) Finset.univ A'.toList = s := by
+        have :List.foldr (fun x acc ↦ x ∩ acc) Finset.univ A'.toList = s := by
           apply ih h_eq
           intro t ht
           exact h_subset t (Finset.mem_insert_of_mem ht)
@@ -1436,7 +1367,7 @@ by
         have : s ⊆ s' := by
           apply h_subset s' (Finset.mem_insert_self s' A')
         ext
-        simp [subset_def]
+        simp [List.subset_def]
         rename_i this_1 a_1
         intro a_2
         subst this_1
@@ -1450,7 +1381,7 @@ by
           simp_all only [Finset.insert_eq_of_mem, implies_true, forall_const, IsEmpty.forall_iff, Finset.mem_insert,
             or_false, forall_eq_or_imp, subset_refl, true_and, not_false_eq_true]
         rw [←this]
-        have : s ⊆ foldr (fun x acc ↦ x ∩ acc) Finset.univ A'.toList := by
+        have : s ⊆ List.foldr (fun x acc ↦ x ∩ acc) Finset.univ A'.toList := by
           apply (finset_inter_subset_iff A' s).mp
           intro X a
           subst this
@@ -1459,8 +1390,7 @@ by
         rw [@Finset.inter_eq_left]
         exact this
 
-  /-
-noncomputable def closure_operator_from_CS {α :Type} [DecidableEq α][Fintype α] (C: ClosureSystem α) [DecidablePred C.sets]: SetFamily.closure_operator (C.toSetFamily)
+noncomputable def closure_operator_from_CS {α :Type} [DecidableEq α][Fintype α] (C: ClosureSystem α) [DecidablePred C.sets]: SetFamily.closure_operator (C.toSetFamily) :=
   let cl := fun s =>
     let sval := s.map ⟨Subtype.val, Subtype.val_injective⟩
     let ios := (finsetInter (C.ground.powerset.filter (fun (t:Finset α) => C.sets t ∧ sval ⊆ t)))
@@ -1468,7 +1398,129 @@ noncomputable def closure_operator_from_CS {α :Type} [DecidableEq α][Fintype �
 {
   Family := C.toSetFamily,
   cl := cl
-  idempotent := by sorry
-    --下に、閉集合族からひとつ要素を除いても閉集合族であることを示しているので、それを使えば、帰納法でidempotentを示せる。
-    --clの像がsetsの元であることと、setsの元sがclにより、sに映ることを示せば良い。
--/
+  extensive := --そのまま、適用すると、エラーになったので、一回letで置いた。
+  by
+    let ef := extensive_from_SF C.toSetFamily
+    intro s
+    simp_all only [cl, ef]
+
+  monotone := by
+    let po := (preclosure_operator_from_SF C.toSetFamily).monotone
+    intro s t hst
+    simp_all only [cl, po]
+    tauto
+
+  idempotent :=
+  by
+    intro s --subtype
+    let sval := s.map ⟨Subtype.val, Subtype.val_injective⟩
+    let cl_s := finsetInter (C.ground.powerset.filter (fun t => C.sets t ∧ sval ⊆ t)) --clの値。普通の集合
+    let cl_cl_s := finsetInter (C.ground.powerset.filter (fun t => C.sets t ∧ cl_s ⊆ t)) -- cl(cl(s))の値。普通の集合
+    have h_cl_s : cl s = cl_s.subtype (λ x => x ∈ C.ground) := rfl  --両辺subtype
+    have h_cl_cl_s : cl (cl s) = cl_cl_s.subtype (λ x => x ∈ C.ground) :=  --両辺subtype
+    by
+      simp_all only [cl]
+      congr
+      funext x
+      simp_all
+      dsimp [cl_s]
+      rw [Finset.map_eq_image]
+      intro xsx
+      apply Iff.intro
+      · intro a
+        have hx : x ∈ Finset.filter (fun t ↦ C.sets t ∧ sval ⊆ t) C.ground.powerset := by
+          simp [xsx, sval]
+          --rw [Finset.mem_filter]
+          constructor
+          · exact C.inc_ground xsx
+          · rw [Finset.map_eq_image]
+            simp at a
+            --xがなにかイマイチがわからないが、transitivityで示すのか。
+            sorry
+
+        have h_all : ∀ s ∈ Finset.filter (fun t ↦ C.sets t ∧ sval ⊆ t) C.ground.powerset, C.sets s := by
+          intros s hs
+          simp_all only [Function.Embedding.coeFn_mk, Finset.mem_filter, Finset.mem_powerset, true_and, sval]
+        --この部分もfinsetInterが他の部分の部分集合になればよい。
+        sorry--今まで示したことから言える可能性あり。intersection_lemmaを使うかも。
+      · intro a
+        simp_all only [Function.Embedding.coeFn_mk, sval]
+        rw [Finset.image_subset_iff]
+        intro x_1 a_1
+        simp_all only [Finset.mem_subtype]
+        obtain ⟨val, property⟩ := x_1
+        simp_all only
+        apply a
+        simp_all only
+
+    have h_cl_s_in_sets : C.sets cl_s := by
+      apply finite_intersection_in_C
+      simp only [Finset.filter_nonempty_iff, Finset.mem_filter, Finset.mem_powerset]
+      use C.ground
+      simp only [subset_refl, true_and]
+      constructor
+      exact C.has_ground
+      intro t ht
+      simp_all only [Finset.mem_map, Function.Embedding.coeFn_mk, Subtype.exists, exists_and_right, exists_eq_right,
+        cl, cl_s, sval, cl_cl_s]
+      obtain ⟨w, h⟩ := ht
+      simp_all only
+
+      simp_all only [cl, cl_s, sval]
+      intro s_1 a
+      simp_all only [Finset.mem_filter, Finset.mem_powerset, cl_cl_s, cl_s, sval]
+
+    have h_cl_s_subset : sval ⊆ cl_s := by
+      dsimp [cl_s,sval]
+      let ef := extensive_from_SF C.toSetFamily s
+      simp at ef
+      convert ef
+      simp_all
+      apply (finset_inter_subset_iff _ _).mpr
+      intro t ht
+      simp_all only [Finset.mem_filter, Finset.mem_powerset, Finset.mem_map, Function.Embedding.coeFn_mk, Subtype.exists,
+        exists_and_right, exists_eq_right, cl, cl_s, sval]
+      obtain ⟨w, h⟩ := ht
+      simp_all only [cl, cl_cl_s, cl_s, sval]
+      simpa using ef h
+
+      rw [Finset.mem_filter]
+      constructor
+      · rw [Finset.mem_powerset]
+      --finsetInterの要素はもとのどの要素よりも小さいことを示ればよさそう。
+        sorry -- sを写したものは、tを含んでsetsであるもののうちの一つである。
+
+      · simp_all only [true_and, cl, cl_cl_s, cl_s, sval]
+        rw [Finset.subset_iff] at ef
+        simp_all only [Finset.mem_subtype, Subtype.forall]
+        intro a ha
+        simp_all only [Finset.mem_map, Function.Embedding.coeFn_mk, Subtype.exists, exists_and_right, exists_eq_right]
+        obtain ⟨w, h⟩ := ha
+        simp_all only
+
+
+      --simp only [Finset.mem_filter, Finset.mem_powerset] at ht
+      --exact ht.2
+    have h_cl_cl_s_eq_cl_s : cl_cl_s = cl_s := by
+      apply finsetInter_eq_s
+      simp only [Finset.filter_nonempty_iff, Finset.mem_filter, Finset.mem_powerset]
+      constructor
+      -- Groundの部分集合のfinsetInterがGroundsetであることを利用する。
+      · dsimp [cl_s]
+        have : sval ∈ C.ground.powerset :=
+        by
+          simp_all only [Finset.mem_powerset, cl, cl_s, sval, cl_cl_s]
+          intro x hx
+          simp_all only [Finset.mem_map, Function.Embedding.coeFn_mk, Subtype.exists, exists_and_right,
+            exists_eq_right]
+          obtain ⟨w, h⟩ := hx
+          simp_all only
+        exact intersectioninground C sval this
+      · simp_all only [subset_refl, and_self, cl, cl_s, sval, cl_cl_s]
+      · intro t a
+        simp_all only [Finset.mem_filter, Finset.mem_powerset, cl, cl_s, sval, cl_cl_s]
+    dsimp [cl_cl_s] at h_cl_cl_s_eq_cl_s
+    dsimp [cl_s] at h_cl_s_in_sets
+    dsimp [h_cl_cl_s_eq_cl_s]
+    simp_all only [cl, cl_s, sval, cl_cl_s]
+}

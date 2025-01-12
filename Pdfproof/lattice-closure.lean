@@ -1,3 +1,6 @@
+--closureシステムを有限の台集合で帰納的に考えた。閉包システムの定義からextensiveやmonotoneを示したが、indempotentは正確にはまだ証明してない。
+--ただし、subtypeの議論を除いて、clの像が閉集合であることと、閉集合は自分自身に映ることは証明した。
+--あとは、それを仮定して、subtypeに限定しても、同じことがいえるかどうかを証明すればよい。
 import LeanCopilot
 --import Mathlib.Order.BoundedOrder
 import Mathlib.Data.Finset.Basic
@@ -14,8 +17,10 @@ import Init.Data.List.MinMax
 import Mathlib.Data.List.MinMax
 import Mathlib.Algebra.BigOperators.Group.Finset
 import Init.Data.List.Lemmas
+import Pdfproof.closure_lemma
+import Pdfproof.lattice_common
 
-set_option maxHeartbeats 2000000
+--set_option maxHeartbeats 2000000
 
 variable {α : Type}  [DecidableEq α] [Fintype α]
 
@@ -122,8 +127,6 @@ by
     intro h
     simp_all
 
-noncomputable def finsetInter {α : Type} [DecidableEq α][Fintype α] (A0 : Finset (Finset α)) : Finset α :=
-  A0.toList.foldr (fun x acc => x ∩ acc) Finset.univ
 
 lemma intersectionOfSubsets_def {α : Type} [DecidableEq α][Fintype α] (A0 : Finset (Finset α)) :
   finsetInter A0 = A0.toList.foldr (fun x acc => x ∩ acc) Finset.univ := by rfl
@@ -952,8 +955,6 @@ by
   rw [List.Perm.foldr_eq h_perm]
   simp_all only [foldr_cons]
 
-
-
   -- F.setsはintersection_closedだが、S'はintersection closedとは限らない。
   -- Fは帰納法で大きくなったり、小さくなったりせずに、Sが変わる。
   --極大な元を取ったりしなくても、帰納法が使える。よって、極大な集合の存在定理は無駄になったかも。
@@ -1024,6 +1025,7 @@ by
 
 
 --closure-lemma.leanに議論を移した。
+/-
 lemma intersection_lemma
   {α : Type} [DecidableEq α] [Fintype α]
   (p : α → Prop) [DecidablePred p]
@@ -1032,6 +1034,7 @@ lemma intersection_lemma
   : (finsetInter S).map ⟨Subtype.val, Subtype.val_injective⟩
     = finsetInter (S.image (fun t => t.map ⟨Subtype.val, Subtype.val_injective⟩)) := by
     sorry
+-/
 
 lemma intersection_lemma_image  {α : Type} [DecidableEq α] [Fintype α] (p : α → Prop) [DecidablePred p] (S : Finset (Finset (Subtype p))) (Snonemp: S.Nonempty) :
   (finsetInter S).image Subtype.val = finsetInter (S.image (fun t => t.image Subtype.val)) :=
@@ -1469,85 +1472,3 @@ noncomputable def closure_operator_from_CS {α :Type} [DecidableEq α][Fintype �
     --下に、閉集合族からひとつ要素を除いても閉集合族であることを示しているので、それを使えば、帰納法でidempotentを示せる。
     --clの像がsetsの元であることと、setsの元sがclにより、sに映ることを示せば良い。
 -/
-
--- 帰納法の練習。消して良い。
-theorem length_ge_one_implies_nonempty (xs : List α) :
-  xs.length ≥ 1 → xs ≠ [] :=
-by
-  induction xs with
-  | nil =>
-      -- 基底ケース: xs = []
-      intro h
-      -- 矛盾を導く
-      exfalso
-      simp at h
-  | cons x xs' ih =>
-      -- 帰納ステップ: xs = x :: xs'
-      intro _
-      intro h_eq
-      contradiction -- リストが空でないため、矛盾
-
-
-theorem sum_commutative {α : Type} [AddCommMonoid α] (s : Finset ℕ) :
-  s.sum id = s.sum id :=
-by
-  induction s using Finset.induction with
-  | empty =>
-      -- 空集合の場合
-      simp [Finset.sum_empty]
-  | insert x s' =>
-      -- s = insert x s' の場合
-      simp [Finset.sum_insert]
-
-
-theorem length_append (xs ys : List Nat) : (xs ++ ys).length = xs.length + ys.length :=
-by
-  induction xs with
-  | nil =>
-      -- xs = []
-      rw [List.nil_append]
-      simp -- 長さの性質
-  | cons x xs ih =>
-      -- xs = x :: xs
-      rw [List.cons_append]
-      simp
-      simp_all only [List.length_append]
-      omega
-
-theorem example0 (n : Nat) : n + 0 = n :=
-by
-  let original := n
-  induction n with
-  | zero =>
-    have: original = 0 := by
-      simp
-    dsimp [original]
-
-
-  | succ n ih =>
-      -- このブランチでは n = succ k
-      rw [Nat.succ_add]
-
-theorem nonempty_list_induction {α : Type} (P : List α → Prop) :
-  (∀ x xs, P (x :: xs)) → ∀ l, l ≠ [] → P l :=
-by
-  intro h_base
-  intro l h_nonempty
-  induction l with
-  | nil =>
-      -- 空リストのケースでは矛盾を示す
-      exfalso
-      exact h_nonempty rfl
-  | cons head tail =>
-      -- 非空リストのケース
-      exact h_base head tail
-
-theorem example2 {α : Type} (L : List α) : L = [] ∨ ∃ x xs, L = x :: xs :=
-by
-  induction L with
-  | nil =>
-      -- `L = []` が成立するが、コンテキストには明示されない
-      exact Or.inl rfl
-  | cons head tail ih =>
-      -- `L = head :: tail` が成立するが、コンテキストには明示されない
-      exact Or.inr ⟨head, tail, rfl⟩

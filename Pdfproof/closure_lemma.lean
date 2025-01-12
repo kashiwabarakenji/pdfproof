@@ -6,14 +6,15 @@ import Mathlib.Data.Finset.Card
 import Mathlib.Data.Fintype.Basic
 import Init.Data.List.BasicAux
 import Mathlib.Data.Finset.Dedup
+import Pdfproof.lattice_common
 import LeanCopilot
 
 variable {α : Type}  [DecidableEq α] [Fintype α]
 
 open Finset
 
-noncomputable def finsetInter {α : Type} [DecidableEq α][Fintype α] (A0 : Finset (Finset α)) : Finset α :=
-  A0.toList.foldr (fun x acc => x ∩ acc) Finset.univ
+--noncomputable def finsetInter {α : Type} [DecidableEq α][Fintype α] (A0 : Finset (Finset α)) : Finset α :=
+--  A0.toList.foldr (fun x acc => x ∩ acc) Finset.univ
 
 lemma inter_lemma {α : Type} [DecidableEq α]
   (p : α → Prop) [DecidablePred p]
@@ -40,6 +41,7 @@ by
     obtain ⟨val, property⟩ := yB
     simp_all only
 
+--intersection_lemmaで表示されている。
 theorem h_image_toList {α β : Type} [DecidableEq β]
     (S : Finset α) (f : α → β) :--(h_inj : Function.Injective f) :
     List.toFinset ((S.image f).toList) = List.toFinset (S.toList.map f) := by
@@ -80,7 +82,8 @@ lemma intersection_lemma
   (S : Finset (Finset (Subtype p)))
   (h : S.Nonempty)
   : (finsetInter S).map ⟨Subtype.val, Subtype.val_injective⟩
-    = finsetInter (S.image (fun t => t.map ⟨Subtype.val, Subtype.val_injective⟩)) := by
+    = finsetInter (S.image (fun t => t.map ⟨Subtype.val, Subtype.val_injective⟩)) :=
+by
   -- finsetInter S = foldr (· ∩ ·) univ (S.toList)
   -- であることを展開して扱います。
 
@@ -177,44 +180,47 @@ lemma intersection_lemma
 
   -- fold_map_eq の本体を証明
   intro xs hxs
-  match xs with
-  | [] => contradiction  -- hxs との矛盾
-  | x :: ys =>
-    -- foldInterSubtype (x :: ys) = x ∩ foldInterSubtype ys
-    -- map val すると inter_lemma から
-    -- map val x ∩ map val (foldInterSubtype ys)
-    -- 帰納法的に map val (foldInterSubtype ys) = foldInterAlpha (ys.map (·.map val)) が成り立てばよい。
-    simp_all only [ne_eq, toList_eq_nil, reduceCtorEq, not_false_eq_true, List.foldr_cons, List.map_cons, l, l',
-      foldInterSubtype, foldInterAlpha]
+  --goal
+  --map { toFun := Subtype.val, inj' := ⋯ } (foldInterSubtype xs) =
+  --foldInterAlpha (List.map (fun A ↦ map { toFun := Subtype.val, inj' := ⋯ } A) xs)
+  induction xs with
+  | nil => contradiction  -- hxs との矛盾
+  | cons x ys ih =>
+    by_cases h_empty : ys = []
+    case pos =>
+      subst h_empty
+      simp_all only [ne_eq, toList_eq_nil, not_true_eq_false, List.foldr_nil, List.map_nil, IsEmpty.forall_iff,
+        List.cons_ne_self, not_false_eq_true, List.foldr_cons, inter_univ, List.map_cons, l, l', foldInterSubtype,
+        foldInterAlpha]
+    case neg =>
+      -- foldInterSubtype (x :: ys) = x ∩ foldInterSubtype ys
+      -- map val すると inter_lemma から
+      -- map val x ∩ map val (foldInterSubtype ys)
+      -- 帰納法的に map val (foldInterSubtype ys) = foldInterAlpha (ys.map (·.map val)) が成り立てばよい。
+      simp_all only [ne_eq, toList_eq_nil, reduceCtorEq, not_false_eq_true, List.foldr_cons, List.map_cons, l, l',
+        foldInterSubtype, foldInterAlpha]
 
-    calc
-      (foldInterSubtype (x :: ys)).map ⟨Subtype.val, Subtype.val_injective⟩
-        = (x ∩ foldInterSubtype ys).map ⟨Subtype.val, Subtype.val_injective⟩
-          := by rfl
-      _ = x.map ⟨Subtype.val, Subtype.val_injective⟩
-            ∩ (foldInterSubtype ys).map ⟨Subtype.val, Subtype.val_injective⟩
-          := by rw [inter_lemma]
-      _ = x.map ⟨Subtype.val, Subtype.val_injective⟩
-            ∩ foldInterAlpha (ys.map (fun A => A.map ⟨Subtype.val, Subtype.val_injective⟩))
-          := by
-               simp_all only [foldInterSubtype, foldInterAlpha]
-              --exact @Finset.univ_inter α _
-              -- 帰納法呼び出し
-
-               have ih : (foldInterSubtype ys).map ⟨Subtype.val, Subtype.val_injective⟩ =
-                    foldInterAlpha (ys.map (fun A => A.map ⟨Subtype.val, Subtype.val_injective⟩))
-                := by sorry
-                --apply fold_map_eq ys (List.cons_ne_nil x ys hxs)
-
-               rw [ih]
-      -- いま x.map val と foldInterAlpha (ys.map (·.map val)) がある。
-      -- これを foldInterAlpha ((x.map val) :: (ys.map (·.map val))) と等しくするには
-      -- foldInterAlpha (x.map val :: list) = x.map val ∩ foldInterAlpha list
-      -- の定義通り。
-      _ = foldInterAlpha ((x.map ⟨Subtype.val, Subtype.val_injective⟩)
-                        :: ys.map (fun A => A.map ⟨Subtype.val, Subtype.val_injective⟩))
-          := by rfl
-
+      calc
+        (foldInterSubtype (x :: ys)).map ⟨Subtype.val, Subtype.val_injective⟩
+          = (x ∩ foldInterSubtype ys).map ⟨Subtype.val, Subtype.val_injective⟩
+            := by rfl
+        _ = x.map ⟨Subtype.val, Subtype.val_injective⟩
+              ∩ (foldInterSubtype ys).map ⟨Subtype.val, Subtype.val_injective⟩
+            := by rw [inter_lemma]
+        _ = x.map ⟨Subtype.val, Subtype.val_injective⟩
+              ∩ foldInterAlpha (ys.map (fun A => A.map ⟨Subtype.val, Subtype.val_injective⟩))
+            := by
+                simp_all only [foldInterSubtype, foldInterAlpha]
+                --exact @Finset.univ_inter α _
+                -- 帰納法呼び出し
+        -- いま x.map val と foldInterAlpha (ys.map (·.map val)) がある。
+        -- これを foldInterAlpha ((x.map val) :: (ys.map (·.map val))) と等しくするには
+        -- foldInterAlpha (x.map val :: list) = x.map val ∩ foldInterAlpha list
+        -- の定義通り。
+        _ = foldInterAlpha ((x.map ⟨Subtype.val, Subtype.val_injective⟩)
+                          :: ys.map (fun A => A.map ⟨Subtype.val, Subtype.val_injective⟩))
+            := by rfl
+/-上で証明できたので、こちらはいらなくなった。そもそも証明できてないので、消す。
 --intersection_lemmaの別の証明の試み。どっちかが証明できればいいが、どちらも証明の目処が立っていない。
 lemma intersection_lemma2  {α : Type} [DecidableEq α] [Fintype α] (p : α → Prop) [DecidablePred p] (S : Finset (Finset (Subtype p)))
  :  S.Nonempty → (finsetInter S).map ⟨Subtype.val, Subtype.val_injective⟩ = finsetInter (S.image (fun t => t.map ⟨Subtype.val, Subtype.val_injective⟩ )) :=
@@ -304,7 +310,8 @@ by
     simp_all only [ne_eq, Finset.toList_eq_nil, Finset.toList_toFinset, L]
   rw [←this]
   exact main L Lnonempty
-
+-/
+/-使ってないので消す。List.perm_of_nodup_nodup_toFinset_eqを使えばいい。
 --------------------------------------------------------------------------------
 -- 1) 「重複なし & 長さが同じ & 要素が同じ」ならリストは等しい
 --------------------------------------------------------------------------------
@@ -425,168 +432,89 @@ lemma eq_of_nodup_of_length_eq_of_forall_mem_iff
 -- 2) メイン補題: (S.image f).toList = S.toList.map f
 --    injective の場合のみ成り立つ
 --------------------------------------------------------------------------------
-
-lemma image_toList_eq_map
-  {α β : Type} [DecidableEq α] [DecidableEq β]
-  {f : α → β} (hf : Function.Injective f)
-  (S : Finset α)
-  : (S.image f).toList = S.toList.map f := by
-
-  -- 証明方針:
-  --   1) 両辺とも nodup
-  --   2) 長さが等しい
-  --   3) 要素が一致する
-  -- 上の eq_of_nodup_of_length_eq_of_forall_mem_iff により結論付ける
-
-  let LHS := (S.image f).toList
-  let RHS := S.toList.map f
-
-  ----------------------------------------------------------------
-  -- (1) nodup : S.image f の toList は常に重複なし
-  --             S.toList は重複なし、f が injective なら map しても重複なし
-  ----------------------------------------------------------------
-  have hLHS_nodup : LHS.Nodup := (S.image f).nodup_toList
-  have hRHS_nodup : RHS.Nodup := by sorry
-
-  ----------------------------------------------------------------
-  -- (2) length が等しい
-  --     |S.image f| = |S| (injective f のとき) ⇒ length 一致
-  ----------------------------------------------------------------
-  have hlen : LHS.length = RHS.length := by
-    calc
-      LHS.length
-        = (S.image f).card      := by rw [Finset.length_toList]
-      _ = S.card                := by rw [card_image_of_injective _ hf]
-      _ = S.toList.length       := (Finset.length_toList S).symm
-      _ = RHS.length            := by rw [List.length_map]
-
-  ----------------------------------------------------------------
-  -- (3) ∀ x, x ∈ LHS ↔ x ∈ RHS
-  ----------------------------------------------------------------
-  have hmem : ∀ x, x ∈ LHS ↔ x ∈ RHS := by
-    intro x
-    constructor
-    · -- (→) x ∈ LHS ⇒ x ∈ RHS
-      intro hx
-      rw [Finset.mem_toList] at hx
-      -- x ∈ S.image f ⇒ ∃ a ∈ S, f a = x
-      simp_all only [length_toList, List.length_map, mem_image, List.mem_map, mem_toList, LHS, RHS]
-    · -- (←) x ∈ RHS ⇒ x ∈ LHS
-      intro hx
-      -- x ∈ S.toList.map f ⇒ ∃ a, a ∈ S.toList ∧ f a = x
-      rcases List.mem_map.mp hx with ⟨a, ha_list, fa_eq_x⟩
-      rw [Finset.mem_toList] at ha_list
-      -- f a が S.image f に属する
-      rw [Finset.mem_toList]
-      rw [←fa_eq_x]
-      exact Finset.mem_image_of_mem f ha_list
-
-  ----------------------------------------------------------------
-  -- (4) 上の補題を使って両リストが等しい
-  ----------------------------------------------------------------
-  exact eq_of_nodup_of_length_eq_of_forall_mem_iff
-    hLHS_nodup
-    hRHS_nodup
-    hlen
-    hmem
-/-
-/--
-  Injective な関数 `f : α → β` について、
-  `(S.image f).toList` は `S.toList.map f` と同じリストになる。
-  （順序も含めて最終的に同一とみなせるように証明している。）
 -/
-lemma image_toList_eq_map
-  {α β : Type} [DecidableEq α] [DecidableEq β]
-  {f : α → β} (hf : Function.Injective f)
-  (S : Finset α)
-  : (S.image f).toList = S.toList.map f := by
 
-  -- 証明の方針：
-  --  1) 「同じ要素を同じ回数だけ含む」こと（実際には injective なので回数は1回ずつ）。
-  --  2) 両者がともに nodup であること。
-  --  3) 長さが同じこと。
-  -- 以上からリストが等しいと結論付ける。
-
-  let LHS := (S.image f).toList
-  let RHS := S.toList.map f
-
-  --------------------------------------------------------------------------------
-  -- Step 1. LHS と RHS の要素がちょうど一致すること (同じ "set of elements") を示す
-  --------------------------------------------------------------------------------
-  have same_mem : ∀ (y : β), y ∈ LHS ↔ y ∈ RHS := by
-    intro y
-    constructor
-    · -- (→) LHS → RHS
+/-
+-- 帰納法の練習。消して良い。
+theorem length_ge_one_implies_nonempty (xs : List α) :
+  xs.length ≥ 1 → xs ≠ [] :=
+by
+  induction xs with
+  | nil =>
+      -- 基底ケース: xs = []
       intro h
-      -- LHS = (S.image f).toList なので
-      -- 「y が LHS に属する」とは「y が S.image f に属する」のと同値
-      -- （List.mem_toList と Finset.mem_image を行き来）
-      have : y ∈ S.image f := by
-        rw [Finset.mem_toList] at h
-        exact h
-      -- y ∈ S.image f とは ∃ x ∈ S, f x = y
-      obtain ⟨x, hxS, rfl⟩ := Finset.mem_image.mp this
-      -- すると RHS = S.toList.map f 上で y = f x が出現するかをチェック
-      -- x が S.toList に属するから、その map にも f x が含まれる
-      apply List.mem_map_of_mem f
-      rw [Finset.mem_toList]
-      exact hxS
-
-    · -- (←) RHS → LHS
-      intro h
-      -- y ∈ RHS とは y ∈ S.toList.map f
-      -- すなわち ∃ x ∈ S.toList, f x = y
-      rcases List.mem_map.mp h with ⟨x, hx_list, rfl⟩
-      -- x ∈ S.toList とは x ∈ S
-      rw [Finset.mem_toList] at hx_list
-      -- 従って f x ∈ S.image f → (S.image f).toList にも属する
-      rw [Finset.mem_toList]
-      exact mem_image_of_mem f hx_list
-
-  --------------------------------------------------------------------------------
-  -- Step 2. 両リストがともに `nodup` であること
-  --------------------------------------------------------------------------------
-  have nodup_LHS : LHS.Nodup := (S.image f).nodup_toList
-  have nodup_RHS : RHS.Nodup := by
-    -- RHS = S.toList.map f
-    -- S.toList は nodup、f は injective なので map f しても重複は生じない
-    apply List.Nodup.map
-    · exact hf
-    · exact S.nodup_toList
-
-  --------------------------------------------------------------------------------
-  -- Step 3. 両リストの長さが同じこと
-  --------------------------------------------------------------------------------
-  have length_eq : LHS.length = RHS.length := by
-    -- injective なら Finset.image f は |S| と同じ要素数になる
-    -- よって LHS.length = card (S.image f) = card S = S.toList.length = RHS.length
-    calc
-      LHS.length
-        = (S.image f).card       := by rw [Finset.length_toList]
-      _ = S.card                 := by rw [card_image_of_injective _ hf]
-      _ = S.toList.length        := (Finset.length_toList S).symm
-      _ = RHS.length             := by rw [List.length_map]
-
-  --------------------------------------------------------------------------------
-  -- Step 4. 上記 1)〜3) から LHS = RHS と結論付け
-  --   「要素集合が同じ & nodup & 長さ同じ」⇒ リストとして等しい
-  --------------------------------------------------------------------------------
-
-  exact List.Perm.eq_of_perm nodup_LHS nodup_RHS same_mem
+      -- 矛盾を導く
+      exfalso
+      simp at h
+  | cons x xs' ih =>
+      -- 帰納ステップ: xs = x :: xs'
+      intro _
+      intro h_eq
+      contradiction -- リストが空でないため、矛盾
 
 
+theorem sum_commutative {α : Type} [AddCommMonoid α] (s : Finset ℕ) :
+  s.sum id = s.sum id :=
+by
+  induction s using Finset.induction with
+  | empty =>
+      -- 空集合の場合
+      simp [Finset.sum_empty]
+  | insert x s' =>
+      -- s = insert x s' の場合
+      simp [Finset.sum_insert]
 
 
---------------------------------------------------------------------------------
--- 実際に使いたい形 (S : Finset (Subtype p)) / f = Subtype.val の例
---------------------------------------------------------------------------------
+theorem length_append (xs ys : List Nat) : (xs ++ ys).length = xs.length + ys.length :=
+by
+  induction xs with
+  | nil =>
+      -- xs = []
+      rw [List.nil_append]
+      simp -- 長さの性質
+  | cons x xs ih =>
+      -- xs = x :: xs
+      rw [List.cons_append]
+      simp
+      simp_all only [List.length_append]
+      omega
 
-lemma image_subtype_val_toList_eq_map
-  {α : Type} [DecidableEq α]
-  {p : α → Prop} [DecidablePred p]
-  (S : Finset (Subtype p))
-  : (S.image (fun t => t.val)).toList = S.toList.map (fun t => t.val) := by
-  -- Subtype.val は injective
-  apply image_toList_eq_map (hf := Subtype.val_injective) S
+theorem example0 (n : Nat) : n + 0 = n :=
+by
+  let original := n
+  induction n with
+  | zero =>
+    have: original = 0 := by
+      simp
+    dsimp [original]
+
+
+  | succ n ih =>
+      -- このブランチでは n = succ k
+      rw [Nat.succ_add]
+
+theorem nonempty_list_induction {α : Type} (P : List α → Prop) :
+  (∀ x xs, P (x :: xs)) → ∀ l, l ≠ [] → P l :=
+by
+  intro h_base
+  intro l h_nonempty
+  induction l with
+  | nil =>
+      -- 空リストのケースでは矛盾を示す
+      exfalso
+      exact h_nonempty rfl
+  | cons head tail =>
+      -- 非空リストのケース
+      exact h_base head tail
+
+theorem example2 {α : Type} (L : List α) : L = [] ∨ ∃ x xs, L = x :: xs :=
+by
+  induction L with
+  | nil =>
+      -- `L = []` が成立するが、コンテキストには明示されない
+      exact Or.inl rfl
+  | cons head tail ih =>
+      -- `L = head :: tail` が成立するが、コンテキストには明示されない
+      exact Or.inr ⟨head, tail, rfl⟩
 
 -/

@@ -13,6 +13,141 @@ variable {α : Type}  [DecidableEq α] [Fintype α]
 
 open Finset
 
+--共通に使われる補題。
+lemma all_inters_subset_of_mem {α : Type} [DecidableEq α][Fintype α]
+  (fl : List (Finset α)) :
+  ∀ X ∈ fl,
+    (fl.foldr (fun x acc => x ∩ acc) Finset.univ) ⊆ X := by
+
+  -- リストに名前をつける
+
+  -- リスト l に対して帰納法
+  cases hl:fl with
+  | nil =>
+    -- このとき A0 が空なので，
+    -- 「X ∈ A0」が起きたら矛盾
+    intros X hX
+    subst hl
+    simp_all only [List.not_mem_nil]
+
+  | cons hd tl =>
+    -- 任意の X が hd :: tl に入るとき，
+    -- 交わり (hd ∩ foldr(...tl)) が X の部分集合であることを示したい
+    intros X hX
+    -- foldr の定義展開
+    simp_all only [List.foldr_cons]
+    -- hd :: tl に属している X は，「X = hd」か「X ∈ tl」
+    have hd_or_tl: X = hd ∨ X ∈ tl := by
+      subst hl
+      simp_all only [List.mem_cons]
+
+    cases hd_or_tl with
+    | inl hdc => -- X = hd の場合
+      subst hdc
+      subst hl
+      simp_all only [List.mem_cons, true_or, Finset.inter_subset_left]
+      -- hd ∩ (...) ⊆ hd は Finset.inter_subset_left で証明
+    | inr tlc => -- X ∈ tl の場合
+      -- まず，hd ∩ (...) は (...) の部分集合
+      -- 帰納法の仮定で tl の交わりが X の部分集合
+      let alli := all_inters_subset_of_mem tl X tlc
+      simp at alli
+      subst hl
+      simp_all only [List.mem_cons, or_true]
+      intro x hx
+      simp_all only [Finset.mem_inter]
+      obtain ⟨left, right⟩ := hx
+      exact alli right
+
+
+--sを含むもので共通部分をとってもやはりsを含むことを証明する。どのような補題を示せばいいのか。集合族の大きさに関する帰納法が使える補題を設定する。
+lemma finset_inter_subset_iff_lem {α : Type} [DecidableEq α][Fintype α] (fl : List (Finset α)) (A : Finset α) :(∀ X ∈ fl, A ⊆ X ) → A ⊆ List.foldr (fun x acc ↦ x ∩ acc) Finset.univ fl := by
+      cases hc:fl with
+      | nil =>
+        intro h
+        subst hc
+        simp_all only [List.not_mem_nil, IsEmpty.forall_iff, implies_true, List.foldr_nil, Finset.subset_univ]
+      | cons hd tl =>
+        intro h
+        have hdin : hd ∈ fl := by
+          simp_all
+        have hda : A ⊆ hd  := by
+          apply h
+          subst hc
+          simp_all only [List.mem_cons, forall_eq_or_imp, true_or]
+        have ih0: ∀ X ∈ tl, A ⊆ X := by
+            intro XX
+            intro hXX
+            apply h
+            subst hc
+            simp_all only [List.mem_cons, forall_eq_or_imp, true_and, true_or, or_true]
+        simp
+        have ih: ∀ X ∈ tl, A ⊆ X → A ⊆ tl.foldr (fun x acc => x ∩ acc) Finset.univ := by
+          intro X HX hh
+          exact finset_inter_subset_iff_lem tl A ih0
+
+        subst hc
+        rw [@Finset.subset_inter_iff]
+        constructor
+        · simp_all only [List.mem_cons]
+
+        · exact finset_inter_subset_iff_lem tl A ih0
+
+
+
+--下で使われている。
+lemma finset_inter_subset_iff {α : Type} [DecidableEq α][Fintype α] (A0 : Finset (Finset α)) (A : Finset α) :
+  (∀ X ∈ A0, A ⊆ X )  ↔ A ⊆ finsetInter A0  :=
+  by
+    constructor
+    let fl := A0.toList
+    dsimp [finsetInter]
+    intro h
+    apply finset_inter_subset_iff_lem fl A
+    intro X a
+    simp_all only [Finset.mem_toList, fl]
+
+    intro h
+    intro X hX
+    have : finsetInter A0 ⊆ X:= by
+      dsimp [finsetInter]
+      apply all_inters_subset_of_mem A0.toList
+      rw [Finset.mem_toList]
+      exact hX
+    exact h.trans this
+
+--foldrを帰納的に分解している。
+lemma insert_foldr_inter {α : Type} [DecidableEq α] [Fintype α]
+  (x : Finset α) (S' : Finset (Finset α)) (x_not_mem : x ∉ S') :
+  x ∩ List.foldr (fun x acc ↦ x ∩ acc) Finset.univ S'.toList =
+  List.foldr (fun x acc ↦ x ∩ acc) Finset.univ (insert x S').toList :=
+by
+  -- `Finset.toList_insert` を利用して順序が置換であることを取得
+  have h_perm : List.Perm (insert x S').toList (x :: S'.toList) :=
+  by
+    apply Finset.toList_insert
+    simp_all only [not_false_eq_true]
+
+  -- `foldr` の順序不変性を利用して置換に基づき両辺を比較
+  --暗黙に使っている？
+  have h_comm : LeftCommutative (fun (x acc : Finset α) ↦ x ∩ acc) :=
+  by
+    --fun a b c => by simp [Finset.inter_assoc, Finset.inter_comm]
+    constructor
+    intro a₁ a₂ b
+    ext a : 1
+    simp_all only [Finset.mem_inter]
+    apply Iff.intro
+    · intro a_1
+      simp_all only [and_self]
+    · intro a_1
+      simp_all only [and_self]
+
+  -- `List.Perm.foldr_eq` を適用して両辺を比較
+  rw [List.Perm.foldr_eq h_perm]
+  simp_all only [List.foldr_cons]
+
+
 --noncomputable def finsetInter {α : Type} [DecidableEq α][Fintype α] (A0 : Finset (Finset α)) : Finset α :=
 --  A0.toList.foldr (fun x acc => x ∩ acc) Finset.univ
 
@@ -220,6 +355,61 @@ by
         _ = foldInterAlpha ((x.map ⟨Subtype.val, Subtype.val_injective⟩)
                           :: ys.map (fun A => A.map ⟨Subtype.val, Subtype.val_injective⟩))
             := by rfl
+
+------
+-----------------------------------------------------------------------------------------
+--sets sがclでs自身に映ること。ただし、この言明は、また、subtypeを考慮してない。
+--idempoteentの未完の証明で使っている。
+lemma finsetInter_eq_s {α : Type} [DecidableEq α] [Fintype α]
+  (A : Finset (Finset α)) (s : Finset α)
+  (h_mem : s ∈ A) (h_subset : ∀ t ∈ A, s ⊆ t) :
+  finsetInter A = s :=
+by
+  induction A using Finset.induction_on with
+  | empty =>
+      -- 矛盾: A が空集合の場合、s ∈ A が成り立たない
+      exfalso
+      exact Finset.not_mem_empty s h_mem
+  | insert a_not_s  ih =>
+      rename_i ft  s' A' -- ftはFintype。使わないかも。
+
+      -- A = insert x A' の場合
+      rw [finsetInter]
+      let ifi := insert_foldr_inter s' A' a_not_s
+      rw [←ifi]
+      by_cases h_eq : s ∈ A'
+      case pos =>
+        have :List.foldr (fun x acc ↦ x ∩ acc) Finset.univ A'.toList = s := by
+          apply ih h_eq
+          intro t ht
+          exact h_subset t (Finset.mem_insert_of_mem ht)
+        rw [this]
+        have : s ⊆ s' := by
+          apply h_subset s' (Finset.mem_insert_self s' A')
+        ext
+        simp [List.subset_def]
+        rename_i this_1 a_1
+        intro a_2
+        subst this_1
+        simp_all only [Finset.mem_insert, or_true, implies_true, forall_const, forall_eq_or_imp, true_and]
+        exact this a_2
+
+      case neg =>
+        -- サブケース: a ≠ s の場合
+        -- この場合、s ⊆ a が成り立たない
+        have : s = s' := by
+          simp_all only [Finset.insert_eq_of_mem, implies_true, forall_const, IsEmpty.forall_iff, Finset.mem_insert,
+            or_false, forall_eq_or_imp, subset_refl, true_and, not_false_eq_true]
+        rw [←this]
+        have : s ⊆ List.foldr (fun x acc ↦ x ∩ acc) Finset.univ A'.toList := by
+          apply (finset_inter_subset_iff A' s).mp
+          intro X a
+          subst this
+          simp_all only [Finset.insert_eq_of_mem, implies_true, forall_const, IsEmpty.forall_iff, not_false_eq_true,
+            Finset.mem_insert, or_false, forall_eq_or_imp, subset_refl, true_and]
+        rw [@Finset.inter_eq_left]
+        exact this
+
 /-上で証明できたので、こちらはいらなくなった。そもそも証明できてないので、消す。
 --intersection_lemmaの別の証明の試み。どっちかが証明できればいいが、どちらも証明の目処が立っていない。
 lemma intersection_lemma2  {α : Type} [DecidableEq α] [Fintype α] (p : α → Prop) [DecidablePred p] (S : Finset (Finset (Subtype p)))

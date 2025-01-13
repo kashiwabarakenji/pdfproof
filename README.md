@@ -4,12 +4,12 @@
 
 ## 配布ファイル
 
-pdfproofのフォルダの下にLeanのコードがあります。いくつかのテーマごとに分けました。
+pdfproofのフォルダの下にLeanのコードがあります。
 lakefile.leanやlean-toolchainも含まれています。
 
 ## Lean Copilotの使用について
 
-本リポジトリでは、**Lean Copilot**を使用するために、Lean 4.11.0の環境で実行できるように`lakefile.lean`と`lean-toolchain`が設定されています。Lean Copilotを利用することで、より効率的にLeanのコードを書くことが可能です。
+本リポジトリでは、**Lean Copilot**を使用するために、Lean 4.15.0の環境で実行できるように`lakefile.lean`と`lean-toolchain`が設定されています。Lean Copilotを利用することで、より効率的にLeanのコードを書くことが可能です。
 
 ## プロジェクトのセットアップ
 
@@ -24,7 +24,7 @@ git clone https://github.com/kashiwabarakenji/pdfproof.git
 - MacやLinux環境では、現在の設定でLean Copilotが利用できますが、Windowsユーザーの方は`lakefile.lean`の書き換えを行ってください。import LeanCopilotの部分もコメントアウトするとよいでしょう。
 
 ## 最近の変更
-10月25日 第4回の授業で受講者が解いた問題(集合の練習11,写像の練習11,12,13,述語論理の第12,13)などを追加。
+2025年1月 closure systemからclosure operatorが導けることを証明。
 
 ##Leanに関する有用なリンク集
 

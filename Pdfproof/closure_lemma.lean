@@ -210,7 +210,7 @@ by
     simp_all only [and_self]
 -/
 
---o1作成 closure-lemmaに移すか。
+--cl_in_F_sets_lemmaの証明に使われている。o1作成がもとになっている。
 lemma intersection_lemma
   {α : Type} [DecidableEq α] [Fintype α]
   (p : α → Prop) [DecidablePred p]

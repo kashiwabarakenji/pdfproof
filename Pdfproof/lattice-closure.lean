@@ -1,8 +1,6 @@
---closureシステムを有限の台集合で帰納的に考えた。閉包システムの定義からextensiveやmonotoneを示したが、indempotentは正確にはまだ証明してない。
---ただし、subtypeの議論を除いて、clの像が閉集合であることと、閉集合は自分自身に映ることは証明した。
---あとは、それを仮定して、subtypeに限定しても、同じことがいえるかどうかを証明すればよい。
+--閉包システムの定義から閉包作用素を示す。つまりextensiveやmonotoneやindempotentを示した。
+--ここではclosureシステムを有限の台集合で帰納的に考えた。Setに持ち込んで証明するともっと簡単だと思われる。
 import LeanCopilot
---import Mathlib.Order.BoundedOrder
 import Mathlib.Data.Finset.Basic
 import Mathlib.Data.Set.Basic
 import Mathlib.Data.Finset.Powerset
@@ -42,70 +40,8 @@ structure ClosureSystem (α : Type) [DecidableEq α]  [Fintype α] extends SetFa
   (intersection_closed : ∀ s t , sets s → sets t → sets (s ∩ t))
   (has_ground : sets ground)
 
-/-
---現状では使ってない。集合のほうにもってきて考えるファイルに入れるのがよい。
---Finsetでない一般のSetの閉包集合族の場合は別のファイルで考える。
-theorem finset_subfamily_intersection_closed {α : Type*} [DecidableEq α]
-    (A : Finset α) (A0 : Finset (Finset α))
-    (nonemptyA0 : A0.Nonempty)
-    (h : ∀ X ∈ A0, X ⊆ A) : (⋂ x ∈ A0.toSet, x) ⊆ A.toSet := by
-  -- 共通部分の要素xを取る
-  intro y
-  intro hy
-  -- 共通部分の定義により、任意のX ∈ A0に対してy ∈ X
-  rw [@Set.mem_def] at hy
-
-  -- A0.toSetの任意の要素に対してyが含まれることを示す
-  have h1 : ∀ X ∈ A0, y ∈ X := by
-    intro X hX
-    simp_all only [Finset.mem_coe]
-    apply hy
-    simp_all only [Set.mem_range]
-    apply Exists.intro
-    · ext x : 1
-      simp_all only [Set.mem_iInter, Finset.mem_coe]
-      apply Iff.intro
-      intro a
-      on_goal 2 => {
-        intro a i
-        exact a
-      }
-      simp_all only [forall_const]
-      exact a
-  -- A0の要素Xを1つ取る（A0が空でない場合）
-  by_cases h_empty : A0.Nonempty
-  -- 空でない場合
-  case pos =>
-    obtain ⟨X, hX⟩ := h_empty
-    -- XはAの部分集合
-    have hXA := h X hX
-    -- yはXの要素
-    have hyX := h1 X hX
-    -- AはFinsetなのでtoSetを使って変換
-    simp_all only [Finset.mem_coe]
-    apply h
-    · exact hX
-    · simp_all only
-  -- A0が空の場合
-  case neg =>
-    simp_all only
--/
-/-
-@[simp] lemma filter_mem {α : Type} [DecidableEq α] [Fintype α] (s : Finset α) (C : ClosureSystem α) :
-  ∀ x ∈ s.filter (λ x => x ∈ C.ground), x ∈ C.ground :=
-  by
-    intro x
-    intro h
-    simp_all
--/
-/-
---使われてない。
-lemma intersectionOfSubsets_def {α : Type} [DecidableEq α][Fintype α] (A0 : Finset (Finset α)) :
-  finsetInter A0 = A0.toList.foldr (fun x acc => x ∩ acc) Finset.univ := by rfl
--/
-
---intersectioningroundの証明で使っている。
---帰納法で示しているが、帰納的な仮定を使わずに、集合Setに持ってきても証明できる命題。
+--intersectioningroundの証明で使っている。どの集合よりも大きい集合は、finsetInterよりも大きい。
+--帰納法で示している。無限でも成り立つので、帰納的な仮定を使わずに、集合Setに持ってきても証明できる命題だと思われる。
 lemma finset_subfamily_intersection_closed_list {α : Type} [DecidableEq α][Fintype α]
     (A : Finset α) (A0 : Finset (Finset α))
     (nonemptyA0 : A0.Nonempty)
@@ -135,8 +71,8 @@ by
     apply hdsub
     simp_all only
 
-
---帰納法を使わずに、finset_subfamily_intersection_closed_listで示す。一箇所使われている。
+--finsetInterがground setに含まれるという補題。
+--finset_subfamily_intersection_closed_listで示す。2箇所で使われている。
 lemma intersectioninground {α : Type} [DecidableEq α][Fintype α] (C: ClosureSystem α) [DecidablePred C.sets]:
   ∀ s ∈ C.ground.powerset,  finsetInter (C.ground.powerset.filter (fun (t:Finset α) => C.sets t ∧ s ⊆ t)) ⊆ C.ground :=
   by
@@ -161,11 +97,8 @@ lemma intersectioninground {α : Type} [DecidableEq α][Fintype α] (C: ClosureS
       intro hX
       simp_all only [Finset.mem_filter, Finset.mem_powerset]
 
-    --集合Setの方でやるのは間違い。リストを使うべき。
-    --let fs := finset_subfamily_intersection_closed C.ground (C.ground.powerset.filter (fun (t:Finset α) => C.sets t ∧ s ⊆ t)) nonemp allt
     let fslst := finset_subfamily_intersection_closed_list C.ground (C.ground.powerset.filter (fun (t:Finset α) => C.sets t ∧ s ⊆ t)) nonemp allt
     exact fslst hX
-
 
 --2箇所で使われているが、実質一箇所。extensiveの証明。
 lemma intersectionExtension {α : Type} [DecidableEq α][Fintype α] (F: SetFamily α) [DecidablePred F.sets]:
@@ -187,111 +120,10 @@ lemma intersectionExtension {α : Type} [DecidableEq α][Fintype α] (F: SetFami
 ----------------------------------------------------------------------------
 --ここから下は、monotoneの証明に関わる部分。
 
---意外とたくさん使われている。listInter_mono'でも使われている。最終的にはcommonに移動するかも。
+--意外とたくさん使われている定義。listInter_mono'でも使われている。最終的にはcommonに移動するかも。
 noncomputable def listInter {α : Type u} [DecidableEq α] [Fintype α]
   (L : List (Finset α)) : Finset α :=
   L.foldr (fun x acc => x ∩ acc) Finset.univ
-
---finsetInset_monoで使われているが、finset_monoが使われてないので、移動するときに一緒に移動する。
-lemma listInter_mono {α : Type u} [DecidableEq α] [Fintype α]
-    {L1 L2 : List (Finset α)}
-    (h_len : L1.length = L2.length)
-    (h_sub : ∀ i : Nat, i < L1.length → L1.get! i ⊆ L2.get! i) :
-    listInter L1 ⊆ listInter L2 := by
-  -- 証明は L1 に対する単純な再帰 (induction) で行うのが分かりやすいです
-  cases hl1:L1 with
-  | nil =>
-    -- L1 = [] の場合
-    -- listInter [] = Finset.univ なので，Finset.univ ⊆ listInter L2 は自明
-    simp [listInter]
-    have :L2 = [] := by
-      rw [←hl1]
-      subst hl1
-      simp_all only [List.length_nil, List.get!_eq_getElem!, List.getElem!_eq_getElem?_getD, List.getElem?_eq_getElem,
-        Option.getD_some]
-      simpa using h_len.symm
-    subst this hl1
-    simp_all only [List.length_nil, not_lt_zero', List.get!_eq_getElem!, List.getElem!_eq_getElem?_getD,
-      List.getElem?_eq_getElem, Option.getD_some, subset_refl, implies_true, List.foldr_nil]
-  | cons x xs =>
-    -- L1 = x :: xs の場合
-    cases hl2:L2 with
-    | nil =>
-      -- L2 = [] は長さ一致に反するので矛盾
-      exfalso
-      subst hl2
-      simp_all only [List.length_cons, List.length_nil, AddLeftCancelMonoid.add_eq_zero, List.length_eq_zero,
-        one_ne_zero, and_false]
-    | cons y ys =>
-      -- L2 = y :: ys
-      -- ここで h_len : L1.length = L2.length
-      -- すなわち x :: xs の長さ = y :: ys の長さ から
-      --  xs.length + 1 = ys.length + 1 を得たい
-      -- しかしそのままだと Nat.succ.inj を直接は使えないことがある
-      --すでにh_subが書き換わってしまっている。
-      rw [hl1] at h_len
-      rw [hl2] at h_len
-      rw [List.length_cons] at h_len
-      rw [List.length_cons] at h_len
-      -- h_len は xs.length.succ = ys.length.succ の形になった
-      let h_len' := Nat.succ.inj h_len
-      -- これで xs.length = ys.length が得られた
-      -- あとは単調性を示す
-      dsimp [listInter]  -- listInter (x :: xs) = x ∩ listInter xs
-      apply Finset.subset_inter
-      · -- x ⊆ y 先頭のものが包含関係があること。
-        have hx:x = L1.get! 0 := by
-          rw [hl1]
-          simp
-        have hy:y = L2.get! 0 := by
-          rw [hl2]
-          simp
-        have h0 : 0 < L1.length := by
-          rw [hl1]
-          simp
-        let h0' := h_sub 0 h0
-        subst hl1 hl2
-        simp_all only [List.get!_eq_getElem!, List.getElem!_eq_getElem?_getD, List.length_cons,
-          add_pos_iff, zero_lt_one, or_true, List.getElem?_eq_getElem, List.getElem_cons_zero, Option.getD_some]--
-        intro i hi
-        simp_all only [Finset.mem_inter]
-        --obtain ⟨left, right⟩ := hi
-        apply h0'
-        simp_all only [List.get!_eq_getElem!, List.getElem!_eq_getElem?_getD,
-         List.getElem?_eq_getElem, List.getElem_cons_zero, Option.getD_some]--
-      · -- listInter xs ⊆ listInter ys 残りの部分も包含関係があること。これは帰納法の仮定を使う。
-        have arg: ∀ (i : ℕ), i  < xs.length → xs.get! i ⊆ ys.get! i:=
-        by
-          let fun_ih := (fun i hi => h_sub (i+1) hi) --帰納法の仮定の仮定が満たされていることを確認。
-          rw [hl1] at fun_ih
-          rw [hl2] at fun_ih
-          intro i a
-          subst hl1 hl2
-          simp_all only [List.length_cons, add_lt_add_iff_right, List.get!_eq_getElem!,
-            List.getElem!_eq_getElem?_getD, List.getElem?_eq_getElem, List.getElem_cons_succ, Option.getD_some,
-            h_len']
-
-        let ih := listInter_mono h_len' arg
-        subst hl1 hl2
-        simp_all only [List.length_cons, List.get!_eq_getElem!, List.getElem!_eq_getElem?_getD,
-          List.getElem?_eq_getElem, Option.getD_some, h_len']
-        intro i hi
-        simp_all only [Finset.mem_inter]
-        obtain ⟨left, right⟩ := hi
-        apply ih
-        exact right
-
---extensiveの証明に使えるかと思って証明したが、リストの数が同じでないので使えなかった。どこでも使われてないのであとで移動する。
-theorem finsetInter_mono {α : Type} [DecidableEq α] [Fintype α]
-    {A B : Finset (Finset α)}
-    (h_len : A.toList.length = B.toList.length)
-    (h_sub : ∀ i : Nat, i < A.toList.length →
-              A.toList.get! i ⊆ B.toList.get! i) :
-    finsetInter (A : Finset (Finset α)) ⊆ finsetInter (B : Finset (Finset α)) := by
-  -- finsetInter A = listInter A.toList, finsetInter B = listInter B.toList
-  simp [finsetInter]
-  -- あとは listInter_mono を使えばよい
-  apply listInter_mono h_len h_sub
 
 --listInter_mono'の証明で使われている。List.foldrしたものともともとの要素の包含関係。
 lemma finsetInter_element {α : Type} [DecidableEq α][Fintype α] (L1 : List (Finset α)) (a : α)
@@ -311,7 +143,7 @@ by
       simp_all only [implies_true]
     | inr h_1 => simp_all only [forall_const]
 
---finsetInter_elementの集合版。finset_subfamily_intersection_closed_ともちょっと似ているが違う。
+--finsetInter_elementの集合版。finset_subfamily_intersection_closed_ともちょっと似ているが違う。monotoneでないところで使われている。
 lemma finsetInter_subset {α : Type} [DecidableEq α][Fintype α] (A0: Finset (Finset α)):
   ∀ X ∈ A0, finsetInter A0 ⊆ X :=
 by
@@ -342,16 +174,12 @@ lemma listInter_mono'
       simp [listInter]
       -- 目標は  listInter L1 ⊆ yy ∩ listInter ys
       apply Finset.subset_inter
-      ·
-        ----------------------------------------------------------------
-        -- まず listInter L1 ⊆ yy を示す
-        ----------------------------------------------------------------
+      · -- まず listInter L1 ⊆ yy を示す
         -- h' から「yy ∈ L2 ⇒ ∃ x ∈ L1, x ⊆ yy」が取れる
         match h' yy (by simp [hl2]) with
         | ⟨xx, hx_in, hx_sub⟩ =>
           -- listInter L1 は L1 のすべての要素との共通部分
-          -- 特に「L1 に属するどの要素にも含まれる」ので，
-          -- L1 の要素 x に対して "listInter L1 ⊆ x" が言える
+          -- 特に「L1 に属するどの要素にも含まれる」ので， L1 の要素 x に対して "listInter L1 ⊆ x" が言える
           have : listInter L1 ⊆ xx := by
             simp [listInter]
             intro a a_in
@@ -377,7 +205,7 @@ lemma listInter_mono'
   -- 以上で定義した aux を呼び出してゴールを示す
   exact aux L1 L2 h
 
---monotone性の証明に使われる。
+--monotone性の証明に使われる。finsetInterの単調性の証明。
 theorem finsetInter_mono'
     {α : Type} [DecidableEq α] [Fintype α]
     {A B : Finset (Finset α)}
@@ -392,8 +220,8 @@ theorem finsetInter_mono'
   | ⟨x, hxA, hx_sub⟩ =>
     -- x ∈ A なら x ∈ A.toList なので、listInter_mono' の仮定を満たす
     simp_all only [Finset.mem_toList]
-
---extensive性の証明を外に出したもの。現状では内側にも同じ証明がある。rwで使うことにより、内側の証明を消せるはず。
+---------------------------------------------------------------------------------------------------
+--extensive性の証明を外に出したもの。
 lemma extensive_from_SF {α : Type} [DecidableEq α] [Fintype α]
   (F : SetFamily α)[DecidablePred F.sets]:
   ∀ s : Finset F.ground, s ⊆
@@ -442,6 +270,12 @@ noncomputable def preclosure_operator_from_SF {α :Type} [DecidableEq α][Fintyp
   --extensive := extensive_from_SF F, -- 明示的に補題を渡す
   --monotone := monotone_closure_operator F cl,   -- 明示的に補題を渡す
   --/そとに出そうとしたがheartbeat問題が出たので、戻した。clの共用問題などなかなか難しい。
+  extensive := --そのまま、適用すると、エラーになったので、一回letで置いた。
+  by
+    let ef := extensive_from_SF F
+    intro s
+    simp_all only [cl, ef]
+  /- 証明を外部に出したので、消して良い。
   extensive :=
   by
     intro s
@@ -468,7 +302,7 @@ noncomputable def preclosure_operator_from_SF {α :Type} [DecidableEq α][Fintyp
     apply h2
     simp_all only [Finset.mem_map, Function.Embedding.coeFn_mk, Subtype.exists, exists_and_right, exists_eq_right,
       exists_const]
-
+  -/
 
   monotone := by
     have h1 : ∀ s t : Finset F.ground, s ⊆ t → cl s ⊆ cl t := by
@@ -524,11 +358,12 @@ noncomputable def preclosure_operator_from_SF {α :Type} [DecidableEq α][Fintyp
   }
 
 ----------------------------------------------------------------------------
+--あとは、idempotent性の証明だけなので、その部分。
 --ここから下は、setsの共通部分は、またsetsになることの証明。idempotentの証明に使うcl_in_F_setsの証明に関係する部分。
 -- F.setsはintersection_closedだが、S'はintersection closedとは限らない。
--- Fは帰納法で大きくなったり、小さくなったりせずに、Sが変わる。
---極大な元を取ったりしなくても、帰納法が使える。よって、極大な集合の存在定理は無駄になったかも。
-theorem finite_intersection_in_C {α : Type} [DecidableEq α][Fintype α]
+-- Fは帰納法で大きくなったり、小さくなったりせずに、Sが変わる。極大な集合を取る必要がない。
+--この補題は結構使っている。
+lemma finite_intersection_in_C {α : Type} [DecidableEq α][Fintype α]
   (F : ClosureSystem α) [DecidablePred F.sets]:
   ∀ S : Finset (Finset α), S.Nonempty → (∀ s ∈ S, F.sets s) → F.sets (finsetInter S) :=
 by
@@ -593,20 +428,7 @@ by
           simp_all only [Finset.mem_singleton, forall_eq, Finset.mem_insert, forall_eq_or_imp, and_imp, or_true,
             implies_true, forall_const, Finset.insert_nonempty, not_false_eq_true]
 
-
-
---closure-lemma.leanに議論を移した。
-/-
-lemma intersection_lemma
-  {α : Type} [DecidableEq α] [Fintype α]
-  (p : α → Prop) [DecidablePred p]
-  (S : Finset (Finset (Subtype p)))
-  (h : S.Nonempty)
-  : (finsetInter S).map ⟨Subtype.val, Subtype.val_injective⟩
-    = finsetInter (S.image (fun t => t.map ⟨Subtype.val, Subtype.val_injective⟩)) := by
-    sorry
--/
-
+--subtypeの計算と、finsetInterの順番に関する補題
 --cl_in_F_sets_lemmaの証明で使っている。
 lemma intersection_lemma_image  {α : Type} [DecidableEq α] [Fintype α] (p : α → Prop) [DecidablePred p] (S : Finset (Finset (Subtype p))) (Snonemp: S.Nonempty) :
   (finsetInter S).image Subtype.val = finsetInter (S.image (fun t => t.image Subtype.val)) :=
@@ -672,7 +494,7 @@ by
   simp_all only [Finset.mem_map, Function.Embedding.coeFn_mk, Subtype.exists, exists_and_right, exists_eq_right,
     Finset.mem_image]
 
---intersection_lemmaと内容がかぶっているので、intersection_lemmaを使って証明する。cl_in_F_setsで使っている。
+--intersection_lemmaと内容がかぶっているので、intersection_lemmaを使って証明する。その割には証明が大変だった。cl_in_F_setsで使っている。
 --空集合を排除する条件は必要か。
 lemma cl_in_F_sets_lemma  {α : Type} [DecidableEq α] [Fintype α]
   (F : ClosureSystem α) [DecidablePred F.sets] (s : Finset { x // x ∈ F.ground }):
@@ -808,7 +630,7 @@ by
   exact Finset.not_mem_empty s h_mem
 -/
 
---cl_in_F_setsの証明で使っている。
+--cl_in_F_setsの証明で使っている。subtypeをとってvalを取るのは、filterを取るのと同じ。
 lemma subtype_image_val_eq_filter {α : Type} [DecidableEq α]
   (p : α → Prop) [DecidablePred p] (s : Finset α) :
   Finset.image Subtype.val (Finset.subtype p s) = s.filter p :=
@@ -816,7 +638,7 @@ by
   ext x
   simp [Finset.mem_image, Finset.mem_filter, Finset.mem_subtype]
 
---cl_in_F_setsの証明で使っている。
+--cl_in_F_setsの証明で使っている。subtypeの台集合に含まれるsは、フィルターをとっても変わらない。
 lemma filter_eq_self_of_subset {α : Type} [DecidableEq α] [Fintype α]
   (p : α → Prop) [DecidablePred p] (s : Finset α) (h_subset : s ⊆ (Finset.univ.filter p)) :
   s.filter p = s :=
@@ -826,14 +648,14 @@ by
   intro a
   simpa using h_subset a
 
--- `cl` の定義
+-- `clcs` の定義
 noncomputable def clcs {α : Type} [DecidableEq α] [Fintype α] (F : ClosureSystem α) [DecidablePred F.sets]
   (s : Finset { x // x ∈ F.ground }) : Finset { x // x ∈ F.ground } :=
   let sval := s.map ⟨Subtype.val, Subtype.val_injective⟩
   let ios := finsetInter (F.ground.powerset.filter (fun (t : Finset α) => F.sets t ∧ sval ⊆ t))
   ios.subtype (λ x => x ∈ F.ground)
 
--- `F.sets (clcs s)` の証明。 subtypeがらみで難しかった。
+-- `F.sets (clcs s)` の証明。 subtypeがらみで意外と難しかった。
 theorem cl_in_F_sets {α : Type} [DecidableEq α] [Fintype α]
   (F : ClosureSystem α) [DecidablePred F.sets] :
   ∀ (s : Finset { x // x ∈ F.ground }), F.sets ((clcs F s).map ⟨Subtype.val, Subtype.val_injective⟩) :=
@@ -963,8 +785,21 @@ noncomputable def closure_operator_from_CS {α :Type} [DecidableEq α][Fintype �
           · exact C.inc_ground xsx
           · rw [Finset.map_eq_image]
             simp at a
-            --xがなにかイマイチがわからないが、transitivityで示すのか。
-            sorry
+            --このファイル最後の未解決だった部分。goal Finset.image (⇑{ toFun := Subtype.val, inj' := ⋯ }) s ⊆ x
+            --xは、通常の集合
+            --a : Finset.image Subtype.val  (Finset.subtype (fun x ↦ x ∈ C.ground)  (finsetInter (Finset.filter (fun t ↦ C.sets t ∧ Finset.map { toFun := Subtype.val, inj' := ⋯ } s ⊆ t) C.ground.powerset))) ⊆ x
+            --clの像をsubtypeにして、valを取っているので、x in C.groundでfinlterを撮っているのと同じか。clの値をgroundでfilterしたもの。つまりxは、clの値を含む集合。
+            --sは任意のsubtypeで、hyperedgeとは限らない。
+            --示すべきことは、subtypeのsのvalは、clの値を含む集合になることで、単なるextensiveのような気がする。
+            let ef := extensive_from_SF C.toSetFamily
+            simp_all only [Function.Embedding.coeFn_mk]
+            intro y hy
+            simp_all only [Finset.mem_image, Subtype.exists, exists_and_right, exists_eq_right]
+            obtain ⟨w, h⟩ := hy
+            apply a
+            simp_all only [Finset.mem_image, Finset.mem_subtype, Subtype.exists, exists_and_left, exists_prop,
+              exists_eq_right_right, and_true]
+            simpa using ef _ h
 
         have h_all : ∀ s ∈ Finset.filter (fun t ↦ C.sets t ∧ sval ⊆ t) C.ground.powerset, C.sets s := by
           intros s hs
@@ -1060,7 +895,167 @@ noncomputable def closure_operator_from_CS {α :Type} [DecidableEq α][Fintype �
 }
 
 ------
---結果的に使われなくなった部分。
+--以下は結果的に使われなくなった部分。
+--finsetInset_monoで使われているが、finset_monoが使われてないので、一緒に移動した。
+lemma listInter_mono {α : Type u} [DecidableEq α] [Fintype α]
+    {L1 L2 : List (Finset α)}
+    (h_len : L1.length = L2.length)
+    (h_sub : ∀ i : Nat, i < L1.length → L1.get! i ⊆ L2.get! i) :
+    listInter L1 ⊆ listInter L2 := by
+  -- 証明は L1 に対する単純な再帰 (induction) で行うのが分かりやすいです
+  cases hl1:L1 with
+  | nil =>
+    -- L1 = [] の場合
+    -- listInter [] = Finset.univ なので，Finset.univ ⊆ listInter L2 は自明
+    simp [listInter]
+    have :L2 = [] := by
+      rw [←hl1]
+      subst hl1
+      simp_all only [List.length_nil, List.get!_eq_getElem!, List.getElem!_eq_getElem?_getD, List.getElem?_eq_getElem,
+        Option.getD_some]
+      simpa using h_len.symm
+    subst this hl1
+    simp_all only [List.length_nil, not_lt_zero', List.get!_eq_getElem!, List.getElem!_eq_getElem?_getD,
+      List.getElem?_eq_getElem, Option.getD_some, subset_refl, implies_true, List.foldr_nil]
+  | cons x xs =>
+    -- L1 = x :: xs の場合
+    cases hl2:L2 with
+    | nil =>
+      -- L2 = [] は長さ一致に反するので矛盾
+      exfalso
+      subst hl2
+      simp_all only [List.length_cons, List.length_nil, AddLeftCancelMonoid.add_eq_zero, List.length_eq_zero,
+        one_ne_zero, and_false]
+    | cons y ys =>
+      -- L2 = y :: ys
+      -- ここで h_len : L1.length = L2.length
+      -- すなわち x :: xs の長さ = y :: ys の長さ から xs.length + 1 = ys.length + 1 を得たい
+      -- しかしそのままだと Nat.succ.inj を直接は使えないことがある
+      rw [hl1] at h_len
+      rw [hl2] at h_len
+      rw [List.length_cons] at h_len
+      rw [List.length_cons] at h_len
+      -- h_len は xs.length.succ = ys.length.succ の形になった
+      let h_len' := Nat.succ.inj h_len
+      -- これで xs.length = ys.length が得られた
+      -- あとは単調性を示す
+      dsimp [listInter]  -- listInter (x :: xs) = x ∩ listInter xs
+      apply Finset.subset_inter
+      · -- x ⊆ y 先頭のものが包含関係があること。
+        have hx:x = L1.get! 0 := by
+          rw [hl1]
+          simp
+        have hy:y = L2.get! 0 := by
+          rw [hl2]
+          simp
+        have h0 : 0 < L1.length := by
+          rw [hl1]
+          simp
+        let h0' := h_sub 0 h0
+        subst hl1 hl2
+        simp_all only [List.get!_eq_getElem!, List.getElem!_eq_getElem?_getD, List.length_cons,
+          add_pos_iff, zero_lt_one, or_true, List.getElem?_eq_getElem, List.getElem_cons_zero, Option.getD_some]--
+        intro i hi
+        simp_all only [Finset.mem_inter]
+        --obtain ⟨left, right⟩ := hi
+        apply h0'
+        simp_all only [List.get!_eq_getElem!, List.getElem!_eq_getElem?_getD,
+         List.getElem?_eq_getElem, List.getElem_cons_zero, Option.getD_some]--
+      · -- listInter xs ⊆ listInter ys 残りの部分も包含関係があること。これは帰納法の仮定を使う。
+        have arg: ∀ (i : ℕ), i  < xs.length → xs.get! i ⊆ ys.get! i:=
+        by
+          let fun_ih := (fun i hi => h_sub (i+1) hi) --帰納法の仮定の仮定が満たされていることを確認。
+          rw [hl1] at fun_ih
+          rw [hl2] at fun_ih
+          intro i a
+          subst hl1 hl2
+          simp_all only [List.length_cons, add_lt_add_iff_right, List.get!_eq_getElem!,
+            List.getElem!_eq_getElem?_getD, List.getElem?_eq_getElem, List.getElem_cons_succ, Option.getD_some,
+            h_len']
+
+        let ih := listInter_mono h_len' arg
+        subst hl1 hl2
+        simp_all only [List.length_cons, List.get!_eq_getElem!, List.getElem!_eq_getElem?_getD,
+          List.getElem?_eq_getElem, Option.getD_some, h_len']
+        intro i hi
+        simp_all only [Finset.mem_inter]
+        obtain ⟨left, right⟩ := hi
+        apply ih
+        exact right
+
+--extensiveの証明に使えるかと思って証明したが、リストの数が同じでないので使えなかった。
+theorem finsetInter_mono {α : Type} [DecidableEq α] [Fintype α]
+    {A B : Finset (Finset α)}
+    (h_len : A.toList.length = B.toList.length)
+    (h_sub : ∀ i : Nat, i < A.toList.length →
+              A.toList.get! i ⊆ B.toList.get! i) :
+    finsetInter (A : Finset (Finset α)) ⊆ finsetInter (B : Finset (Finset α)) := by
+  -- finsetInter A = listInter A.toList, finsetInter B = listInter B.toList
+  simp [finsetInter]
+  -- あとは listInter_mono を使えばよい
+  apply listInter_mono h_len h_sub
+/-
+--現状では使ってない。集合のほうにもってきて考えるファイルに入れるのがよい。
+--Finsetでない一般のSetの閉包集合族の場合は別のファイルで考える。
+theorem finset_subfamily_intersection_closed {α : Type*} [DecidableEq α]
+    (A : Finset α) (A0 : Finset (Finset α))
+    (nonemptyA0 : A0.Nonempty)
+    (h : ∀ X ∈ A0, X ⊆ A) : (⋂ x ∈ A0.toSet, x) ⊆ A.toSet := by
+  -- 共通部分の要素xを取る
+  intro y
+  intro hy
+  -- 共通部分の定義により、任意のX ∈ A0に対してy ∈ X
+  rw [@Set.mem_def] at hy
+
+  -- A0.toSetの任意の要素に対してyが含まれることを示す
+  have h1 : ∀ X ∈ A0, y ∈ X := by
+    intro X hX
+    simp_all only [Finset.mem_coe]
+    apply hy
+    simp_all only [Set.mem_range]
+    apply Exists.intro
+    · ext x : 1
+      simp_all only [Set.mem_iInter, Finset.mem_coe]
+      apply Iff.intro
+      intro a
+      on_goal 2 => {
+        intro a i
+        exact a
+      }
+      simp_all only [forall_const]
+      exact a
+  -- A0の要素Xを1つ取る（A0が空でない場合）
+  by_cases h_empty : A0.Nonempty
+  -- 空でない場合
+  case pos =>
+    obtain ⟨X, hX⟩ := h_empty
+    -- XはAの部分集合
+    have hXA := h X hX
+    -- yはXの要素
+    have hyX := h1 X hX
+    -- AはFinsetなのでtoSetを使って変換
+    simp_all only [Finset.mem_coe]
+    apply h
+    · exact hX
+    · simp_all only
+  -- A0が空の場合
+  case neg =>
+    simp_all only
+-/
+/-
+@[simp] lemma filter_mem {α : Type} [DecidableEq α] [Fintype α] (s : Finset α) (C : ClosureSystem α) :
+  ∀ x ∈ s.filter (λ x => x ∈ C.ground), x ∈ C.ground :=
+  by
+    intro x
+    intro h
+    simp_all
+-/
+/-
+--使われてない。
+lemma intersectionOfSubsets_def {α : Type} [DecidableEq α][Fintype α] (A0 : Finset (Finset α)) :
+  finsetInter A0 = A0.toList.foldr (fun x acc => x ∩ acc) Finset.univ := by rfl
+-/
+
 --ここから下は、閉集合族から極大なものをひとつとっても閉集合族になることを示す部分。
 --ここで証明したことは、List.max?に関して非空な場合の最大値の存在と、最大値であることを保証する定理を証明した。List.max?_spec
 --当然、mathlibにあると思われるが、List.maximumのほうはあっても、max?のほうにはなく、等価性の証明もない。

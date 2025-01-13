@@ -60,7 +60,7 @@ lemma all_inters_subset_of_mem {α : Type} [DecidableEq α][Fintype α]
       exact alli right
 
 
---sを含むもので共通部分をとってもやはりsを含むことを証明する。どのような補題を示せばいいのか。集合族の大きさに関する帰納法が使える補題を設定する。
+--sを含むもので共通部分をとってもやはりsを含むことを証明する。リストを使った命題にして、帰納的に分解している。
 lemma finset_inter_subset_iff_lem {α : Type} [DecidableEq α][Fintype α] (fl : List (Finset α)) (A : Finset α) :(∀ X ∈ fl, A ⊆ X ) → A ⊆ List.foldr (fun x acc ↦ x ∩ acc) Finset.univ fl := by
       cases hc:fl with
       | nil =>
@@ -84,7 +84,7 @@ lemma finset_inter_subset_iff_lem {α : Type} [DecidableEq α][Fintype α] (fl :
         simp
         have ih: ∀ X ∈ tl, A ⊆ X → A ⊆ tl.foldr (fun x acc => x ∩ acc) Finset.univ := by
           intro X HX hh
-          exact finset_inter_subset_iff_lem tl A ih0
+          exact finset_inter_subset_iff_lem tl A ih0 --ここで帰納法の仮定を使っている。
 
         subst hc
         rw [@Finset.subset_inter_iff]
@@ -95,7 +95,7 @@ lemma finset_inter_subset_iff_lem {α : Type} [DecidableEq α][Fintype α] (fl :
 
 
 
---下で使われている。
+--extensiveの証明で使われている。finset_inter_subset_iff_lemを使っている。
 lemma finset_inter_subset_iff {α : Type} [DecidableEq α][Fintype α] (A0 : Finset (Finset α)) (A : Finset α) :
   (∀ X ∈ A0, A ⊆ X )  ↔ A ⊆ finsetInter A0  :=
   by
@@ -116,7 +116,7 @@ lemma finset_inter_subset_iff {α : Type} [DecidableEq α][Fintype α] (A0 : Fin
       exact hX
     exact h.trans this
 
---foldrを帰納的に分解している。
+--foldrを帰納的に分解している。idempotentの証明で使われている。
 lemma insert_foldr_inter {α : Type} [DecidableEq α] [Fintype α]
   (x : Finset α) (S' : Finset (Finset α)) (x_not_mem : x ∉ S') :
   x ∩ List.foldr (fun x acc ↦ x ∩ acc) Finset.univ S'.toList =
@@ -359,7 +359,7 @@ by
 ------
 -----------------------------------------------------------------------------------------
 --sets sがclでs自身に映ること。ただし、この言明は、また、subtypeを考慮してない。
---idempoteentの未完の証明で使っている。
+--idempoteentの証明で使っている。
 lemma finsetInter_eq_s {α : Type} [DecidableEq α] [Fintype α]
   (A : Finset (Finset α)) (s : Finset α)
   (h_mem : s ∈ A) (h_subset : ∀ t ∈ A, s ⊆ t) :

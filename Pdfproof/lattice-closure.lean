@@ -47,14 +47,14 @@ lemma finset_subfamily_intersection_closed_list {α : Type} [DecidableEq α][Fin
     (nonemptyA0 : A0.Nonempty)
     (h : ∀ X ∈ A0, X ⊆ A) : A0.toList.foldr (λ x acc => x ∩ acc) Finset.univ ⊆ A :=
 by
-  match v:A0.toList with
+  match v:A0.toList with --vのラベルをとるとなぜかエラーになる。
   | List.nil => simp_all
   | List.cons hd tl =>
 
     have hdin : hd ∈ A0.toList := by
       simp_all
 
-    have asub : ∀ X ∈ A0.toList, X ⊆ A := by
+    have asub : ∀ X ∈ A0.toList, X ⊆ A := by --仮定hのリスト版。
       intro X
       intro hX
       apply h
@@ -66,10 +66,12 @@ by
       apply asub
       exact hdin
 
-    simp [Finset.subset_iff]
+    --have :List.foldr (fun x acc ↦ x ∩ acc) Finset.univ tl ⊆ A := うまく証明できない。
+
+    simp [Finset.subset_iff] --部分集合を要素のimplyの関係に変換。
     intro x a a_1
     apply hdsub
-    simp_all only
+    simp_all only --ここで帰納法の仮定をつかっている。
 
 --finsetInterがground setに含まれるという補題。
 --finset_subfamily_intersection_closed_listで示す。2箇所で使われている。
@@ -81,6 +83,7 @@ lemma intersectioninground {α : Type} [DecidableEq α][Fintype α] (C: ClosureS
     simp_all only [Finset.mem_powerset]
     intro X
     intro hX
+    --引数のひとつ
     have nonemp : (C.ground.powerset.filter (fun (t:Finset α) => C.sets t ∧ s ⊆ t)).Nonempty := by
       simp_all only [Finset.Nonempty]
       use C.ground
@@ -91,7 +94,7 @@ lemma intersectioninground {α : Type} [DecidableEq α][Fintype α] (C: ClosureS
       · constructor
         exact C.has_ground
         simp_all only
-
+    --引数のひとつ
     have allt: ∀ X ∈ (C.ground.powerset.filter (fun (t:Finset α) => C.sets t ∧ s ⊆ t)), X ⊆ C.ground := by
       intro X
       intro hX
@@ -100,7 +103,7 @@ lemma intersectioninground {α : Type} [DecidableEq α][Fintype α] (C: ClosureS
     let fslst := finset_subfamily_intersection_closed_list C.ground (C.ground.powerset.filter (fun (t:Finset α) => C.sets t ∧ s ⊆ t)) nonemp allt
     exact fslst hX
 
---2箇所で使われているが、実質一箇所。extensiveの証明。
+--extensiveの証明。finset_inter_subset_iffを使っている。
 lemma intersectionExtension {α : Type} [DecidableEq α][Fintype α] (F: SetFamily α) [DecidablePred F.sets]:
   ∀ s ∈ F.ground.powerset, s ⊆ finsetInter (F.ground.powerset.filter (fun (t:Finset α) => F.sets t ∧ s ⊆ t))  :=
   by
@@ -125,7 +128,7 @@ noncomputable def listInter {α : Type u} [DecidableEq α] [Fintype α]
   (L : List (Finset α)) : Finset α :=
   L.foldr (fun x acc => x ∩ acc) Finset.univ
 
---listInter_mono'の証明で使われている。List.foldrしたものともともとの要素の包含関係。
+--listInter_mono'の証明で使われている。List.foldrしたものともともとの要素の包含関係。inductionが使われている。
 lemma finsetInter_element {α : Type} [DecidableEq α][Fintype α] (L1 : List (Finset α)) (a : α)
   (h : a ∈ List.foldr (fun x acc ↦ x ∩ acc) Finset.univ L1) :
   ∀ x ∈ L1, a ∈ x :=
@@ -141,7 +144,7 @@ by
     | inl h =>
       subst h
       simp_all only [implies_true]
-    | inr h_1 => simp_all only [forall_const]
+    | inr h_1 => simp_all only [forall_const] --帰納法の仮定ihを暗黙に使っている。
 
 --finsetInter_elementの集合版。finset_subfamily_intersection_closed_ともちょっと似ているが違う。monotoneでないところで使われている。
 lemma finsetInter_subset {α : Type} [DecidableEq α][Fintype α] (A0: Finset (Finset α)):
@@ -267,42 +270,14 @@ noncomputable def preclosure_operator_from_SF {α :Type} [DecidableEq α][Fintyp
 {
   Family := F,
   cl := cl
-  --extensive := extensive_from_SF F, -- 明示的に補題を渡す
+  --extensive := extensive_from_SF F, -- これではだめ。
   --monotone := monotone_closure_operator F cl,   -- 明示的に補題を渡す
-  --/そとに出そうとしたがheartbeat問題が出たので、戻した。clの共用問題などなかなか難しい。
+
   extensive := --そのまま、適用すると、エラーになったので、一回letで置いた。
   by
     let ef := extensive_from_SF F
     intro s
     simp_all only [cl, ef]
-  /- 証明を外部に出したので、消して良い。
-  extensive :=
-  by
-    intro s
-    let sval :=s.map ⟨Subtype.val, Subtype.val_injective⟩
-    intro x
-    intro h
-    --simp_all
-    have h1 : s.map ⟨Subtype.val, Subtype.val_injective⟩ ⊆ F.ground := by
-      obtain ⟨val, property⟩ := x
-      intro x hx
-      simp_all only [Finset.mem_map, Function.Embedding.coeFn_mk, Subtype.exists, exists_and_right,
-        exists_eq_right]
-      obtain ⟨w, h_1⟩ := hx
-      simp_all only
-
-    have : sval ∈ F.ground.powerset := by
-      simp_all only [Finset.mem_powerset]
-
-    have h2 := intersectionExtension F sval this
-    simp_all only [Finset.mem_powerset, Finset.mem_subtype, sval]
-    obtain ⟨val, property⟩ := x
-    simp_all only [Finset.mem_subtype, cl]
-
-    apply h2
-    simp_all only [Finset.mem_map, Function.Embedding.coeFn_mk, Subtype.exists, exists_and_right, exists_eq_right,
-      exists_const]
-  -/
 
   monotone := by
     have h1 : ∀ s t : Finset F.ground, s ⊆ t → cl s ⊆ cl t := by
@@ -353,8 +328,6 @@ noncomputable def preclosure_operator_from_SF {α :Type} [DecidableEq α][Fintyp
         Finset.mem_powerset, cl, ft, fs, T, S]
 
     exact h1
-
-
   }
 
 ----------------------------------------------------------------------------
@@ -377,8 +350,7 @@ by
       rw [finsetInter]
       simp
       exact h_all x (Finset.mem_singleton_self x)
-  -- 帰納ステップ: S = insert x S' の場合
-
+  -- 帰納ステップ: S = insert x s の場合。後ろの| inr h_nonempty_Sで暗黙に使っている。
   have inductive_step :
     ∀ x : Finset α,
       ∀ S' : Finset (Finset α),
@@ -401,34 +373,35 @@ by
         exact insert_foldr_inter x S' h_not_mem
       rwa [← this]
 
-      --(h_all x (Finset.mem_insert_self x S')) h_inter_S'
+
   -- Finset.induction_on を利用して証明を完成
   intro S--h_nonempty h_all
-  induction S using Finset.induction_on with
+  induction S using Finset.induction_on with --Finset.induction_on Sを使う。
   | empty =>
       -- 矛盾: S が空集合で Nonempty を満たすことはない
       intro h_nonempty
       exfalso
       exact False.elim (Finset.not_nonempty_empty h_nonempty)
-  | @insert a s a_notin_s S'  =>
-      -- 帰納ステップ: S = insert x S'
+  | @insert a s a_notin_s ih  => --ihに帰納法の仮定がはいっている。
+      -- 帰納ステップ: S = insert x s
       --protected theorem induction_on {α : Type*} {p : Finset α → Prop} [DecidableEq α] (s : Finset α)
       --(empty : p ∅) (insert : ∀ ⦃a : α⦄ {s : Finset α}, a ∉ s → p s → p (insert a s)) : p s :=
+
       intro h_nonempty h_all
 
       cases s.eq_empty_or_nonempty with
       | inl h_empty =>
-          -- S' = ∅ の場合
+          -- s = ∅ の場合
           subst h_empty
           simp_all only [Finset.mem_singleton, forall_eq, Finset.mem_insert, forall_eq_or_imp, and_imp,
             Finset.not_mem_empty, not_false_eq_true, Finset.not_nonempty_empty, forall_const, not_isEmpty_of_nonempty,
             IsEmpty.forall_iff, insert_emptyc_eq, Finset.singleton_nonempty]
       | inr h_nonempty_S =>
-          -- S' ≠ ∅ の場合
+          -- s≠ ∅ の場合。このケースでihを暗黙に使っている。
           simp_all only [Finset.mem_singleton, forall_eq, Finset.mem_insert, forall_eq_or_imp, and_imp, or_true,
             implies_true, forall_const, Finset.insert_nonempty, not_false_eq_true]
 
---subtypeの計算と、finsetInterの順番に関する補題
+--subtypeの計算と、finsetInterの順番に関する補題。mapでなくて、image版。
 --cl_in_F_sets_lemmaの証明で使っている。
 lemma intersection_lemma_image  {α : Type} [DecidableEq α] [Fintype α] (p : α → Prop) [DecidablePred p] (S : Finset (Finset (Subtype p))) (Snonemp: S.Nonempty) :
   (finsetInter S).image Subtype.val = finsetInter (S.image (fun t => t.image Subtype.val)) :=
@@ -450,7 +423,8 @@ by
   simp_all only [Finset.mem_image, Subtype.exists, exists_and_right, exists_eq_right, Finset.mem_map,
     Function.Embedding.coeFn_mk]
 
- --cl_in_F_setsの証明で使っている。
+ --cl_in_F_setsの証明で使っている。finite_intersection_in_Cのsubtype版。
+ --finite_intersection_in_Cを使って証明している。
 lemma finite_intersection_in_C_subtype
   {α : Type} [DecidableEq α] [Fintype α]
   (F : ClosureSystem α) [DecidablePred F.sets]:
@@ -480,12 +454,13 @@ by
       simp_all only
   -- 元の定理を適用して F.sets (finsetInter S_val) を得る
   have h_finset_inter : F.sets (finsetInter S_val) :=
-    finite_intersection_in_C F S_val h_S_val_nonempty h_S_val_all
+    finite_intersection_in_C F S_val h_S_val_nonempty h_S_val_all --これの引数を一生懸命計算。
   -- finsetInter S の値が finsetInter S_val に対応することを示す
+
   have : (finsetInter S).map ⟨Subtype.val, Subtype.val_injective⟩ =  finsetInter (S.image (fun t => t.map ⟨Subtype.val, Subtype.val_injective⟩ )):=
   by
-    let il := intersection_lemma p S h_nonempty
-    convert il
+    let il := intersection_lemma p S h_nonempty --これも中心的に使う補題か。
+    convert il --exactだとうまくいかないが、convertだと即座に証明できる。
 
   simp_all only [Finset.image_nonempty, Finset.mem_image, forall_exists_index, and_imp, forall_apply_eq_imp_iff₂,
     implies_true, p, S_val]
@@ -494,8 +469,8 @@ by
   simp_all only [Finset.mem_map, Function.Embedding.coeFn_mk, Subtype.exists, exists_and_right, exists_eq_right,
     Finset.mem_image]
 
---intersection_lemmaと内容がかぶっているので、intersection_lemmaを使って証明する。その割には証明が大変だった。cl_in_F_setsで使っている。
---空集合を排除する条件は必要か。
+--intersection_lemmaと内容が近いがこちらのほうが複雑。intersection_lemmaを使って証明する。証明が大変だった。cl_in_F_setsで使っている。
+--言明に空集合を排除する条件はつけずに証明の中の場合分けで乗り切る。
 lemma cl_in_F_sets_lemma  {α : Type} [DecidableEq α] [Fintype α]
   (F : ClosureSystem α) [DecidablePred F.sets] (s : Finset { x // x ∈ F.ground }):
    Finset.subtype (fun x ↦ x ∈ F.ground) (finsetInter (Finset.filter (fun t ↦ F.sets t ∧ s.map ⟨Subtype.val, Subtype.val_injective⟩ ⊆ t) F.ground.powerset)) = finsetInter (Finset.image (fun t ↦ Finset.subtype (fun x ↦ x ∈ F.ground) t) (Finset.filter (fun t ↦ F.sets t ∧ s.map ⟨Subtype.val, Subtype.val_injective⟩ ⊆ t) F.ground.powerset)) :=
@@ -621,14 +596,6 @@ by
             exists_eq_right, Subtype.coe_eta, Finset.coe_mem, exists_const]
 
     simp_all only [filtered]
-/-
---使ってないかも。
-lemma finsetInter_empty {α : Type} [DecidableEq α] (s : Finset α) :
-  s ∈ (∅ : Finset (Finset α)) → False :=
-by
-  intro h_mem
-  exact Finset.not_mem_empty s h_mem
--/
 
 --cl_in_F_setsの証明で使っている。subtypeをとってvalを取るのは、filterを取るのと同じ。
 lemma subtype_image_val_eq_filter {α : Type} [DecidableEq α]
@@ -648,14 +615,15 @@ by
   intro a
   simpa using h_subset a
 
--- `clcs` の定義
+-- `clcs` の定義。つぎの言明で使う。
 noncomputable def clcs {α : Type} [DecidableEq α] [Fintype α] (F : ClosureSystem α) [DecidablePred F.sets]
   (s : Finset { x // x ∈ F.ground }) : Finset { x // x ∈ F.ground } :=
   let sval := s.map ⟨Subtype.val, Subtype.val_injective⟩
   let ios := finsetInter (F.ground.powerset.filter (fun (t : Finset α) => F.sets t ∧ sval ⊆ t))
   ios.subtype (λ x => x ∈ F.ground)
 
--- `F.sets (clcs s)` の証明。 subtypeがらみで意外と難しかった。
+-- `F.sets (clcs s)` の証明。 subtypeがらみで意外と難しかった。idepotentの証明で用いるつもりだったが使ってないかも。
+--finsetInter_eq_sを使って証明した方がよかったかも。
 theorem cl_in_F_sets {α : Type} [DecidableEq α] [Fintype α]
   (F : ClosureSystem α) [DecidablePred F.sets] :
   ∀ (s : Finset { x // x ∈ F.ground }), F.sets ((clcs F s).map ⟨Subtype.val, Subtype.val_injective⟩) :=
@@ -867,9 +835,7 @@ noncomputable def closure_operator_from_CS {α :Type} [DecidableEq α][Fintype �
         obtain ⟨w, h⟩ := ha
         simp_all only
 
-
-      --simp only [Finset.mem_filter, Finset.mem_powerset] at ht
-      --exact ht.2
+    --以下の部分はcl_in_F_setsを用いて証明するはずだったが、ChatGPTはその道を取らなかった。ということは、cl_in_F_setsももっと簡単に証明できるかも。
     have h_cl_cl_s_eq_cl_s : cl_cl_s = cl_s := by
       apply finsetInter_eq_s
       simp only [Finset.filter_nonempty_iff, Finset.mem_filter, Finset.mem_powerset]

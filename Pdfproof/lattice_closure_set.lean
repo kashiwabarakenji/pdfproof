@@ -1,6 +1,6 @@
 --closure systemからclosure operatorを導入するために、extensiveとmonotoneとidempotentを証明したもの。
 --別のファイルでは、intersectionをListに変換した後にfoldrを使って定義して、言明を帰納法で証明したが、
---ここでは、intersectionをFinsetのままで定義して(finsetIntersection M)、主に帰納法を使わずに証明した。
+--ここでは、intersectionをFinsetのままで定義して(finsetIntersection M)、主に帰納法を使わずに証明した。こちらのほうが証明として良いと思われる。
 import LeanCopilot
 import Mathlib.Data.Finset.Basic
 import Mathlib.Data.Set.Basic
@@ -15,19 +15,19 @@ structure SetFamily (α : Type) [DecidableEq α] [Fintype α] where
   (sets : Finset α → Prop)
   (inc_ground : sets s → s ⊆ ground)
 
-structure SetFamily.preclosure_operator (F : SetFamily α) where
-  (Family : SetFamily α)
-  (cl : Finset F.ground → Finset F.ground)
-  (extensive : ∀ s : Finset F.ground, s ⊆ cl s)
-  (monotone : ∀ s t : Finset F.ground, s ⊆ t → cl s ⊆ cl t)
-
-structure SetFamily.closure_operator (F : SetFamily α) extends SetFamily.preclosure_operator F where
-  (idempotent : ∀ s : Finset F.ground, cl s = cl (cl s))
-
 structure ClosureSystem (α : Type) [DecidableEq α]  [Fintype α] extends SetFamily α where
   (intersection_closed : ∀ s t , sets s → sets t → sets (s ∩ t))
   (has_ground : sets ground)
   (has_empty: sets ∅)
+
+--よく考えたら定義に集合族は必要なく、　台集合さえわかればいい。
+structure SetFamily.preclosure_operator (ground:Finset α) where
+  (cl : Finset ground → Finset ground)
+  (extensive : ∀ s : Finset ground, s ⊆ cl s)
+  (monotone : ∀ s t : Finset ground, s ⊆ t → cl s ⊆ cl t)
+
+structure SetFamily.closure_operator (ground:Finset α) extends SetFamily.preclosure_operator ground where
+  (idempotent : ∀ s : Finset ground, cl s = cl (cl s))
 
 def finsetIntersection {α : Type} [DecidableEq α]
   (family : Finset (Finset α)) : Finset α :=
@@ -39,7 +39,7 @@ def closureOperator {α : Type} [DecidableEq α] [Fintype α]
   let ios := finsetIntersection (F.ground.powerset.filter (fun (t : Finset α) => F.sets t ∧ sval ⊆ t))
   ios.subtype (λ x => x ∈ F.ground)
 
---closure systemでないと全体集合が含まれないので、証明できないかも。
+--closure systemでないと全体集合が含まれないので、ただの集合族では証明できない。
 lemma extensive_from_SF_finset {α : Type} [DecidableEq α] [Fintype α]
   (F : ClosureSystem α)[DecidablePred F.sets]:
   ∀ s : Finset F.ground, s ⊆ closureOperator F s :=
@@ -56,22 +56,21 @@ by
   simp
   constructor
 
-  obtain ⟨val, property⟩ := x
-  simp_all only
-  use F.ground
-  simp_all only [subset_refl, and_true, Finset.mem_image, Subtype.exists, exists_and_right, exists_eq_right,
-    exists_const]
-  apply And.intro
-  · simp_all only
-  · apply And.intro
-    · exact F.has_ground
-    · simp [Finset.image_subset_iff]
+  · obtain ⟨val, property⟩ := x
+    simp_all only
+    use F.ground
+    simp_all only [subset_refl, and_true]--
+    apply And.intro
+    · simp_all only
+    · apply And.intro
+      · exact F.has_ground
+      · simp [Finset.image_subset_iff]
 
-  intro f a a_1 a_2
-  obtain ⟨val, property⟩ := x
-  simp_all only
-  apply a_2
-  simp_all only [Finset.mem_image, Subtype.exists, exists_and_right, exists_eq_right, exists_const]
+  · intro f a a_1 a_2
+    obtain ⟨val, property⟩ := x
+    simp_all only
+    apply a_2
+    simp_all only [Finset.mem_image, Subtype.exists, exists_and_right, exists_eq_right, exists_const]--
 
 lemma monotone_from_SF_finset {α : Type} [DecidableEq α] [Fintype α]
   (F : ClosureSystem α)[DecidablePred F.sets]:
@@ -89,39 +88,30 @@ by
   simp
   constructor
   · use F.ground
-    simp_all only [subset_refl, and_true, Finset.mem_image, Subtype.exists, exists_and_right, exists_eq_right,
-      exists_const]
+    simp_all only [subset_refl]
     apply And.intro
     · constructor
-      · simp_all only [Finset.mem_subtype, Finset.mem_filter, Finset.mem_sup, Finset.mem_powerset, id_eq]
+      · simp_all only [Finset.mem_filter, Finset.mem_sup, Finset.mem_powerset, id_eq]
       · constructor
         · exact F.has_ground
-        · simp_all only [Finset.mem_subtype, Finset.mem_filter, Finset.mem_sup, Finset.mem_powerset, id_eq]
+        · simp_all only [Finset.mem_subtype, Finset.mem_filter, Finset.mem_sup]--
           obtain ⟨val, property⟩ := x
-          obtain ⟨left, right⟩ := hx
-          obtain ⟨w, h_1⟩ := left
-          obtain ⟨left, right_1⟩ := h_1
-          obtain ⟨left, right_2⟩ := left
-          obtain ⟨left_1, right_2⟩ := right_2
-          simp_all only
+          --obtain ⟨left, right⟩ := hx
+          --obtain ⟨w, h_1⟩ := left
+          --simp_all only
           intro x hx
-          simp_all only [subset_refl, Finset.mem_map, Function.Embedding.coeFn_mk, Subtype.exists, exists_and_right,
-            exists_eq_right]
+          simp_all only [Finset.mem_map, Function.Embedding.coeFn_mk, Subtype.exists, exists_and_right,exists_eq_right]--
           obtain ⟨w_1, h_1⟩ := hx
           simp_all only [subset_refl]
 
-    · simp_all only [Finset.mem_subtype, Finset.mem_filter, Finset.mem_sup, Finset.mem_powerset, id_eq, subset_refl,
-      Finset.coe_mem]
+    · simp_all only [Finset.coe_mem]
 
   · intro f a a_1 a_2
     obtain ⟨val, property⟩ := x
-    simp_all only
-    simp_all only [Finset.mem_subtype, Finset.mem_filter, Finset.mem_sup, Finset.mem_powerset, id_eq]
+    simp_all only [Finset.mem_subtype, Finset.mem_filter, Finset.mem_sup, Finset.mem_powerset, id_eq]--
     obtain ⟨left, right⟩ := hx
     obtain ⟨w, h_1⟩ := left
     obtain ⟨left, right_1⟩ := h_1
-    obtain ⟨left, right_2⟩ := left
-    obtain ⟨left_1, right_2⟩ := right_2
     simp_all only [subset_refl]
     apply right
     · simp_all only [subset_refl]
@@ -143,10 +133,7 @@ lemma finite_intersection_in_closureSystem
   : F.sets (finsetIntersection M) := by
   classical
 
-  --------------------------------------------------------------------------------
   -- **ここで `Finset.induction_on` を使う**
-  --   p := λ (s : Finset (Finset α)), F.sets (finsetIntersection s)
-  --------------------------------------------------------------------------------
   induction M using Finset.induction_on --(p := λ (s : Finset (Finset α))=> F.sets (finsetIntersection s))
     -- 1) base case: s = ∅
   case empty =>
@@ -170,9 +157,7 @@ lemma finite_intersection_in_closureSystem
         subst hM'_empty
         simp_all only [Finset.not_mem_empty, not_false_eq_true, forall_eq, and_self]
       subst hM'_empty
-      simp_all only [Finset.not_mem_empty, not_false_eq_true, Finset.not_nonempty_empty, forall_const,
-        not_isEmpty_of_nonempty, IsEmpty.forall_iff, insert_emptyc_eq, Finset.singleton_nonempty,
-        Finset.mem_singleton, forall_eq]
+      simp_all only [insert_emptyc_eq,Finset.mem_singleton]--
 
     | inr hM'_nonempty =>
       -- M' が非空 => 帰納仮定 ih : F.sets (finsetIntersection M')
@@ -197,8 +182,6 @@ lemma finite_intersection_in_closureSystem
             simp_all only [Finset.mem_insert, or_true, implies_true, imp_self, Finset.insert_nonempty, forall_eq_or_imp,
               true_and, forall_const, exists_eq_or_imp]
           · --(∃ i ∈ M', x ∈ i) ∧ ∀ f ∈ M', x ∈ f
-            --simp_all only [Finset.mem_insert, or_true, implies_true, imp_self, Finset.insert_nonempty, forall_eq_or_imp,
-            --  true_and, forall_const, exists_eq_or_imp, and_true]
             obtain ⟨left, right⟩ := h
             obtain ⟨w, h⟩ := left
             by_cases h1 : w ∈ M'
@@ -230,8 +213,7 @@ lemma finite_intersection_in_closureSystem
                 · simp_all only
 
         · intro a
-          simp_all only [Finset.mem_insert, or_true, implies_true, imp_self, Finset.insert_nonempty, forall_eq_or_imp,
-            true_and, forall_const, exists_eq_or_imp, or_self, and_self]
+          simp_all only [implies_true,forall_eq_or_imp,  exists_eq_or_imp, or_self, and_self]--
       convert F.intersection_closed T₀ (finsetIntersection M') T₀_inF (M'_inFset hM'_nonempty (fun T hT => all_inF T (Finset.mem_insert_of_mem hT)))
 
 lemma closureOperator_image_in_sets
@@ -251,8 +233,7 @@ lemma closureOperator_image_in_sets
     have : F.sets F.ground := F.has_ground
     have : sval ⊆ F.ground := by
       intro x hx
-      simp_all only [Finset.mem_map, Function.Embedding.coeFn_mk, Subtype.exists, exists_and_right, exists_eq_right,
-        sval]
+      simp_all only [Finset.mem_map, Function.Embedding.coeFn_mk, Subtype.exists, exists_and_right, exists_eq_right,sval]
       obtain ⟨w, h⟩ := hx
       simp_all only
     simp_all only [sval, M]
@@ -278,8 +259,7 @@ lemma closureOperator_image_in_sets
     unfold closureOperator
     simp_all only [M, sval, I]
     ext a : 1
-    simp_all only [Finset.mem_map, Finset.mem_subtype, Function.Embedding.coeFn_mk, Subtype.exists, exists_and_left,
-      exists_prop, exists_eq_right_right, iff_self_and]
+    simp_all only [Finset.mem_map, Finset.mem_subtype, Function.Embedding.coeFn_mk, Subtype.exists, exists_and_left,exists_prop, exists_eq_right_right, iff_self_and]--
     intro a_1
     rw [finsetIntersection] at a_1
     simp_all only [Finset.mem_filter, Finset.mem_powerset, and_imp, Finset.mem_sup, id_eq, subset_refl]
@@ -287,7 +267,7 @@ lemma closureOperator_image_in_sets
     obtain ⟨w, h⟩ := left
     obtain ⟨left, right_1⟩ := h
     obtain ⟨left, right_2⟩ := left
-    obtain ⟨left_1, right_2⟩ := right_2
+    --obtain ⟨left_1, right_2⟩ := right_2
     simp_all only [subset_refl]
     apply left
     simp_all only
@@ -501,6 +481,22 @@ by
       = T                  := rfl
    _  = closureOperator F T := by rw [this]
 
+noncomputable def preclosure_operator_from_SF {α :Type} [DecidableEq α][Fintype α] (F: ClosureSystem α) [DecidablePred F.sets]: SetFamily.preclosure_operator F.ground :=
+{
+  cl := closureOperator F,
+  extensive := extensive_from_SF_finset F,
+  monotone := monotone_from_SF_finset F
+}
+
+noncomputable def closure_operator_from_SF {α :Type} [DecidableEq α][Fintype α] (F: ClosureSystem α) [DecidablePred F.sets]: SetFamily.closure_operator F.ground :=
+{
+  cl := closureOperator F,
+  extensive := extensive_from_SF_finset F,
+  monotone := monotone_from_SF_finset F,
+  idempotent := idempotent_from_SF_finset F
+}
+
+-------------------------------
 /- Setに帰着させるアプローチ。Fintypeが証明できなくて、挫折。
 lemma extensive_from_SF_set {α : Type} [DecidableEq α] [Fintype α] [DecidableEq (Set α)][Fintype (Set α)]
   (F : SetFamily α)[DecidablePred F.sets]:

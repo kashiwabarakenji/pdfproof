@@ -27,14 +27,15 @@ structure SetFamily (α : Type) [DecidableEq α] [Fintype α] where
   (sets : Finset α → Prop)
   (inc_ground : sets s → s ⊆ ground)
 
-structure SetFamily.preclosure_operator (F : SetFamily α) where
-  (Family : SetFamily α)
-  (cl : Finset F.ground → Finset F.ground)
-  (extensive : ∀ s : Finset F.ground, s ⊆ cl s)
-  (monotone : ∀ s t : Finset F.ground, s ⊆ t → cl s ⊆ cl t)
+--定義には、台集合だけが必要で集合族は必要ない。Familyもいらないのでは。groundだけがいる。
+structure SetFamily.preclosure_operator (ground:Finset α) where
+  --(Family : SetFamily α)
+  (cl : Finset ground → Finset ground)
+  (extensive : ∀ s : Finset ground, s ⊆ cl s)
+  (monotone : ∀ s t : Finset ground, s ⊆ t → cl s ⊆ cl t)
 
-structure SetFamily.closure_operator (F : SetFamily α) extends SetFamily.preclosure_operator F where
-  (idempotent : ∀ s : Finset F.ground, cl s = cl (cl s))
+structure SetFamily.closure_operator (ground:Finset α) extends SetFamily.preclosure_operator ground where
+  (idempotent : ∀ s : Finset ground, cl s = cl (cl s))
 
 structure ClosureSystem (α : Type) [DecidableEq α]  [Fintype α] extends SetFamily α where
   (intersection_closed : ∀ s t , sets s → sets t → sets (s ∩ t))
@@ -262,13 +263,12 @@ by
   apply h2
   simp_all only [Finset.mem_map, Function.Embedding.coeFn_mk, Subtype.exists, exists_and_right, exists_eq_right, exists_const]--
 
-noncomputable def preclosure_operator_from_SF {α :Type} [DecidableEq α][Fintype α] (F: SetFamily α) [DecidablePred F.sets]: SetFamily.preclosure_operator F :=
+noncomputable def preclosure_operator_from_SF {α :Type} [DecidableEq α][Fintype α] (F: SetFamily α) [DecidablePred F.sets]: SetFamily.preclosure_operator F.ground :=
   let cl := fun s =>
     let sval := s.map ⟨Subtype.val, Subtype.val_injective⟩
     let ios := (finsetInter (F.ground.powerset.filter (fun (t:Finset α) => F.sets t ∧ sval ⊆ t)))
     ios.subtype (λ x => x ∈ F.ground)
 {
-  Family := F,
   cl := cl
   --extensive := extensive_from_SF F, -- これではだめ。
   --monotone := monotone_closure_operator F cl,   -- 明示的に補題を渡す
@@ -708,13 +708,12 @@ by
 
   simp_all only [Finset.mem_filter, Finset.mem_powerset, implies_true, candidates, sval]
 
-noncomputable def closure_operator_from_CS {α :Type} [DecidableEq α][Fintype α] (C: ClosureSystem α) [DecidablePred C.sets]: SetFamily.closure_operator (C.toSetFamily) :=
+noncomputable def closure_operator_from_CS {α :Type} [DecidableEq α][Fintype α] (C: ClosureSystem α) [DecidablePred C.sets]: SetFamily.closure_operator (C.ground) :=
   let cl := fun s =>
     let sval := s.map ⟨Subtype.val, Subtype.val_injective⟩
     let ios := (finsetInter (C.ground.powerset.filter (fun (t:Finset α) => C.sets t ∧ sval ⊆ t)))
     ios.subtype (λ x => x ∈ C.ground)
 {
-  Family := C.toSetFamily,
   cl := cl
   extensive := --そのまま、適用すると、エラーになったので、一回letで置いた。
   by

@@ -6,11 +6,16 @@ import Mathlib.Order.Basic
 import Mathlib.Order.Lattice
 import Mathlib.Data.Nat.Prime.Defs
 import Mathlib.Data.Nat.Factorization.Defs
+import Mathlib.Data.Nat.Factorization.Basic
 import Init.Data.Nat.Lcm
-
+import Init.Data.Nat.Gcd
+import Mathlib.Algebra.GCDMonoid.Basic
+import Mathlib.Algebra.GCDMonoid.Nat
 
 -- 一般的なLattice αを仮定
 variable {α : Type*} [Lattice α]
+
+
 
 --練習問題 3
 -- 1. x ∧ y ≤ x の証明
@@ -147,7 +152,79 @@ instance : Lattice Divides where
   inf_le_right a b := Nat.gcd_dvd_right a.val b.val
   le_inf _ _ _ hab hac := Nat.dvd_gcd hab hac
 
---以下がdistributive latticeを示す部分。chatgpt o1に聞いてもsorryばかりで埒があかない。
+--以下がdistributive latticeを示す部分。
+
+instance: GCDMonoid ℕ := instGCDMonoidNat --これを探すのも時間がかかった。
+
+theorem gcd_lcm_eq_lcm_gcd (a b c : ℕ) :
+    Nat.gcd (Nat.lcm a b) (Nat.lcm a c) = Nat.lcm a (Nat.gcd b c) := by
+  -- We use `Nat.eq_of_factorization_eq`:
+  --   Two numbers are equal if, for every prime p, their exponent in
+  --   the prime-factorization is the same.
+  by_cases ha : a = 0  --0のときを別扱いしないといけないことに気がつくのに時間がかかった。
+  case pos =>
+    subst ha
+    simp_all only [Nat.lcm_zero_left, Nat.gcd_self]
+  case neg =>
+    by_cases hb : b = 0
+    case pos =>
+      subst hb
+      simp_all only [Nat.lcm_zero_right, Nat.gcd_zero_right]
+      simp_all only [Nat.gcd_zero_left]
+    case neg =>
+      by_cases hc : c = 0
+      case pos =>
+        subst hc
+        simp_all only [Nat.lcm_zero_right, Nat.gcd_zero_right]
+      case neg =>
+        apply Nat.eq_of_factorization_eq
+        · intro p
+          have h_lcm1 : lcm a b ≠ 0 := by simp_all only [ne_eq, lcm_eq_zero_iff, or_self, not_false_eq_true]
+          have h_lcm2 : lcm a c ≠ 0 := by simp_all only [ne_eq, lcm_eq_zero_iff, or_self, not_false_eq_true]
+          have h_gcd : gcd (lcm a b) (lcm a c) ≠ 0 :=
+          by simp_all only [ne_eq, lcm_eq_zero_iff, or_self, not_false_eq_true, gcd_eq_zero_iff, and_self]
+          contradiction
+        · intro p
+          have h_gcd : gcd b c ≠ 0 := by simp_all only [ne_eq, gcd_eq_zero_iff, and_self, not_false_eq_true]
+          have h_lcm : lcm a (gcd b c) ≠ 0 :=
+          by simp_all only [ne_eq, gcd_eq_zero_iff, and_self, not_false_eq_true,
+            lcm_eq_zero_iff, or_self]
+          contradiction
+        · intro p
+          let nnn := Nat.max_min_distrib_left (Nat.factorization a p) (Nat.factorization b p) (Nat.factorization c p)
+          simp at nnn
+          rw [Nat.factorization_gcd, Nat.factorization_lcm, Nat.factorization_lcm]
+          rw [Nat.factorization_lcm]
+          rw [Nat.factorization_gcd]
+          simp_all only [Finsupp.inf_apply, Finsupp.sup_apply, nnn]
+          --補題を適用する時にゼロでないという条件が必要なので後ろでまとめて証明。
+          · exact hb
+          · exact hc
+          · exact ha
+          · intro h
+            rw [Nat.gcd_eq_zero_iff] at h
+            obtain ⟨h1, h2⟩ := h
+            contradiction
+          · exact ha
+          · exact hc
+          · exact ha
+          · exact hb
+          · intro h
+            let lez := lcm_eq_zero_iff a b
+            have : a.lcm b = lcm a b :=
+            by
+              rfl
+            rw [this] at h
+            simp_all only [or_self, lez]
+          · intro h
+            have : a.lcm c = lcm a c :=
+            by
+              rfl
+            rw [this] at h
+            rw [lcm_eq_zero_iff] at h
+            simp_all only [or_self]
+
+/- 既存の定理を使わずに証明しようとして、方針は悪くなかったが、定義に戻って証明するのが大変で断念。しばらくしたら消す。
 noncomputable def padicVal (p n : Nat) : Nat :=
   if h : p.Prime then
     -- 素数 p に対する定義
@@ -280,122 +357,7 @@ theorem gcd_lcm_eq_lcm_gcd (a b c : ℕ) :
 theorem lcm_gcd_divides_lcm_gcd (a b c : ℕ) :
     Nat.gcd (Nat.lcm a b) (Nat.lcm a c) ∣ Nat.lcm a (Nat.gcd b c) := by
   rw [← gcd_lcm_eq_lcm_gcd]  -- 左辺を右辺と同じ形に書き直す
-
-
-----別のo1の回答
-
-
-
-notation "v_[" p "](" n ")" => padicVal p n
-
-/--
-「p^k が n を割り切る」ことと「v_p(n) ≥ k」が同値になることの補題．
-詳細は強い再帰定義（`strongRecOn`）に基づく帰納法で示す．
-ここでは証明部分は省略し，sorry としておく．
-実際には「p が prime のとき」などの条件分岐や除算の性質などを使って示す．
 -/
-lemma prime_pow_dvd_iff {p n k : Nat} (hp : p.Prime) :
-  p^k ∣ n ↔ v_[p](n) ≥ k := by sorry
-
-/--
-「x ∣ y」が「任意の prime p について v_p(x) ≤ v_p(y)」と同値になること．
-こちらも各素数 p について「p^v_p(x) は x を割り切る」等々の議論から示す．
--/
-lemma dvd_iff_forall_prime_exp_le (x y : Nat) :
-  x ∣ y ↔ ∀ p : Nat, p.Prime → v_[p](x) ≤ v_[p](y) := by sorry
-
-/--
-gcd と lcm を素因数の min, max で書けることを使って，
-v_p(gcd x y) = min(v_p(x), v_p(y))，
-v_p(lcm x y) = max(v_p(x), v_p(y))
-という形を証明する補題．
-ここでも詳細は省略 (sorry)．
--/
-lemma v_p_gcd (x y : Nat) (p : Nat) (hp : p.Prime) :
-  v_[p](Nat.gcd x y) = min (v_[p](x)) (v_[p](y)) := by sorry
-
-lemma v_p_lcm (x y : Nat) (p : Nat) (hp : p.Prime) :
-  v_[p](Nat.lcm x y) = max (v_[p](x)) (v_[p](y)) := by sorry
-
-/--
-証明したいメイン定理：
-∀ a b c, gcd(lcm a b, lcm a c) ∣ lcm a (gcd b c).
--/
-theorem lcm_gcd_divides_lcm_gcd (a b c : Nat) :
-    Nat.gcd (Nat.lcm a b) (Nat.lcm a c) ∣ Nat.lcm a (Nat.gcd b c) := by
-  -- 素因数の指数の大小関係を示せば良いので，dvd_iff_forall_prime_exp_le を使う
-  rw [dvd_iff_forall_prime_exp_le]
-  intro p hp
-  -- まず左辺の v_p(...) を gcd-lcm の min, max で書き下す
-  calc
-    v_[p](Nat.gcd (Nat.lcm a b) (Nat.lcm a c))
-      = min (v_[p](Nat.lcm a b)) (v_[p](Nat.lcm a c))    := by rw [v_p_gcd _ _ p hp]
-    _ = min (max (v_[p](a)) (v_[p](b))) (max (v_[p](a)) (v_[p](c)))
-                                                     := by rw [v_p_lcm _ _ p hp, v_p_lcm _ _ p hp]
-    -- min( max(va, vb), max(va, vc) ) ≤ max( va, min(vb, vc) ) を示したい
-    _ ≤ max (v_[p](a)) (min (v_[p](b)) (v_[p](c)))
-                                                     := by
-      -- ここはいわゆる「min(max(x,y), max(x,z)) ≤ max(x, min(y,z))」という
-      -- 一般的な大小関係．場合分けなどで示す．ここでは sorry とする
-      simp_all only [le_sup_iff, inf_le_iff, sup_le_iff, le_refl, true_and, le_inf_iff, and_true]
-      dsimp [padicVal]
-      sorry
-  -- ここまでで左辺の指数が「min( max(va, vb), max(va, vc) )」以下だと分かったので，
-  -- あとは右辺の v_p(...) を書き下せば「それ以上になっている」ことを示せば良い
-  -- (今回の不等式は「≤」なので，このままでもう十分ですが，もし「=」を示すなら
-  --  右辺も計算して同値であることを示します)
-  -- 右辺の lcm a (gcd b c) は max( v_[p](a), min(v_[p](b), v_[p](c)) )
-  -- なので，以上で確かに「左辺の指数 ≤ 右辺の指数」が成立
-  sorry
-
-
-instance : DistribLattice Divides where
-  le_sup_inf a b c := by
-    show (a ⊔ b) ⊓ (a ⊔ c) ≤ a ⊔ b ⊓ c
-    --simp [Lattice.sup, Lattice.inf, Lattice.le]
-    -- gcd(lcm(a,b), lcm(a,c)) ∣ lcm(a, gcd(b,c)) を示す
-    -- 等価な条件に書き換える
-    --simp [Nat.sup, Nat.inf, PartialOrder.le]
-    -- gcd(lcm(a,b), lcm(a,c)) ∣ lcm(a, gcd(b,c)) を示す
-    dsimp [Nat.lcm, Nat.gcd]
-    let ncd := Nat.lcm_dvd (Nat.gcd_dvd_left a.val b.val) (Nat.gcd_dvd_left a.val c.val)
-    convert ncd
-    simp
-    apply Iff.intro
-    · intro h
-      simp_all only [ncd]
-    · intro h --もとにもどった。
-      simp_all only [ncd]
-      dsimp [Nat.lcm, Nat.gcd]
-      dsimp [max,min]
-      dsimp [SemilatticeSup.sup, SemilatticeInf.inf]
-      dsimp [LE.le]
-      dsimp [Lattice.inf]
-      show (a.val.lcm b.val).gcd (a.val.lcm c.val) ∣ a.val.lcm (b.val.gcd c.val)
-      sorry
-
-    /-
-    suffices  ∀ (p : ℕ) (e : ℕ), Nat.Prime p → (k.val.factorization p = e) →
-      (Nat.lcm a.val (Nat.gcd b.val c.val)).factorization p ≥ e from
-    · exact Nat.factorize_le.mpr this
-
-    intro p e hp he
-    -- 各素因数について、最小の指数を計算
-    have h1 := Nat.factorize_gcd_eq_min (lcm a.val b.val) (lcm a.val c.val) p hp
-    have h2 := Nat.factorize_lcm_eq_max a.val (gcd b.val c.val) p hp
-    have h3 := Nat.factorize_gcd_eq_min b.val c.val p hp
-
-    -- lcmとgcdの関係を使用
-    rw [h1, h2] at he
-
-    -- 素因数の指数に関する不等式を示す
-    apply le_trans
-    · exact he
-    · apply max_le_max
-      · exact le_refl _
-      · exact h3
-    -/
-
 
 ------------------
 ------練習6--------

@@ -9,14 +9,6 @@ import Mathlib.Algebra.Order.Monoid.Unbundled.Basic
 import Mathlib.Algebra.Order.Monoid.Canonical.Defs
 import Init.Data.List.OfFn
 import Mathlib.Data.List.OfFn
---import Mathlib.Init.Data.Nat.Lemmas
---import Mathlib.Data.Real.Basic
---import Mathlib.Order.Basic
---import Mathlib.Order.Defs
---import Mathlib.Data.List.Basic
---import Init.Data.List.Find
---import Mathlib.Data.List.Defs
---import Mathlib.Data.Fin.Basic
 import Init.Data.Fin.Fold
 import Init.Data.List.Lemmas
 
@@ -199,7 +191,7 @@ by
         · simp_all only [Set.mem_setOf_eq]
           exact hR.refl x0
 
-/-- 練習3をAIにリファクタリングしてもらったもの。わかりやすくなったかは微妙。
+/-- 練習3をAIにリファクタリングしてもらったもの。
 # 同値関係からの分割の証明
 非空な集合 `X` 上の同値関係 `R` が与えられたとき、集合 `M` を以下のように定義します。
 \[ M = \{ [y] \mid y \in X \} \]
@@ -458,64 +450,6 @@ instance myNatPartialOrder : PartialOrder MyNat where
         simp at hk
         exact congrArg MyNat.mk hk.symm
 
-/-
---以下は証明はあっていると思われるが、NにはすでにPartialOrderの構造が入っているので
---PartialOrder Nat のインスタンスとしてPartialOrderを定義するとreflに関するエラーになる。
-
-instance dvdPartialOrder : PartialOrder Nat := by
-
-{
-  -- 部分順序の順序関係を dvd に設定します。
-  le := dvd
-
-  -- 反射律: 任意の自然数 a に対して a divides a であることを示します。
-  le_refl := by
-    intro a
-    use 1
-    rw [Nat.mul_one]
-
-  -- 推移律: a divides b かつ b divides c ならば a divides c であることを示します。
-  le_trans := by
-    intros a b c hab hbc
-    simp_all only
-    exact dvd_trans hab hbc
-
-  -- 反対称律: a divides b かつ b divides a ならば a = b であることを示します。
-  le_antisymm := by
-    intros a b hab hba
-    obtain ⟨k, hk⟩ := hab
-    obtain ⟨l, hl⟩ := hba
-    -- b = a * k かつ a = b * l から a = a * k * l となる
-    --rw [hk, hl] at *
-    -- よって、a * (k * l) = a
-    have h_eq : a * (k * l) = a := by
-      rw [←Nat.mul_assoc]
-      rw [←hk]
-      exact hl.symm
-    have h_eq2: a * (k * l) = a*1 := by
-      simp
-      exact h_eq
-
-    -- a が 0 の場合
-    by_cases ha: a = 0
-    case pos =>
-      -- a = 0 ならば b = 0 である
-      subst hl
-      simp_all only [zero_mul, mul_one]
-    case neg =>
-      -- a が正の場合、k * l = 1 でなければならない
-      have kl_eq_one : k * l = 1 := by
-        exact Nat.eq_of_mul_eq_mul_left (Nat.pos_of_ne_zero ha) h_eq2
-
-      have k_eq_one: k = 1 := by
-        exact (mul_eq_one_of_ge_one kl_eq_one).1
-
-      rw [k_eq_one] at hk
-      simp at hk
-      exact hk.symm
-}
-
--/
 --------------------
 --2項関係と順序 練習5--
 --------------------
@@ -665,6 +599,7 @@ instance : ToString Divides where
 def example1 : Divides := mkDivides 6
 def example2 : Divides := mkDivides 12
 
+--練習8は例を挙げる問題なので省略
 --------------------
 --2項関係と順序 練習9--
 --------------------
@@ -685,6 +620,8 @@ by
   -- 反対称性により、y = x
   exact le_antisymm h_le h_ge
 
+--練習11は例を挙げる問題なので省略
+
 --------------
 --練習12:最小元が存在すれば一意であることを証明
 --------------
@@ -698,3 +635,38 @@ by
   have hyx : y ≤ x := h_min_y x
   -- 反対称性により x = y
   exact le_antisymm hxy hyx
+
+--練習13は例を挙げる問題なので省略
+
+--練習14
+variable {P : Type*} [PartialOrder P]
+
+def OrderIdeal (I : Set P) : Prop :=
+  ∀ ⦃x y : P⦄, x ∈ I → y ≤ x → y ∈ I
+
+theorem order_ideal_union {I J : Set P} (hI : OrderIdeal I) (hJ : OrderIdeal J) :
+    OrderIdeal (I ∪ J) := by
+  intro x y hxy hyx
+  cases hxy with
+  | inl hx => exact Or.inl (hI hx hyx)
+  | inr hx => exact Or.inr (hJ hx hyx)
+
+theorem order_ideal_intersection {I J : Set P} (hI : OrderIdeal I) (hJ : OrderIdeal J) :
+    OrderIdeal (I ∩ J) := by
+  intro x y hxy hyx
+  cases hxy with
+  | intro hx hj =>
+    constructor
+    · exact hI hx hyx
+    · exact hJ hj hyx
+
+--練習16
+def OrderFilter (F : Set P) : Prop :=
+  ∀ ⦃x y : P⦄, x ∈ F → x ≤ y → y ∈ F
+
+omit [PartialOrder P] in
+theorem order_filter_intersecting_sets :
+    OrderFilter { X : Set P | (A ∩ X).Nonempty } := by
+  intro X Y hX hXY
+  obtain ⟨x, hxA, hxX⟩ := hX
+  exact ⟨x, hxA, hXY hxX⟩

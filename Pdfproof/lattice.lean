@@ -1,11 +1,12 @@
 import LeanCopilot
 import Mathlib.Data.Set.Basic
 import Mathlib.Data.Set.Function
---import Mathlib.Init.Data.Nat.Lemmas
 import Mathlib.Data.Real.Basic
 import Mathlib.Order.Basic
---import Mathlib.Order.Defs
 import Mathlib.Order.Lattice
+import Mathlib.Data.Nat.Prime.Defs
+import Mathlib.Data.Nat.Factorization.Defs
+import Init.Data.Nat.Lcm
 
 
 -- 一般的なLattice αを仮定
@@ -136,12 +137,273 @@ instance : PartialOrder Divides where
     apply Divides.ext
     exact Nat.dvd_antisymm hab hba
 
+instance : Lattice Divides where
+  sup a b := Nat.lcm a.val b.val
+  le_sup_left a b := Nat.dvd_lcm_left a.val b.val
+  le_sup_right a b := Nat.dvd_lcm_right a.val b.val
+  sup_le _ _ _ hac hbc := Nat.lcm_dvd hac hbc
+  inf a b := Nat.gcd a.val b.val
+  inf_le_left a b := Nat.gcd_dvd_left a.val b.val
+  inf_le_right a b := Nat.gcd_dvd_right a.val b.val
+  le_inf _ _ _ hab hac := Nat.dvd_gcd hab hac
+
+--以下がdistributive latticeを示す部分。chatgpt o1に聞いてもsorryばかりで埒があかない。
+noncomputable def padicVal (p n : Nat) : Nat :=
+  if h : p.Prime then
+    -- 素数 p に対する定義
+    Nat.strongRecOn n fun m IH =>
+      if hm:m = 0 then 0
+      else if p ∣ m then 1 + IH (m / p) (Nat.div_lt_self (Nat.pos_of_ne_zero (by exact hm)) (Nat.Prime.one_lt h))
+      else 0
+  else
+    0
+
+/-- 記法: v_p(n) を `padicVal p n` の糖衣構文で書けるようにする -/
+notation "v_p(" n ", " p ")" => padicVal p n
+notation "v_p" => padicVal
+
+/--
+「`p^k` が `n` を割り切る」ことと「`v_p(n) ≥ k`」が同値になることを示す。
+
+この定理は，`padicVal p n` の定義を展開しつつ，
+- p が素数かどうか
+- n = 0 かどうか
+- p ∣ n かどうか
+
+などで場合分けをして証明します。
+-/
+lemma prime_pow_div_iff (p n k : Nat) (hp : p.Prime) :
+    p^k ∣ n ↔ v_p(n, p) ≥ k := by
+  -- 完全に再帰定義にもとづく場合分けを行なう
+  induction n generalizing k with
+  | zero =>
+    -- n=0 の場合，p^k ∣ 0 は常に真だが，v_p(0,p) = if p.Prime then 0 else 0 なので 0。
+    -- 従って「p^k ∣ 0 ↔ 0 ≥ k」は「k=0 のときのみ真」となる。
+    -- p^k with k>0 は 0 を割り切るが v_p(0,p)=0 なので≥kは false になる…
+    -- ただし Lean の自然数割り算の取り扱いで微妙になるので補足が必要
+    -- ここでは p^k | 0 は k≥0 なら常に真ともいえるが v_p(0,p)=0 => k≤0 でないとダメ
+    -- ということで最終的には k=0 なら両辺真，k>0 なら両辺偽
+    cases k with
+    | zero =>
+      -- k=0 => p^0=1 ∣ 0 は真，v_p(0,p)=0 ≥ 0 も真
+      simp
+    | succ k' =>
+      -- k>0 => p^(k'+1) ∣ 0 も真だが v_p(0,p)=0 ≥ (k'+1) は偽
+      -- Lean 標準の「0 を割り切る」は 0 mod p^(k'+1) = 0 なので「常に真」
+      -- よってここの場合分けは矛盾が出ますが，「↔」の両辺偽…？など細かいです。
+      -- ひとまず contradiction or 反例… ここは少し丁寧に扱う必要があるが
+      -- 細かいことは省略して gcd-lcm 証明には支障ないので sorry でもOKな箇所です。
+      apply Iff.intro
+      · intro h
+        -- ここには到達しないはず
+        --simp at h
+        simp
+        dsimp [padicVal]
+        --show k' + 1 ≤ if h:Nat.Prime p then Nat.strongRecOn 0 fun m IH ↦ if hm : m = 0 then 0 else if p ∣ m then 1 + IH (m / p) ⋯ else 0 else 0
+        have : v_p(0,p) = 0 := by dsimp [padicVal]; rw [dif_pos hp]; rfl
+        simp [this] at h
+        sorry
+      ·
+        intro a
+        simp_all only [ge_iff_le, dvd_zero]
+
+  | succ n' IH =>
+    -- n>0 の場合
+    if hprime : p.Prime then
+      -- p は素数
+      if hdiv : p ∣ (Nat.succ n') then
+        -- p∣(n'+1) => v_p(n'+1,p)=1 + v_p((n'+1)/p,p)
+        -- ここでさらに k との大小関係で場合分け
+        dsimp [padicVal]
+        have : Nat.succ n' = p * (Nat.succ n' / p) := by
+          simp_all only [ge_iff_le, Nat.succ_eq_add_one]
+          rw [mul_comm]
+          rw [Nat.div_mul_cancel hdiv]
+        --show (p ^ k ∣ n' + 1) ↔
+        --  (if h : Nat.Prime p then
+        --  Nat.strongRecOn (n' + 1) fun m IH ↦ if hm : m = 0 then 0 else if p ∣ m then 1 + IH (m / p) ⋯ else 0
+        -- else 0) ≥  k
+        sorry
+      else
+        -- p ∣ (n'+1) が成り立たない => v_p(n'+1,p)=0
+        show p ^ k ∣ n' + 1 ↔ v_p(n' + 1, p) ≥ k
+        apply Iff.intro
+        · intro h
+          -- ここには到達しないはず
+          simp at h
+          simp
+          dsimp [padicVal]
+          --show k ≤ if h : Nat.Prime p then Nat.strongRecOn (n' + 1) fun m IH ↦ if hm : m = 0 then 0 else if p ∣ m then 1 + IH (m / p) ⋯ else 0 else 0
+          sorry
+        · dsimp [padicVal]
+          -- (if h : Nat.Prime p then
+          -- Nat.strongRecOn (n' + 1) fun m IH ↦ if hm : m = 0 then 0 else if p ∣ m then 1 + IH (m / p) ⋯ else 0
+          -- else 0) ≥   k → p ^ k ∣ n' + 1
+          sorry
+    else
+      -- p が素数でない => 定義上 v_p(n'+1,p)=0
+      -- p^k ∣ n'+1 => k=0 でしかあり得ない… など
+      simp_all only
+
+theorem gcd_lcm_eq_lcm_gcd (a b c : ℕ) :
+    Nat.gcd (Nat.lcm a b) (Nat.lcm a c) = Nat.lcm a (Nat.gcd b c) := by
+  -- 場合分け：0 が絡むときは簡単に終わる
+  cases a with
+  | zero =>
+    -- a = 0 の場合，左辺も右辺も最小公倍数や最大公約数が 0 になったりする。
+    -- lcm 0 b = 0, gcd 0 b = b などの補題を使えば，ごく簡単に両辺 0=0 が示せる。
+    simp_all only [Nat.lcm_zero_left, Nat.gcd_self]
+  | succ a' =>
+    -- a ≠ 0 の場合はもっと一般的な手法で証明する
+    cases b with
+    | zero =>
+      show ((a' + 1).lcm 0).gcd ((a' + 1).lcm c) = (a' + 1).lcm (Nat.gcd 0 c)
+      -- b = 0 の場合は，lcm a 0 = 0, gcd a 0 = a などを使って証明する
+      simp_all only [Nat.lcm_zero_right, Nat.gcd_zero_right]
+      simp_all only [Nat.gcd_zero_left]
+    | succ b' =>
+      cases c with
+      | zero =>
+        simp_all only [Nat.lcm_zero_right, Nat.gcd_zero_right]
+      | succ c' =>
+        -- ここで、gcd_mul_lcm や dvd_gcd_iff, lcm_dvd_iff を駆使して
+        --   gcd(lcm a b, lcm a c) と lcm a (gcd b c) を
+        --   いずれも「a*(何か)/gcd(...)」の形に書き表す。
+        --  そのうえで「同じ値だ」と示す。
+        show ((a' + 1).lcm (b' + 1)).gcd ((a' + 1).lcm (c' + 1)) = (a' + 1).lcm ((b' + 1).gcd (c' + 1))
+        sorry
+
+/--
+  上記の等式から割り切りがただちに従う。
+  すなわち ∀ a b c, gcd(lcm a b, lcm a c) ∣ lcm a (gcd b c).
+-/
+theorem lcm_gcd_divides_lcm_gcd (a b c : ℕ) :
+    Nat.gcd (Nat.lcm a b) (Nat.lcm a c) ∣ Nat.lcm a (Nat.gcd b c) := by
+  rw [← gcd_lcm_eq_lcm_gcd]  -- 左辺を右辺と同じ形に書き直す
+
+
+----別のo1の回答
+
+
+
+notation "v_[" p "](" n ")" => padicVal p n
+
+/--
+「p^k が n を割り切る」ことと「v_p(n) ≥ k」が同値になることの補題．
+詳細は強い再帰定義（`strongRecOn`）に基づく帰納法で示す．
+ここでは証明部分は省略し，sorry としておく．
+実際には「p が prime のとき」などの条件分岐や除算の性質などを使って示す．
+-/
+lemma prime_pow_dvd_iff {p n k : Nat} (hp : p.Prime) :
+  p^k ∣ n ↔ v_[p](n) ≥ k := by sorry
+
+/--
+「x ∣ y」が「任意の prime p について v_p(x) ≤ v_p(y)」と同値になること．
+こちらも各素数 p について「p^v_p(x) は x を割り切る」等々の議論から示す．
+-/
+lemma dvd_iff_forall_prime_exp_le (x y : Nat) :
+  x ∣ y ↔ ∀ p : Nat, p.Prime → v_[p](x) ≤ v_[p](y) := by sorry
+
+/--
+gcd と lcm を素因数の min, max で書けることを使って，
+v_p(gcd x y) = min(v_p(x), v_p(y))，
+v_p(lcm x y) = max(v_p(x), v_p(y))
+という形を証明する補題．
+ここでも詳細は省略 (sorry)．
+-/
+lemma v_p_gcd (x y : Nat) (p : Nat) (hp : p.Prime) :
+  v_[p](Nat.gcd x y) = min (v_[p](x)) (v_[p](y)) := by sorry
+
+lemma v_p_lcm (x y : Nat) (p : Nat) (hp : p.Prime) :
+  v_[p](Nat.lcm x y) = max (v_[p](x)) (v_[p](y)) := by sorry
+
+/--
+証明したいメイン定理：
+∀ a b c, gcd(lcm a b, lcm a c) ∣ lcm a (gcd b c).
+-/
+theorem lcm_gcd_divides_lcm_gcd (a b c : Nat) :
+    Nat.gcd (Nat.lcm a b) (Nat.lcm a c) ∣ Nat.lcm a (Nat.gcd b c) := by
+  -- 素因数の指数の大小関係を示せば良いので，dvd_iff_forall_prime_exp_le を使う
+  rw [dvd_iff_forall_prime_exp_le]
+  intro p hp
+  -- まず左辺の v_p(...) を gcd-lcm の min, max で書き下す
+  calc
+    v_[p](Nat.gcd (Nat.lcm a b) (Nat.lcm a c))
+      = min (v_[p](Nat.lcm a b)) (v_[p](Nat.lcm a c))    := by rw [v_p_gcd _ _ p hp]
+    _ = min (max (v_[p](a)) (v_[p](b))) (max (v_[p](a)) (v_[p](c)))
+                                                     := by rw [v_p_lcm _ _ p hp, v_p_lcm _ _ p hp]
+    -- min( max(va, vb), max(va, vc) ) ≤ max( va, min(vb, vc) ) を示したい
+    _ ≤ max (v_[p](a)) (min (v_[p](b)) (v_[p](c)))
+                                                     := by
+      -- ここはいわゆる「min(max(x,y), max(x,z)) ≤ max(x, min(y,z))」という
+      -- 一般的な大小関係．場合分けなどで示す．ここでは sorry とする
+      simp_all only [le_sup_iff, inf_le_iff, sup_le_iff, le_refl, true_and, le_inf_iff, and_true]
+      dsimp [padicVal]
+      sorry
+  -- ここまでで左辺の指数が「min( max(va, vb), max(va, vc) )」以下だと分かったので，
+  -- あとは右辺の v_p(...) を書き下せば「それ以上になっている」ことを示せば良い
+  -- (今回の不等式は「≤」なので，このままでもう十分ですが，もし「=」を示すなら
+  --  右辺も計算して同値であることを示します)
+  -- 右辺の lcm a (gcd b c) は max( v_[p](a), min(v_[p](b), v_[p](c)) )
+  -- なので，以上で確かに「左辺の指数 ≤ 右辺の指数」が成立
+  sorry
+
+
+instance : DistribLattice Divides where
+  le_sup_inf a b c := by
+    show (a ⊔ b) ⊓ (a ⊔ c) ≤ a ⊔ b ⊓ c
+    --simp [Lattice.sup, Lattice.inf, Lattice.le]
+    -- gcd(lcm(a,b), lcm(a,c)) ∣ lcm(a, gcd(b,c)) を示す
+    -- 等価な条件に書き換える
+    --simp [Nat.sup, Nat.inf, PartialOrder.le]
+    -- gcd(lcm(a,b), lcm(a,c)) ∣ lcm(a, gcd(b,c)) を示す
+    dsimp [Nat.lcm, Nat.gcd]
+    let ncd := Nat.lcm_dvd (Nat.gcd_dvd_left a.val b.val) (Nat.gcd_dvd_left a.val c.val)
+    convert ncd
+    simp
+    apply Iff.intro
+    · intro h
+      simp_all only [ncd]
+    · intro h --もとにもどった。
+      simp_all only [ncd]
+      dsimp [Nat.lcm, Nat.gcd]
+      dsimp [max,min]
+      dsimp [SemilatticeSup.sup, SemilatticeInf.inf]
+      dsimp [LE.le]
+      dsimp [Lattice.inf]
+      show (a.val.lcm b.val).gcd (a.val.lcm c.val) ∣ a.val.lcm (b.val.gcd c.val)
+      sorry
+
+    /-
+    suffices  ∀ (p : ℕ) (e : ℕ), Nat.Prime p → (k.val.factorization p = e) →
+      (Nat.lcm a.val (Nat.gcd b.val c.val)).factorization p ≥ e from
+    · exact Nat.factorize_le.mpr this
+
+    intro p e hp he
+    -- 各素因数について、最小の指数を計算
+    have h1 := Nat.factorize_gcd_eq_min (lcm a.val b.val) (lcm a.val c.val) p hp
+    have h2 := Nat.factorize_lcm_eq_max a.val (gcd b.val c.val) p hp
+    have h3 := Nat.factorize_gcd_eq_min b.val c.val p hp
+
+    -- lcmとgcdの関係を使用
+    rw [h1, h2] at he
+
+    -- 素因数の指数に関する不等式を示す
+    apply le_trans
+    · exact he
+    · apply max_le_max
+      · exact le_refl _
+      · exact h3
+    -/
+
+
 ------------------
 ------練習6--------
 ------------------
 
 
 -- ℝ^2 の上の順序の定義: (x1, y1) >= (x2, y2) ⇔ x1 >= x2 かつ y1 >= y2
+@[ext]
 structure R2 : Type where
   (x : ℝ)
   (y : ℝ)
@@ -169,6 +431,30 @@ noncomputable instance : Lattice R2 where
   inf_le_left a b := ⟨min_le_left a.x b.x, min_le_left a.y b.y⟩
   inf_le_right a b := ⟨min_le_right a.x b.x, min_le_right a.y b.y⟩
   le_inf _ _ _ hab hac := ⟨le_min hab.1 hac.1, le_min hab.2 hac.2⟩
+
+theorem sup_inf_distrib (a b c : R2) :
+  a ⊔ (b ⊓ c) = (a ⊔ b) ⊓ (a ⊔ c) := by
+  -- 各成分ごとに等式を示す
+  ext
+  · -- x成分について
+    apply max_min_distrib_left
+  · -- y成分について
+    apply max_min_distrib_left
+
+theorem inf_sup_distrib (a b c : R2) :
+  a ⊓ (b ⊔ c) = (a ⊓ b) ⊔ (a ⊓ c) := by
+  -- 各成分ごとに等式を示す
+  ext
+  · -- x成分について
+    apply min_max_distrib_left
+  · -- y成分について
+    apply min_max_distrib_left
+
+-- 分配束であることの証明。練習11の内容。
+noncomputable instance : DistribLattice R2 where
+  le_sup_inf a b c := by
+    let sid := sup_inf_distrib a b c
+    simp_all only [le_refl, sid]
 
 end R2
 
@@ -205,6 +491,53 @@ theorem meet_absorption (x y : α) : x ⊓ (y ⊔ x) = x := by
 
 theorem join_absorption (x y : α) : x ⊔ (x ⊓ y) = x := by
   rw [sup_inf_self]
+
+----練習8--------
+variable {L : Type*} [Lattice L]
+--この問題は、inf_eq_leftそのまま。
+theorem lattice_le_iff_inf_eq:
+  ∀ x y:L, x ≤ y ↔ x ⊓ y = x :=
+by
+  intro x y
+  apply Iff.intro
+  · intro h
+    exact inf_eq_left.mpr h
+  ·
+    intro a
+    simp_all only [inf_eq_left]
+    --theorem inf_eq_left : a ⊓ b = a ↔ a ≤ b :=
+    --le_antisymm_iff.trans <| by simp [le_rfl]
+
+--同じ問題をやや基本的なところから証明。
+theorem lattice_le_iff_inf_eq_sup_eq' :
+    ∀ x y:L, x ≤ y ↔ x ⊓ y = x := by
+  intro x y
+  constructor
+  · intro h
+    -- `x ⊓ y` は `x, y` の greatest lower bound（GLB）
+    -- よって `x ⊓ y ≤ x`
+    have h₁ : x ⊓ y ≤ x := inf_le_left
+    -- また `x ≤ y` より `x` は `x ⊓ y` の lower bound
+    have h₂ : x ≤ x ⊓ y := le_inf le_rfl h
+    -- `x ⊓ y ≤ x` かつ `x ≤ x ⊓ y` なので等号成立
+    exact le_antisymm h₁ h₂
+  · intro h
+    -- `x ⊓ y = x` より `x ≤ x ⊓ y`
+    rw [←h]
+    -- `x ⊓ y` の定義より `x ⊓ y ≤ y`
+    exact inf_le_right
+
+--練習9
+theorem meet_join_distrib_right :
+    ∀ x y z : L, x ⊓ (y ⊔ z) ≥ (x ⊓ y) ⊔ (x ⊓ z) := by
+  intro x y z
+  -- `x ⊓ y ≤ x ⊓ (y ⊔ z)` と `x ⊓ z ≤ x ⊓ (y ⊔ z)` を示せば
+  -- `sup_le` を使って結論が得られる
+  apply sup_le
+  · apply inf_le_inf_left x
+    apply le_sup_left
+  · apply inf_le_inf_left x
+    apply le_sup_right
 
 ------------------
 -----練習10--------
@@ -372,3 +705,9 @@ by
       dsimp [left_hand,right_hand] at h4
       exact h4
     contradiction
+
+--練習 11は練習6の照明の中で行っている。
+--練習 12は、すでにインスタンスが設定されているので省略。
+--練習13,14,15,20はTODO。当てはめるだけともいえる。
+
+--練習21と練習22は別ファイル。

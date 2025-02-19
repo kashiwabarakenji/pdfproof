@@ -13,9 +13,9 @@ package "pdfproof" where
 
 -- add any additional package configuration options here
 
-require "leanprover-community" / "mathlib" @  "git#v4.15.0"
+require "leanprover-community" / "mathlib" @  "git#v4.16.0"
 
-require LeanCopilot from git "https://github.com/lean-dojo/LeanCopilot.git" @ "v4.15.0"
+require LeanCopilot from git "https://github.com/lean-dojo/LeanCopilot.git" @ "v4.16.0"
 
 @[default_target]
 lean_lib «Pdfproof» where

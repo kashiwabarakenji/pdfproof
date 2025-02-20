@@ -13,7 +13,7 @@ import LeanCopilot
 universe u
 
 -- 集合の型を `MySet` として定義し、要素関係 `elem` を導入
-variable (MySet : Type u)
+variable (MySetT : Type u)
 variable (elem : MySet → MySet → Prop)   -- `a ∈ b` の関係を表現
 
 -- 公理：外延性の公理 (Extensionality)
@@ -260,3 +260,69 @@ theorem russell_like_paradox (a : MySetType.{u}) : ¬ myElem (Dash a) a := by
 
     exfalso
     exact iff_not_self this
+
+----------
+--練習10---
+----------
+
+--集合aを持ってくると、それに属さない集合が必ずある。
+lemma exacise10zf (a : MySetType.{u}):∃ b: MySetType.{u}, ¬ myElem b a :=
+by
+  let b := Dash a
+  have : ¬ myElem b a :=
+  by
+    exact russell_like_paradox a
+
+  use b
+
+axiom foundation: ∀ a:MySetType.{u}, ¬ IsEmptySet a → ∃ b:MySetType.{u},myElem b a ∧ ∀ c:MySetType.{u},¬ ((myElem c a) ∧ (myElem c b))
+
+----------
+--練習11---
+----------
+
+--どんな集合も自分自身を要素として含まないこと。
+lemma exacise11zf (x : MySetType.{u}): ¬ myElem x x :=
+by
+  by_contra h_contra
+  let a := (myPair x x:MySetType.{u}) --シングルトンは、同じもののペアで表す。
+  have : ¬IsEmptySet a :=
+  by
+    dsimp [IsEmptySet]
+    push_neg
+    use x
+    dsimp [a]
+    apply (myPair_spec x x x).mpr
+    simp
+
+  let fd := foundation a this --正則性の公理を用いる。
+  obtain ⟨b,hb⟩ := fd
+  let hbx := hb.2 x
+  have : myElem x a :=
+  by
+    dsimp [a]
+    apply (myPair_spec x x x).mpr
+    simp
+  simp at hbx
+  specialize hbx this
+  have : x = b :=
+  by
+    apply Myextensionality x b --外延性の公理を用いる。
+    intro xx
+    apply Iff.intro
+    · intro a_1
+      simp_all only [not_and, not_false_eq_true, a]
+      obtain ⟨left, right⟩ := hb
+      rw [myPair_spec x x b] at left
+      simp at left
+      rw [left]
+      exact a_1
+    · intro a_1
+      simp_all only [not_and, not_false_eq_true, a]
+      obtain ⟨left, right⟩ := hb
+      rw [myPair_spec x x b] at left
+      simp at left
+      rw [←left]
+      exact a_1
+  subst this
+  simp_all only [a]

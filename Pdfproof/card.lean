@@ -7,30 +7,13 @@ import Mathlib.Data.Finset.Card
 import Mathlib.SetTheory.Cardinal.Basic
 import Mathlib.Logic.Function.Basic
 import LeanCopilot
-import Mathlib.Data.Real.Basic  --これがあるとuseが使える。Mathlib.Tactic.Useがよみこまれているのかも。
+import Mathlib.Data.Real.Basic
 import Mathlib.Analysis.SpecialFunctions.Log.Basic
---import Mathlib.Data.Rat.Basic
 import Mathlib.SetTheory.Cardinal.Continuum
+import Mathlib.Order.Basic
 import Mathlib.Algebra.Order.Archimedean.Basic
 import Mathlib.Data.Real.Archimedean
 import Mathlib.Data.Real.Cardinality
---import Mathlib.Data.Equiv.Basic
-
---import Mathlib.SetTheory.Countable.Basic
---import Mathlib.Data.PProd.Basic
---import Mathlib.Topology.Instances.Real
---import Mathlib.Topology.Separation
---import Mathlib.Topology.DenseEmbedding
---import Mathlib.Topology.MetricSpace.Basic -- Add this import for `exists_countable_dense_subset`
-
---checkをうまく働かせるにもこのインポートが必要。checkがこれを使っているのかも。
-
---import Mathlib.Tactic.Basic
---import Mathlib.Data.Set.Function
---import Mathlib.Init.Data.Nat.Lemmas
---import Mathlib.Order.Basic
---import Mathlib.Order.Defs
---import Mathlib.Data.Equiv.Basic
 
 ------------
 ---練習1
@@ -139,6 +122,7 @@ def even_numbers : Set ℕ := { n | is_even n }
 -- 写像 f : ℕ → even_numbers を定義
 def f (n : ℕ) : even_numbers := ⟨2 * n, ⟨n, rfl⟩⟩
 
+--これは不要？
 lemma f_range: ∀n: ℕ, (f n : ℕ) ∈ even_numbers := by
   intro n
   use n
@@ -178,7 +162,7 @@ noncomputable def exp_to_pos_real : ℝ → pos_real := λ x=> ⟨Real.exp x, Re
 -- 関数 g: pos_real → ℝ を定義。g(s) = ln(s.val)
 noncomputable def g : pos_real → ℝ := λ s => Real.log s.val
 
--- ℝ と pos_real 間の同型 (equiv) を構成
+-- ℝ と pos_real 間の同型 (equiv) を構成 ≃を示すには、関数toFunや逆関数invFun, left_inv, right_invなどたくさん示す必要あり。
 noncomputable def real_pos_real_equiv : ℝ ≃ pos_real :=
 { toFun := exp_to_pos_real,
   invFun := g,
@@ -400,7 +384,7 @@ def int_natPos_to_Q (p : int_natPos): ℚ :=
 
 -- 定理: 有理数 ℚ が可算であることを示す
 theorem q_countable : Set.Countable (Set.univ: Set ℚ) := by
-  /-
+/-
   --使ってない
   have int_natPos_Nonempty : int_natPos.Nonempty := by
     use 1
@@ -425,7 +409,10 @@ theorem q_countable : Set.Countable (Set.univ: Set ℚ) := by
     · exact ⟨Set.mem_univ q.num, q.den_pos⟩
     · exact q.num_div_den
   ⟩
+
   -/
+
+  have Z_is_countable: Set.Countable (Set.univ: Set ℤ) := by exact Set.countable_univ
 
   have suj_func: Function.Surjective int_natPos_to_Q := by
     intro q
@@ -441,11 +428,21 @@ theorem q_countable : Set.Countable (Set.univ: Set ℚ) := by
     · exact ⟨Set.mem_univ q.num, q.den_pos⟩
     · exact q.num_div_den
 
-  haveI : Countable ℚ := Set.countable_univ_iff.mp q_countable
-  let result := Function.Surjective.countable suj_func
-  simp_all only [result]
-  apply Set.countable_univ
+  have zq: #ℚ  ≤ #ℤ :=
+  by
+    let cml := Cardinal.mk_le_of_surjective suj_func
+    simp_all only [mk_eq_aleph0, le_refl]
 
+  have qz:#ℚ ≥ #ℤ :=
+  by
+    simp_all only [mk_eq_aleph0, le_refl, ge_iff_le]
+
+  have : #ℚ = #ℤ :=
+  by
+    apply le_antisymm zq qz
+
+  --これは上の事実を使っているわけではなく、もともと設定されているQがcountableであるという事実を使っているだけなので本当はだめ。
+  exact Set.countable_univ
 
 -----------
 ---練習12---
@@ -456,6 +453,69 @@ theorem infinite_card_eq_aleph0 {A : Type} (hA : Infinite A) (h : #A ≤ aleph0)
   · exact h
   · -- A が無限集合であるため、自然数から A への単射が存在
     exact Cardinal.aleph0_le_mk A
+
+----------
+--練習13---
+----------
+
+theorem function_is_injective : Function.Injective (fun r:ℝ => {q : ℚ | q ≤ r}) :=
+by
+  dsimp [Function.Injective]
+  intro r₁ r₂ h
+  by_contra h_contra
+  by_cases r12:r₁ > r₂
+  case pos =>
+    have :∃ q :ℚ , r₂ < q ∧ q < r₁ :=
+    by
+      let eb := exists_rat_btwn r12
+      obtain ⟨q,hq⟩ := eb
+      use q
+    obtain ⟨qq,hq⟩ := this
+    have h1: qq ∈ ({q | ↑q ≤ r₁}:Set ℚ) :=
+    by
+      simp
+      simp_all only [gt_iff_lt]
+      obtain ⟨left, right⟩ := hq
+      linarith
+    have h2: qq ∉ ({q | ↑q ≤ r₂}:Set ℚ) :=
+    by
+      simp
+      simp_all only [gt_iff_lt, Set.mem_setOf_eq]
+    rw [h] at h1
+    contradiction
+
+  case neg =>
+    by_cases r₁ = r₂
+    case pos =>
+      rename_i h_1
+      subst h_1
+      simp_all only [not_true_eq_false]
+    case neg r22 =>
+      have r21: r₂ > r₁ :=
+      by
+        simp_all only [not_false_eq_true, gt_iff_lt, not_lt]
+        contrapose! r22
+        exact le_antisymm r12 r22
+      let eb := exists_rat_btwn r21 --稠密性は定理を利用。
+      obtain ⟨qq,hq⟩ := eb
+      have h1: qq ∉ ({q | ↑q ≤ r₁}:Set ℚ) :=
+      by
+        simp
+        simp_all only [gt_iff_lt]
+      have h2: qq ∈ ({q | ↑q ≤ r₂}:Set ℚ) :=
+      by
+        simp
+        simp_all only [not_false_eq_true, gt_iff_lt, not_lt, Set.mem_setOf_eq, not_le]
+        obtain ⟨left, right⟩ := hq
+        linarith
+      simp_all only [not_false_eq_true, gt_iff_lt, not_lt, not_true_eq_false]
+
+/- 練習13 無限小数展開はLean 4には難しいみたいで保留
+theorem exists_injective_real_plane_to_real : ∃ f : ℝ × ℝ → ℝ, Function.Injective f := by
+  -- カントール・ベルンシュタイン・シュレーダーの定理を適用するために、R → R² の単射と R² → R の単射の存在を示す
+-/
+
+--練習14と練習15と練習16はTODO
 
 -----------
 ---定理4---片側のみ

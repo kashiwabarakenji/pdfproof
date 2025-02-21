@@ -921,8 +921,9 @@ open MeasureTheory
 noncomputable instance : MeasureSpace ℝ := Real.measureSpace
 --noncomputable instance : MeasureSpace Ic := sorry  --これは定義する必要があるのか。
 
-noncomputable def extend_f (f : C₀) : ℝ → ℝ :=
-  Function.extend Subtype.val f.1 0
+noncomputable def extend_f (f : C₀) : ℝ → ℝ := Function.extend Subtype.val f.1 0
+noncomputable def extend_f2 (f : C₀) : ℝ → ℝ := Function.extend (Subtype.val : Ic → ℝ) (λ x => (f.1 x)^2) 0
+
 
 --積分の変数は、Icでなくて、Rである必要がある。しかし、fの引数は、Icである必要がある。
 --xがRの要素であるが、Icの範囲に入っていることをLean 4に伝えられないので、extend_fで回避。
@@ -941,6 +942,11 @@ by
 --  Integrable (fun x => (f x - g x) ^ 2) (MeasureTheory.Measure.restrict volume (Set.Icc (0 : ℝ) 1)) := by
 --sorry
 
+lemma q2c {f : C₀} : Continuous (fun x => (f.1 x)^2) :=
+by
+  simp_all only [ContinuousMap.toFun_eq_coe]
+  fun_prop
+
 /-- \((a - b)^2\) と \((b - a)^2\) は等しい．使わないかも。-/
 lemma sq_diff_comm (a b : ℝ) : (a - b) ^ 2 = (b - a) ^ 2 := by
   -- 好みで rw していっても良いが simp [sub_eq_neg_add] などでも同様の結果が出る．
@@ -955,7 +961,7 @@ Mathlib 3 の `Continuous.ae_eq_zero_of_integral_eq_zero` 相当の議論を
 
 lemma continuous_sq_eq_zero_of_integral_zero {f : C₀}
     --(hf_cont : ContinuousOn f (Set.Icc 0 1))
-    (h : ∫ x in Set.Icc (0 : ℝ) 1, extend_f (fun x => (f.1 x) ^ 2) = 0) :
+    (h : (∫ x in Set.Icc (0 : ℝ) 1, extend_f2 f x) = 0) :
     ∀ x ∈ Set.Icc 0 1, f.1 x = 0 := by
   -- (f x) ^ 2 は常に非負
   have hf_nonneg : ∀ x, 0 ≤ (f.1 x) ^ 2 := by
@@ -968,6 +974,7 @@ lemma continuous_sq_eq_zero_of_integral_zero {f : C₀}
       fun_prop
     show ∀ x ∈ Set.Icc 0 1, f.toFun x ^ 2 = 0
     let f2 := fun x => f.toFun x ^ 2
+    let f2c := ContinuousMap.mk (fun (x:Ic) => (f.1 x) ^ 2) (@q2c f)
     have f2inC : Continuous f2:=
     by
       simp_all [f2]
@@ -990,19 +997,30 @@ lemma continuous_sq_eq_zero_of_integral_zero {f : C₀}
     simp at cne
     intro x hx
     --rw [←mul_self_eq_zero]
-    have : ∫ (x : ℝ) in Set.Icc 0 1, extend_f f x ^ 2 = 0 ↔ ∫ (x : ℝ) in Set.Icc 0 1, extend_f { toFun := f2, continuous_toFun := f2inC } x = 0 :=
+    have : ∫ (x : ℝ) in Set.Icc 0 1, extend_f2 f x = 0 ↔ ∫ (x : ℝ) in Set.Icc 0 1, extend_f { toFun := f2, continuous_toFun := f2inC } x = 0 :=
     by
       apply Iff.intro
       · dsimp [extend_f]
+        dsimp [extend_f2]
         dsimp [f2]
-        have :∀ x:ℝ,Function.extend Subtype.val (f.1) 0 x ^ 2 = Function.extend Subtype.val (fun x ↦ f.1 x ^ 2) 0 x :=
+        /-
+        have : ∀ (x : ℝ), Function.extend (Subtype.val : Ic → ℝ) ((f.1) ^ 2) (fun _ => 0) x = Function.extend (Subtype.val : Ic → ℝ) (fun x => (f.1 x) ^ 2) (fun _ => 0) x :=
         by
           intro x
           simp
-          sorry --なりたたないという話もある。ひだりは、適用してから2乗しているのか。
-          --Function.extendについて調べる必要あり。
-        sorry
-      · sorry
+          exact rfl
+        -/
+        intro hh
+        simp at this
+        exact h
+
+      · intro h
+        dsimp [extend_f2]
+        dsimp [f2] at h
+        simp at h
+        dsimp [extend_f] at h
+        exact h
+
     rw [this] at h
     specialize cne h
     simp
@@ -1065,19 +1083,82 @@ noncomputable instance : MetricSpace C₀ where
 
   eq_of_dist_eq_zero := by
     intro f g hfg
-    simp [L2_distance, Real.sqrt_eq_zero] at hfg
+    simp [L2_distance] at hfg
+    /-
+    have exf: (extend_f f)^2 = extend_f2 f :=
+    by
+      dsimp [extend_f]
+      dsimp [extend_f2]
+      ext x : 1
+      simp_all only [Pi.pow_apply]
+      simp [Function.extend]
+      sorry
+    -/
+
+    have exf2: (extend_f (f-g)) = (extend_f f - extend_f g) :=
+    by
+      dsimp [extend_f]
+      --simp
+      funext
+      dsimp [Function.extend]
+      simp
+      split
+      next h =>
+        obtain ⟨left, right⟩ := h
+        rfl
+      next h => simp_all only [not_and, not_le, sub_self]
+
     dsimp [C₀]
     ext x
     show f.1 x = g.1 x
-    have h_integral_zero : ∫ x in Set.Icc 0 1, (extend_f (f - g)) x ^ 2 = 0 := by
-      simp [extend_f, Function.extend_def]
-      rw [←Real.sqrt_eq_zero] --ゴールがふたつに分かれる。
-      · --show √(∫ (x : ℝ) in Set.Icc 0 1, Function.extend Subtype.val (⇑(f - g)) 0 x ^ 2) = 0
-        sorry --うまくいかない。
+    have ps:∫ (x : ℝ) in Set.Icc 0 1, (extend_f f x - extend_f g x) ^ 2 ≥ 0:=
+    by
+      have : ∀ (x : ℝ), x ∈ Set.Icc 0 1 → (extend_f f x - extend_f g x) ^ 2 ≥ 0 :=
+      by
+        intro x hx
+        rename_i x_1
+        simp_all only [Set.mem_Icc, ge_iff_le]
+        obtain ⟨val, property⟩ := x_1
+        obtain ⟨left, right⟩ := hx
+        simp_all only [Set.mem_Icc]
+        obtain ⟨left_1, right_1⟩ := property
+        positivity
+      simp_all only [Set.mem_Icc, ge_iff_le, and_imp]
+      obtain ⟨val, property⟩ := x
+      simp_all only [Set.mem_Icc]
+      obtain ⟨left, right⟩ := property
+      positivity
+    have ps2:(∫ (x : ℝ) in Set.Icc 0 1, (extend_f f x - extend_f g x) ^ 2) = 0 :=
+    by
+      simp_all only [sqrt_eq_zero, ge_iff_le, le_refl]
+
+    have h_integral_zero : ∫ x in Set.Icc 0 1, (extend_f2 (f - g)) x = 0 := by
+      simp [extend_f2, Function.extend_def]
+      dsimp [extend_f] at ps2
+      dsimp [Function.extend]
+      dsimp [extend_f] at hfg
+      dsimp [Function.extend] at hfg
+      simp at hfg
+      have : ∀ (x : ℝ), x ∈ Set.Icc 0 1 → (Function.extend (Subtype.val : Ic → ℝ) (f.1) 0 x - Function.extend (Subtype.val : Ic → ℝ) (g.1) 0 x) ^ 2 = Function.extend (Subtype.val : Ic → ℝ) ((f - g).1 ^ 2) (0:Ic) x :=
+      by
+        intro x hx
+        simp
+        rename_i x_1
+        simp_all only [ge_iff_le, Set.mem_Icc]
+        obtain ⟨val, property⟩ := x_1
+        obtain ⟨left, right⟩ := hx
+        simp_all only [Set.mem_Icc]
+        obtain ⟨left_1, right_1⟩ := property
+        sorry
+
+
+
+      /-
       · obtain ⟨val, property⟩ := x
         simp_all only [Set.mem_Icc]
         obtain ⟨left, right⟩ := property
         positivity
+      -/
 
     have h_eq : ∀ x ∈ Set.Icc 0 1, (f - g).toFun x = 0 := continuous_sq_eq_zero_of_integral_zero h_integral_zero
     specialize h_eq x

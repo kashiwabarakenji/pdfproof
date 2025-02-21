@@ -955,7 +955,7 @@ Mathlib 3 の `Continuous.ae_eq_zero_of_integral_eq_zero` 相当の議論を
 
 lemma continuous_sq_eq_zero_of_integral_zero {f : C₀}
     --(hf_cont : ContinuousOn f (Set.Icc 0 1))
-    (h : ∫ x in Set.Icc (0 : ℝ) 1, (extend_f f x) ^ 2 = 0) :
+    (h : ∫ x in Set.Icc (0 : ℝ) 1, extend_f (fun x => (f.1 x) ^ 2) = 0) :
     ∀ x ∈ Set.Icc 0 1, f.1 x = 0 := by
   -- (f x) ^ 2 は常に非負
   have hf_nonneg : ∀ x, 0 ≤ (f.1 x) ^ 2 := by
@@ -988,6 +988,8 @@ lemma continuous_sq_eq_zero_of_integral_zero {f : C₀}
 
     let cne := continuous_nonneg_eq_zero_of_integral_zero this
     simp at cne
+    intro x hx
+    --rw [←mul_self_eq_zero]
     have : ∫ (x : ℝ) in Set.Icc 0 1, extend_f f x ^ 2 = 0 ↔ ∫ (x : ℝ) in Set.Icc 0 1, extend_f { toFun := f2, continuous_toFun := f2inC } x = 0 :=
     by
       apply Iff.intro
@@ -1005,8 +1007,13 @@ lemma continuous_sq_eq_zero_of_integral_zero {f : C₀}
     specialize cne h
     simp
     dsimp [f2] at cne
-    sorry --なんか間違っている。ゴールが一致しないので、もう一度、考え方を見直す。
-    --exact cne
+    specialize cne x hx
+    have : (x : ℝ) ≤ 1 := by
+      obtain ⟨val, property⟩ := x
+      simpa using property.2
+    specialize cne this
+    simp at cne
+    exact cne
 
   -- (f x) ^ 2 = 0 ならば f x = 0
   intro x hx

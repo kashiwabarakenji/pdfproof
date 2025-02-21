@@ -941,7 +941,7 @@ by
 --  Integrable (fun x => (f x - g x) ^ 2) (MeasureTheory.Measure.restrict volume (Set.Icc (0 : ℝ) 1)) := by
 --sorry
 
-/-- \((a - b)^2\) と \((b - a)^2\) は等しい． -/
+/-- \((a - b)^2\) と \((b - a)^2\) は等しい．使わないかも。-/
 lemma sq_diff_comm (a b : ℝ) : (a - b) ^ 2 = (b - a) ^ 2 := by
   -- 好みで rw していっても良いが simp [sub_eq_neg_add] などでも同様の結果が出る．
   rw [pow_two, pow_two, mul_sub, sub_mul, mul_comm]
@@ -967,7 +967,47 @@ lemma continuous_sq_eq_zero_of_integral_zero {f : C₀}
       simp_all
       fun_prop
     show ∀ x ∈ Set.Icc 0 1, f.toFun x ^ 2 = 0
-    sorry --上の補題continuous_nonneg_eq_zero_of_integral_zeroを利用すると思われる。
+    let f2 := fun x => f.toFun x ^ 2
+    have f2inC : Continuous f2:=
+    by
+      simp_all [f2]
+      fun_prop
+
+    have : ∀ x, f2 x ≥ 0 :=
+    by
+      intro x
+      simp_all [f2]
+      obtain ⟨val, property⟩ := x
+      positivity
+    have :∀ (x : ↑(Set.Icc 0 1)), 0 ≤ (⟨f2,f2inC⟩ : C₀).toFun x :=
+    by
+      intro x
+      dsimp [f2]
+      obtain ⟨val, property⟩ := x
+      positivity
+
+    let cne := continuous_nonneg_eq_zero_of_integral_zero this
+    simp at cne
+    have : ∫ (x : ℝ) in Set.Icc 0 1, extend_f f x ^ 2 = 0 ↔ ∫ (x : ℝ) in Set.Icc 0 1, extend_f { toFun := f2, continuous_toFun := f2inC } x = 0 :=
+    by
+      apply Iff.intro
+      · dsimp [extend_f]
+        dsimp [f2]
+        have :∀ x:ℝ,Function.extend Subtype.val (f.1) 0 x ^ 2 = Function.extend Subtype.val (fun x ↦ f.1 x ^ 2) 0 x :=
+        by
+          intro x
+          simp
+          sorry --なりたたないという話もある。ひだりは、適用してから2乗しているのか。
+          --Function.extendについて調べる必要あり。
+        sorry
+      · sorry
+    rw [this] at h
+    specialize cne h
+    simp
+    dsimp [f2] at cne
+    sorry --なんか間違っている。ゴールが一致しないので、もう一度、考え方を見直す。
+    --exact cne
+
   -- (f x) ^ 2 = 0 ならば f x = 0
   intro x hx
   specialize hf_eq_zero x hx

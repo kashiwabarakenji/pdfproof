@@ -1,4 +1,7 @@
 import Mathlib.Topology.MetricSpace.Basic
+import Mathlib.MeasureTheory.Measure.MeasureSpaceDef
+--import Mathlib.MeasureTheory.MeasureSpace
+--import Mathlib.Data.Set.Intervals.Basic
 import Mathlib.Order.ConditionallyCompleteLattice.Basic
 import Mathlib.Topology.Basic
 import Mathlib.Topology.MetricSpace.Defs
@@ -9,7 +12,7 @@ import Mathlib.Topology.Bornology.Basic
 import Mathlib.Topology.Defs.Filter
 import Mathlib.Topology.MetricSpace.Bounded
 import Mathlib.Topology.Order.Monotone
-import Mathlib.Topology.Instances.Real
+--import Mathlib.Topology.Instances.Real
 import Mathlib.Analysis.InnerProductSpace.Basic
 import Mathlib.Analysis.SpecialFunctions.Sqrt
 import Mathlib.Algebra.Order.Monoid.Defs
@@ -23,8 +26,16 @@ import Mathlib.Order.ConditionallyCompleteLattice.Basic
 import Mathlib.Order.SetNotation
 import Mathlib.Data.Real.Archimedean
 import Mathlib.Data.Real.Basic
-import Mathlib.Data.Fintype.Basic
+import Mathlib.MeasureTheory.Measure.Haar.OfBasis
+--import Mathlib.Analysis.NormedSpace.LpSpace
+import Mathlib.Topology.MetricSpace.Basic
+import Mathlib.MeasureTheory.Integral.SetIntegral
+--import Mathlib.Data.Fintype.Basic
+import Mathlib.Analysis.InnerProductSpace.PiL2
+import Mathlib.MeasureTheory.Integral.SetIntegral
+--import Mathlib.Analysis.Minkowski
 import LeanCopilot
+--import MeasureTheory.Integral.SetIntegral
 
 ------------
 ----練習1---
@@ -351,13 +362,13 @@ noncomputable instance : MetricSpace (Fin n → ℝ) where
 --------------------
 
 -- n 次元実数空間を Fin n → ℝ として定義
-def EuclideanSpace (n : ℕ) := Fin n → ℝ
+def MyEuclideanSpace (n : ℕ) := Fin n → ℝ
 axiom n_pos {n : ℕ} : n > 0
 
 lemma univ_nonempty {n : ℕ} : (Finset.univ : Finset (Fin n)).Nonempty :=
   Finset.univ_nonempty_iff.mpr (Fin.pos_iff_nonempty.mp n_pos)
 -- 距離関数 d' の定義
-def d' {n : ℕ} (x y : EuclideanSpace n) : ℝ :=
+def d' {n : ℕ} (x y : MyEuclideanSpace n) : ℝ :=
     if h : n > 0 then (Finset.univ : Finset (Fin n)).sup' (by
     simp_all only [gt_iff_lt]
     rw [Finset.univ_nonempty_iff]
@@ -367,7 +378,7 @@ def d' {n : ℕ} (x y : EuclideanSpace n) : ℝ :=
       infer_instance) (λ i => |x i - y i|) else 0
 
 -- 非負性の証明
-lemma d'_nonneg {n : ℕ} (x y : EuclideanSpace n) : 0 ≤ d' x y :=
+lemma d'_nonneg {n : ℕ} (x y : MyEuclideanSpace n) : 0 ≤ d' x y :=
   by
     unfold d'
     by_cases h : n > 0
@@ -378,7 +389,7 @@ lemma d'_nonneg {n : ℕ} (x y : EuclideanSpace n) : 0 ≤ d' x y :=
     · simp_all only [gt_iff_lt, not_lt, nonpos_iff_eq_zero, lt_self_iff_false, ↓reduceDIte, le_refl]
 
 -- 同一性の証明 nが1以上である仮定が必要か。
-lemma d'_eq_zero {n : ℕ} (x y : EuclideanSpace n) : d' x y = 0 ↔ x = y := by
+lemma d'_eq_zero {n : ℕ} (x y : MyEuclideanSpace n) : d' x y = 0 ↔ x = y := by
   apply Iff.intro
   · intro h
     unfold d' at h
@@ -413,7 +424,7 @@ lemma d'_eq_zero {n : ℕ} (x y : EuclideanSpace n) : d' x y = 0 ↔ x = y := by
     · simp_all only [gt_iff_lt, not_lt, nonpos_iff_eq_zero, lt_self_iff_false, ↓reduceDIte, le_refl]
 
 -- 対称性の証明
-lemma d'_symm {n : ℕ} (x y : EuclideanSpace n) : d' x y = d' y x :=
+lemma d'_symm {n : ℕ} (x y : MyEuclideanSpace n) : d' x y = d' y x :=
   by
     unfold d'
     by_cases h : n > 0
@@ -427,7 +438,7 @@ lemma d'_symm {n : ℕ} (x y : EuclideanSpace n) : d' x y = d' y x :=
     · simp_all only [gt_iff_lt, not_lt, nonpos_iff_eq_zero, lt_self_iff_false, ↓reduceDIte]
 
 -- 三角不等式の証明
-lemma d'_triangle {n : ℕ} (x y z : EuclideanSpace n) : d' x z ≤ d' x y + d' y z :=
+lemma d'_triangle {n : ℕ} (x y z : MyEuclideanSpace n) : d' x z ≤ d' x y + d' y z :=
   by
     unfold d'
     by_cases h : n > 0
@@ -453,7 +464,7 @@ lemma d'_triangle {n : ℕ} (x y z : EuclideanSpace n) : d' x z ≤ d' x y + d' 
     · simp_all only [gt_iff_lt, not_lt, nonpos_iff_eq_zero, lt_self_iff_false, ↓reduceDIte, add_zero, le_refl]
 
 -- 距離空間のインスタンスの定義
-instance EuclideanSpace_metric {n : ℕ} : MetricSpace (EuclideanSpace n) :=
+instance EuclideanSpace_metric {n : ℕ} : MetricSpace (MyEuclideanSpace n) :=
 {
   dist := d',
   dist_self := λ x => (d'_eq_zero x x).mpr rfl,
@@ -890,6 +901,148 @@ lemma cont_bounded {a b : ℝ}
         exact tmp
       exact bdd
     exact bdd_s
+---
+
+--練習 6。とりあえず、保留。時間ができたら後日、取り組んでみる。2025 2 21。
+--とりあえず、sorryでうめた。
+--距離空間になるための。
+
+open MeasureTheory
+
+--前の問題で定義したのが残っている。
+--def C₀ := ContinuousMap (Set.Icc (0 : ℝ) 1) ℝ
+--def Ic := Set.Icc (0:Real) 1
+
+/--
+任意の連続関数 `f` が非負かつ積分が 0 のとき，`f` が恒等的に 0 となることを示す補題．
+この補題は Lean 4 で標準的に存在しないため，自前で証明する．
+-/
+
+noncomputable instance : MeasureSpace ℝ := Real.measureSpace
+--noncomputable instance : MeasureSpace Ic := sorry  --これは定義する必要があるのか。
+
+noncomputable def extend_f (f : C₀) : ℝ → ℝ :=
+  Function.extend Subtype.val f.1 0
+
+--積分の変数は、Icでなくて、Rである必要がある。しかし、fの引数は、Icである必要がある。
+--xがRの要素であるが、Icの範囲に入っていることをLean 4に伝えられないので、extend_fで回避。
+lemma continuous_nonneg_eq_zero_of_integral_zero {f : C₀} (hf_nonneg : ∀ x, 0 ≤ f.1 x)
+    (hf_int_zero : ∫ x in (Set.Icc 0 1), (extend_f f) x = 0):
+    ∀ x ∈ Set.Icc 0 1, f.1 x = 0 :=
+by
+  sorry -- なにかMathlib 4の定理を使えないか。ChatGPTに提案してもらった証明はうまりそうになかった。
+
+/-
+\( (f-g)^2 \) が `[0,1]` 上可積分であることを示す．Lean 4 では
+`ContinuousOn.integrableOn_isCompact isCompact_Icc measurableSet_Icc`
+を用いる．
+-/
+--lemma integrable_sq_diff (hf_cont : ContinuousOn f (Set.Icc 0 1)) (hg_cont : ContinuousOn g (Set.Icc 0 1)) :
+--  Integrable (fun x => (f x - g x) ^ 2) (MeasureTheory.Measure.restrict volume (Set.Icc (0 : ℝ) 1)) := by
+--sorry
+
+/-- \((a - b)^2\) と \((b - a)^2\) は等しい． -/
+lemma sq_diff_comm (a b : ℝ) : (a - b) ^ 2 = (b - a) ^ 2 := by
+  -- 好みで rw していっても良いが simp [sub_eq_neg_add] などでも同様の結果が出る．
+  rw [pow_two, pow_two, mul_sub, sub_mul, mul_comm]
+  ring
+
+/--
+\(\int_0^1 (f x)^2 dx = 0\) のとき，\(f\) は `[0,1]` 上恒等的に 0 であることを示す．
+Mathlib 3 の `Continuous.ae_eq_zero_of_integral_eq_zero` 相当の議論を
+`continuous_nonneg_eq_zero_of_integral_zero` を使って置き換える．
+-/
+
+lemma continuous_sq_eq_zero_of_integral_zero {f : C₀}
+    --(hf_cont : ContinuousOn f (Set.Icc 0 1))
+    (h : ∫ x in Set.Icc (0 : ℝ) 1, (extend_f f x) ^ 2 = 0) :
+    ∀ x ∈ Set.Icc 0 1, f.1 x = 0 := by
+  -- (f x) ^ 2 は常に非負
+  have hf_nonneg : ∀ x, 0 ≤ (f.1 x) ^ 2 := by
+    intro x
+    exact pow_two_nonneg (f.1 x)
+  -- 積分が 0 なので、(f x) ^ 2 = 0
+  have hf_eq_zero : ∀ x ∈ Set.Icc 0 1, (f.1 x) ^ 2 = 0 := by
+    have hf_sq_cont : ContinuousOn (fun x => (f.1 x) ^ 2) (Set.Icc 0 1) := by
+      simp_all
+      fun_prop
+    show ∀ x ∈ Set.Icc 0 1, f.toFun x ^ 2 = 0
+    sorry --上の補題continuous_nonneg_eq_zero_of_integral_zeroを利用すると思われる。
+  -- (f x) ^ 2 = 0 ならば f x = 0
+  intro x hx
+  specialize hf_eq_zero x hx
+  exact pow_eq_zero hf_eq_zero
+
+/-- \(\displaystyle L^2\) 距離を連続関数上で定義する． -/
+noncomputable def L2_distance (f g : C₀) : ℝ :=
+  Real.sqrt (∫ x in Set.Icc (0 : ℝ) 1, (extend_f f x - extend_f g x) ^ 2)
+
+/--
+上で定義した `L2_distance` が，実際に `MetricSpace` の公理を満たすことの証明．
+Minkowski の不等式を使う部分は省略しており，`sorry` を入れている．
+-/
+-- ContinuousMap subtraction
+instance : Sub C₀ where
+  sub f g := ⟨λ x => f.1 x - g.1 x, f.continuous_toFun.sub g.continuous_toFun⟩
+
+--距離空間の公理を満たすためには、定義域を[0,1]に制限する必要がある。
+noncomputable instance : MetricSpace C₀ where
+  dist := by
+   exact L2_distance
+
+  dist_self f := by
+    simp_all only
+    simp [L2_distance]
+    -- (f x - f x)^2 = 0 の積分
+    --have : ∫ x in Set.Icc 0 1, (f x - f x) ^ 2 = ∫ x in Set.Icc 0 1, (0 : ℝ) := by simp
+    --rw [this, integral_zero, Real.sqrt_zero]
+
+  dist_comm f g := by
+    simp [L2_distance]
+    congr 1
+    --funext x
+    --exact sq_diff_comm (f x) (g x)
+    congr
+    ext x : 1
+    ring
+
+  dist_triangle f g h := by
+    -- 本来は (f - h)^2 <= (f - g + g - h)^2 を用いて Minkowski の不等式を示す必要がある
+    -- ここでは省略し、sorry で示す.
+    --intro
+    simp [L2_distance]
+    show √(∫ (x : ℝ) in Set.Icc 0 1, (extend_f f x - extend_f h x) ^ 2) ≤
+  √(∫ (x : ℝ) in Set.Icc 0 1, (extend_f f x - extend_f g x) ^ 2) +
+    √(∫ (x : ℝ) in Set.Icc 0 1, (extend_f g x - extend_f h x) ^ 2)
+    sorry --なんか証明が大変そう。
+
+  eq_of_dist_eq_zero := by
+    intro f g hfg
+    simp [L2_distance, Real.sqrt_eq_zero] at hfg
+    dsimp [C₀]
+    ext x
+    show f.1 x = g.1 x
+    have h_integral_zero : ∫ x in Set.Icc 0 1, (extend_f (f - g)) x ^ 2 = 0 := by
+      simp [extend_f, Function.extend_def]
+      rw [←Real.sqrt_eq_zero] --ゴールがふたつに分かれる。
+      · --show √(∫ (x : ℝ) in Set.Icc 0 1, Function.extend Subtype.val (⇑(f - g)) 0 x ^ 2) = 0
+        sorry --うまくいかない。
+      · obtain ⟨val, property⟩ := x
+        simp_all only [Set.mem_Icc]
+        obtain ⟨left, right⟩ := property
+        positivity
+
+    have h_eq : ∀ x ∈ Set.Icc 0 1, (f - g).toFun x = 0 := continuous_sq_eq_zero_of_integral_zero h_integral_zero
+    specialize h_eq x
+    have : x ∈ Set.Icc 0 1:=
+    by
+      simp_all only [Set.mem_Icc, zero_le', true_and, ContinuousMap.toFun_eq_coe]
+      obtain ⟨val, property⟩ := x
+      simpa using property.2
+    specialize h_eq this
+    simp_all only [Set.mem_Icc, zero_le', true_and, ContinuousMap.toFun_eq_coe]
+    obtain ⟨val, property⟩ := x
+    exact sub_eq_zero.mp h_eq
 
 -----------------------
 ------練習14-----------

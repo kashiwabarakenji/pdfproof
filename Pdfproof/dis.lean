@@ -32,7 +32,7 @@ import Mathlib.Topology.MetricSpace.Basic
 import Mathlib.MeasureTheory.Integral.SetIntegral
 --import Mathlib.Data.Fintype.Basic
 import Mathlib.Analysis.InnerProductSpace.PiL2
-import Mathlib.MeasureTheory.Integral.SetIntegral
+import Mathlib.Analysis.SpecialFunctions.Integrals
 --import Mathlib.Analysis.Minkowski
 import LeanCopilot
 --import MeasureTheory.Integral.SetIntegral
@@ -1084,8 +1084,9 @@ noncomputable instance : MetricSpace C₀ where
   eq_of_dist_eq_zero := by
     intro f g hfg
     simp [L2_distance] at hfg
-    /-
-    have exf: (extend_f f)^2 = extend_f2 f :=
+
+    --使っている。
+    have exf: (extend_f (f-g))^2 = extend_f2 (f-g) :=
     by
       dsimp [extend_f]
       dsimp [extend_f2]
@@ -1093,8 +1094,13 @@ noncomputable instance : MetricSpace C₀ where
       simp_all only [Pi.pow_apply]
       simp [Function.extend]
       sorry
-    -/
 
+    have exf':  ∀ x,  (extend_f (f-g) x)^2  = extend_f2 (f-g) x:=
+    by
+      intro x
+      exact Eq.symm (ext_cauchy (congrArg cauchy (congrFun (id (Eq.symm exf)) x)))
+
+    --使っている。
     have exf2: (extend_f (f-g)) = (extend_f f - extend_f g) :=
     by
       dsimp [extend_f]
@@ -1108,57 +1114,63 @@ noncomputable instance : MetricSpace C₀ where
         rfl
       next h => simp_all only [not_and, not_le, sub_self]
 
+    have exf2': ∀ x, (extend_f (f-g)) x = (extend_f f x - extend_f g x):=
+    by
+      intro x
+      simp_all only [Pi.sub_apply]
+
+
+    have exf3: ∀ x, (extend_f f x - extend_f g x) ^ 2 = (extend_f2 (f - g)) x :=
+    by
+      intro x
+      --dsimp [extend_f,extend_f2]
+      rw [← exf2']
+      rw [←exf' x]
+
     dsimp [C₀]
     ext x
     show f.1 x = g.1 x
+    --hfgのルートをとるのに必要な部分。
     have ps:∫ (x : ℝ) in Set.Icc 0 1, (extend_f f x - extend_f g x) ^ 2 ≥ 0:=
     by
-      have : ∀ (x : ℝ), x ∈ Set.Icc 0 1 → (extend_f f x - extend_f g x) ^ 2 ≥ 0 :=
+      have nonneg: ∀ (x : ℝ), x ∈ Set.Icc 0 1 → (extend_f f x - extend_f g x) ^ 2 ≥ 0 :=
       by
         intro x hx
-        rename_i x_1
-        simp_all only [Set.mem_Icc, ge_iff_le]
-        obtain ⟨val, property⟩ := x_1
-        obtain ⟨left, right⟩ := hx
-        simp_all only [Set.mem_Icc]
-        obtain ⟨left_1, right_1⟩ := property
+        rw [exf3]
+        dsimp [extend_f2]
+        dsimp [Function.extend]
+        split
         positivity
-      simp_all only [Set.mem_Icc, ge_iff_le, and_imp]
-      obtain ⟨val, property⟩ := x
-      simp_all only [Set.mem_Icc]
-      obtain ⟨left, right⟩ := property
-      positivity
+        trivial
+
+      --simp [integral_nonneg,ge_iff_le]
+      have : (0 : ℝ) ≤ 1 :=
+      by
+        simp_all only [implies_true, Pi.sub_apply, Set.mem_Icc, ge_iff_le, and_imp, zero_le_one]
+      let iii := @intervalIntegral.integral_nonneg _ (0 : ℝ) 1 volume this (λ x => nonneg x)
+      rw [ge_iff_le]
+      --dsimp [Set.Icc]
+      --convert iii
+      have h1 : {x : ℝ | 0 ≤ x ∧ x ≤ 1} = Set.Icc 0 1 :=
+      by
+        ext x
+        simp only [Set.mem_Icc]
+        exact Iff.rfl
+      dsimp [Set.Icc]
+      sorry
+
     have ps2:(∫ (x : ℝ) in Set.Icc 0 1, (extend_f f x - extend_f g x) ^ 2) = 0 :=
     by
       simp_all only [sqrt_eq_zero, ge_iff_le, le_refl]
 
-    have h_integral_zero : ∫ x in Set.Icc 0 1, (extend_f2 (f - g)) x = 0 := by
-      simp [extend_f2, Function.extend_def]
-      dsimp [extend_f] at ps2
-      dsimp [Function.extend]
-      dsimp [extend_f] at hfg
-      dsimp [Function.extend] at hfg
-      simp at hfg
-      have : ∀ (x : ℝ), x ∈ Set.Icc 0 1 → (Function.extend (Subtype.val : Ic → ℝ) (f.1) 0 x - Function.extend (Subtype.val : Ic → ℝ) (g.1) 0 x) ^ 2 = Function.extend (Subtype.val : Ic → ℝ) ((f - g).1 ^ 2) (0:Ic) x :=
-      by
-        intro x hx
-        simp
-        rename_i x_1
-        simp_all only [ge_iff_le, Set.mem_Icc]
-        obtain ⟨val, property⟩ := x_1
-        obtain ⟨left, right⟩ := hx
-        simp_all only [Set.mem_Icc]
-        obtain ⟨left_1, right_1⟩ := property
-        sorry
+    have ps3:(∫ (x : ℝ) in Set.Icc 0 1, (extend_f (f - g) x) ^ 2) = 0 :=
+    by
+      rw [exf2]
+      simp_all only [sqrt_zero, ge_iff_le, le_refl, Pi.sub_apply]
 
-
-
-      /-
-      · obtain ⟨val, property⟩ := x
-        simp_all only [Set.mem_Icc]
-        obtain ⟨left, right⟩ := property
-        positivity
-      -/
+    have h_integral_zero : ∫ x in Set.Icc 0 1, (extend_f2 (f - g)) x = 0 :=
+    by
+      simp_all only [implies_true, Pi.sub_apply, ge_iff_le]
 
     have h_eq : ∀ x ∈ Set.Icc 0 1, (f - g).toFun x = 0 := continuous_sq_eq_zero_of_integral_zero h_integral_zero
     specialize h_eq x

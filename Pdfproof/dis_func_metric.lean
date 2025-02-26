@@ -4,6 +4,7 @@ import Mathlib.Data.Fin.Basic
 import Mathlib.Data.Real.Sqrt
 import Mathlib.Data.Real.Archimedean
 import Mathlib.Data.Real.Basic
+import Mathlib.Data.NNReal.Defs
 import Mathlib.Order.Basic
 import Mathlib.Order.CompleteLattice
 import Mathlib.Order.ConditionallyCompleteLattice.Basic
@@ -27,6 +28,7 @@ import Mathlib.Analysis.SpecialFunctions.Sqrt
 import Mathlib.Analysis.SpecialFunctions.Integrals
 import Mathlib.Analysis.InnerProductSpace.Basic
 import Mathlib.Analysis.InnerProductSpace.PiL2
+import Mathlib.Analysis.Normed.Lp.lpSpace
 import Mathlib.MeasureTheory.Measure.Haar.OfBasis
 import Mathlib.MeasureTheory.Measure.MeasureSpaceDef
 import Mathlib.MeasureTheory.Measure.Lebesgue.Basic
@@ -37,6 +39,8 @@ import Mathlib.MeasureTheory.MeasurableSpace.Defs
 import Mathlib.MeasureTheory.Integral.SetIntegral
 import Mathlib.MeasureTheory.Integral.BoundedContinuousFunction
 import Mathlib.MeasureTheory.Integral.Bochner
+import Mathlib.MeasureTheory.Function.L1Space.HasFiniteIntegral
+import Mathlib.MeasureTheory.Order.Group.Lattice
 import LeanCopilot
 
 --練習 6。最初、うまく積分が定義できなかったので、0,1上の関数を実数全体にextendする方法で
@@ -1038,7 +1042,10 @@ lemma toFun_measurable (f : C₀) : Measurable (toFun f) := by
 
 #check Measurable.piecewise
 -/
-
+--Icから実数全体に拡張した関数の可測性。うまいMathlibの定理がなかなか見つからず、
+--Measurable.iteやMeasurable.piecewiseを使って証明しようとしたが、全体で可測である仮定を求められてうまくいかず。
+--キー定理として、MeasurableEmbedding.measurable_extendを使うが、テクニカルに難しい同値性のゴールに陥って
+--最後はかなり強引で、なにをやっているのか不明な状態だが、AIの力を借りてエラーがないことをまで持って行った。
 lemma toFun_measurable (f : C₀) : Measurable (toFun f) :=
 by
   have hIc : MeasurableSet Ic := (isCompact_Icc).measurableSet
@@ -1063,254 +1070,194 @@ by
   have hf_on_Ic : Measurable (fun x : Ic => f.1 ⟨x, by simp [Ic]⟩) := by
     exact f.continuous.measurable
 
-  have h_coe : Measurable (fun x : ℝ => if hx : x ∈ Ic then toFun f x else 0) :=
+   -- `Subtype.val` は可測な埋め込み
+  have h_meas_val : MeasurableEmbedding (Subtype.val : Ic → ℝ) :=
   by
-    apply Measurable.piecewise
-    · exact hIc
-    · show Measurable (toFun f)
-      exact hf_on_Ic.comp (Measurable.subtype_coe (isCompact_Icc.measurableSet))
-    · simp_all only [ContinuousMap.toFun_eq_coe, Subtype.forall, measurable_const]
+    exact MeasurableEmbedding.subtype_coe hIc
 
-
-  --let h_coe := hf_sub2.comp measurable_subtype_coe
-
-
-  -- Define the subtype coercion explicitly
-  have h_coe : Measurable (fun x : ℝ => if hx : x ∈ Ic then toFun f x else 0) :=
+  have h_meas_f_val : Measurable ((toFun f) ∘ (Subtype.val : Ic → ℝ)) :=
   by
-    apply Measurable.ite
-    exact hIc
-
-    refine Measurable.ite hIc ?_ measurable_const
-    simp_all only [ContinuousMap.toFun_eq_coe, Subtype.forall]
-    exact?
-    exact hf_sub2.comp measurable_subtype_coe
+    simp_all only [ContinuousMap.toFun_eq_coe, Subtype.forall, Subtype.coe_eta]
+    exact hf_sub2
 
 
-
-
-
-
-
-  unfold toFun
-  convert h_coe
-  rename_i x0 x1 x2
-  simp
-
-
-
-
-
-
-
-  -- Define the composition
-  let hf_sub_coe := hf_sub.comp h_coe
-
-  -- Prove measurability of toFun
-  exact Measurable.ite hIc hf_sub_coe measurable_const
-
-  let hf_sub_coe : ℝ → ℝ := fun x => if hx : x ∈ Ic then f.toFun ⟨x, hx⟩ else 0
-  have hf_sub_coe_meas : Measurable hf_sub_coe :=
+  have h_meas_Ic : MeasurableSet (univ : Set Ic) :=
   by
-    simp_all only [ContinuousMap.toFun_eq_coe, hf_sub_coe]
-    exact?
+    simp_all only [ContinuousMap.toFun_eq_coe, Subtype.forall, Subtype.coe_eta, MeasurableSet.univ]
 
-  unfold toFun
-  refine Measurable.ite hIc hf_sub_coe measurable_const
+  have h_meas_zero : Measurable (fun (x:ℝ) => (0:ℝ)) := measurable_const
 
-
-
-  --#check hf_sub.comp measurable_subtype_coe
-  -- Prove measurability of toFun directly
-  let coe_fn : Ic → ℝ := Subtype.val
-  have h_coe_meas : Measurable coe_fn := measurable_subtype_coe
-
-
-  have h_then : Measurable (fun x : ℝ => if hx : x ∈ Ic then f.toFun ⟨x, hx⟩ else 0) :=
-    have h_then_part : Measurable (fun x : ℝ => f.toFun ⟨x,
-    by
-      sorry
-    ⟩) :=
-    by
-      simp_all only [ContinuousMap.toFun_eq_coe, coe_fn]
-      apply (Continuous.measurable f.continuous).comp
-      convert h_coe_meas
-      apply Iff.intro
-      intro a
-      simp_all only [coe_fn]
-      intro a
-      exact Measurable.subtype_mk fun ⦃t⦄ a ↦ a
-    Measurable.ite hIc h_then_part measurable_const
-
-  simp_all only [ContinuousMap.toFun_eq_coe, coe_fn]
-  exact h_then
-
-  /-消す
-  have hf_full : Measurable (fun x => if hx : x ∈ Ic then f.1 ⟨x, hx⟩ else 0) :=
-    Measurable.ite hIc (hf_sub.comp measurable_subtype_coe) measurable_const
-
-  have hf_full : Measurable (fun x => if hx : x ∈ Ic then f.1 ⟨x, hx⟩ else 0) :=
-    Measurable.ite hIc (hf_sub.comp measurable_subtype_coe) measurable_const
-
-  -- ④ `hf_full` が `toFun f` と一致するので、証明を完了
-  exact hf_full
-
-  refine Measurable.ite hIc ?_ measurable_const
-  exact hf_sub.comp measurable_subtype_coe
-  -- ③ ℝ → ℝ の可測関数に変換
-  --    f は Icc 0 1 上の可測関数なので、ℝ 上では measurable_subtype_coe を使って可測性を拡張
-　-/
-
--- toFun f は可測関数である。上がうまくいったら消す。
-lemma toFun_measurable2 (f : C₀) : Measurable (toFun f) := by
--- 1. [0,1] が可測集合であることを示す
-  have hIc : MeasurableSet Ic :=  (isCompact_Icc).measurableSet
-
-  -- 2. f は ContinuousMap なので、[0,1] 上では可測関数
-  --   (ContinuousMap.measurable で得られる)
-  have hf : Measurable (fun x : Ic => f.1 x) := by
-    -- もし必要であれば、simp などで型を調整
-    simp only [Subtype.coe_eta, ContinuousMap.toFun_eq_coe]
+  have h_meas_f : Measurable f.1 :=
+  by
     exact f.measurable
 
-  -- 3. 定数 0 の関数はもちろん可測
-  have h0 : Measurable (fun (_ : ℝ) => (0 : ℝ)) := measurable_const
-
-  have IcM : MeasurableSet Ic := isCompact_Icc.measurableSet
-  -- 部分型から実数へのマップが可測であることを示す
--- Icの要素であるx上でf xを計算する関数
+  -- `MeasurableEmbedding.measurable_extend` を適用
+  let me := MeasurableEmbedding.measurable_extend h_meas_val h_meas_f h_meas_zero
   unfold toFun
-
-  -- 必要な事実
-  have hIc : MeasurableSet Ic := isCompact_Icc.measurableSet
-
-  -- 条件分岐関数の可測性を示す
-  apply Measurable.ite
-  · exact isCompact_Icc.measurableSet
-
-  -- f.toFun ⟨x, hx⟩の可測性
-  · -- 連続関数は可測
-    have h_cont : Continuous f.1 := f.2
-    have h_meas : Measurable f.1 := h_cont.measurable
-
-    -- 制限された領域での可測性
-    exact Measurable.comp h_meas (fun x => ⟨x, by simp [Ic]⟩)
-
-  -- 定数関数0の可測性
-  · exact measurable_const
-
-  simp only [Set.piecewise]
-
-  -- これで目標は「Measurable (fun x => if x ∈ Ic then f ⟨x, by simp⟩ else 0)」の形になるはず
-
-  -- if_then_elseが可測性を保存することを適用
-  apply measurable_ite
-  · -- x ∈ Icが可測であることを示す
-    exact measurable_set_pred hIc
-  · -- then節が可測であることを示す
-    -- fが連続写像であるため、可測
-    have h_f_meas : Measurable f := by simp [ContinuousMap.measurable]
-    -- 部分型への写像が可測
-    have h_subtype : Measurable (fun x => ⟨x, by simp⟩) := by
-      -- ここでは、xがIcに属しているという前提の下で証明
-      apply measurable_of_restrict_of_mem
-      · exact hIc
-      · intro x hx
-        -- xがIcに属していることを示す
-        exact hx
-    -- 合成関数が可測
-    exact measurable_comp h_f_meas h_subtype
-  · -- else節が可測であることを示す (定数関数)
-    exact measurable_const
-
-
-  -- 制限された関数が可測であることを示す
-  have h_on_Ic : Measurable (fun x : {x // x ∈ Ic} => f.1 x) := by
-    simp_all only [ContinuousMap.toFun_eq_coe, measurable_const]
-
-  -- 定数関数は可測
-  have h_zero : Measurable (fun x : ℝ => (0 : ℝ)) := measurable_const
-
-  -- Set.piecewiseのを使った関数が可測であることを直接示す
-  exact Set.piecewise_measurable hIc
-    (fun x => f ⟨x, by simp⟩)
-    (fun _ => 0)
-    h_on_Ic.comp_subtype_coe
-    h_zero
-  let f_on_Ic : ℝ → ℝ := fun x => if h : x ∈ Ic then f.1 ⟨x, h⟩ else 0
-
-  -- f_on_Icが可測であることを証明
-  have h_f_on_Ic : Measurable f_on_Ic := by
-    apply Measurable.piecewise hIc
-    -- Icの中での関数が可測であることを示す
-    · have h_restrict : Measurable (fun x : {x // x ∈ Ic} => f x) := hf
-      have h_coe : Measurable (fun x : ℝ => if h : x ∈ Ic then (⟨x, h⟩ : Ic) else ⟨0, by simp [Ic]⟩) := by
-        apply Measurable.piecewise hIc
-        · exact measurable_id.subtype_mk _
-        · exact measurable_const
-      exact Measurable.comp h_restrict h_coe
-    · exact h0
-
-  -- toFun fとf_on_Icが同じであることを示す
-  have h_eq : toFun f = f_on_Ic := by
-    ext x
-    unfold toFun f_on_Ic
-    simp [Set.piecewise]
-    split
-    · intro h
-      rfl
-    · intro h
-      rfl
-
-  -- 等価性を使用して証明を完了
-  rw [h_eq]
-  exact h_f_on_Ic
-
-  have h_subtype : Measurable (fun x : ℝ => if h : x ∈ Ic then f.1 ⟨x, h⟩ else 0) := by
-    -- 部分型の値が可測であることを示す
-    have h_val : Measurable (fun x : Ic => (x : ℝ)) := Measurable.subtype_val measurable_id
-    -- hfとh_valの合成が可測であることを示す
-    #check Measurable.subtype_coe_measurable Ic
-    let ms := Measurable.subtype_coe_measurable Ic
-    have h_comp : Measurable (fun x : ℝ => if h : x ∈ Ic then f.1 ⟨x, h⟩ else 0) :=
-      Measurable.piecewise IcM
-        (Measurable.comp hf ms) h0
-    exact h_comp
-
-  -- toFun fの定義と、h_subtypeが同じ関数であることを示す
-  have h_eq : toFun f = fun x => if h : x ∈ Ic then f ⟨x, h⟩ else 0 := by
-    ext x
-    simp [toFun, Set.piecewise]
-    split
-    · intro h
-      simp [h]
-    · intro h
-      simp [h]
-
-  -- h_eqを使って証明を完了する
-  rw [h_eq]
-  exact h_subtype
-
-  /-
-  have hf_sub : Measurable (fun x : Ic => f.1 x) := f.measurable
-
-  -- ℝ → ℝ の可測関数にするには、comp measurable_subtype_coe を使う
-  let hf_full : Measurable (fun x : ℝ => if h : x ∈ Ic then f.1 ⟨x, h⟩ else 0) :=
+  dsimp [Function.extend] at me
+  have: Function.extend Subtype.val f.1 (fun x ↦ 0) = fun x ↦ if hx : x ∈ Ic then f.toFun ⟨x, hx⟩ else 0 :=
   by
-    --simp_all only [ContinuousMap.toFun_eq_coe, measurable_const]
+    show (Function.extend Subtype.val f.toFun fun x ↦ 0) = fun x ↦ if hx : x ∈ Ic then f.toFun ⟨x, hx⟩ else 0
+    --ここからはかなり強引な場合分け。
+    ext x
+    simp_all only [ContinuousMap.toFun_eq_coe, Subtype.forall, Subtype.coe_eta]
+    split
+    · dsimp [Function.extend]
+      split
+      · rename_i h0 h1
+        --obtain ⟨val, property⟩ := x
+        obtain ⟨val1, property1⟩ := h1
+        dsimp [toFun]
+        split
+        · rename_i h0
+          rename_i h1
+          have ch1: choose (Exists.intro val1 property1 : ∃ a, ↑a = x) = x :=
+          by
+            simp_all only [ContinuousMap.toFun_eq_coe, Subtype.forall, Subtype.coe_eta]
+            subst property1
+            simp_all only [MeasurableSet.univ, Subtype.coe_prop, choose_eq]
+          have ch2: choose (Exists.intro (↑val1) property1 : ∃ a, a = x) = x :=
+          by
+            subst property1
+            simp_all only [MeasurableSet.univ, Subtype.coe_prop, choose_eq]
+          have ch3: choose (Exists.intro (val1) property1 : ∃ a, a.val = x) = ⟨x,h0⟩ :=
+          by
+            --subst property1
+            --simp_all only [MeasurableSet.univ, Subtype.coe_prop, choose_eq]
+            have ch4: (choose (Exists.intro (val1) property1 : ∃ a, a.val = x)).val = x :=
+            by
+              simp_all only [MeasurableSet.univ, Subtype.coe_prop, choose_eq]
+              --subst property1
+              --simp_all only [MeasurableSet.univ, Subtype.coe_prop, choose_eq]
+              set chosen_val := choose (Exists.intro val1 property1: ∃ a, a.val = x) with h_choose
+              have h_chosen_property : chosen_val.val = x := choose_spec (Exists.intro val1 property1: ∃ a, a.val = x)
+              exact h_chosen_property
+            subst property1
+            simp_all only [MeasurableSet.univ, choose_eq, Subtype.coe_eta]
+            simp_all only [Subtype.coe_prop]
+            obtain ⟨val, property⟩ := val1
+            simp_all only
+            ext : 1
+            simp_all only
+          subst property1
+          simp_all only [MeasurableSet.univ, choose_eq, Subtype.coe_eta]
+        · simp_all only [MeasurableSet.univ, not_true_eq_false]
+      · dsimp [toFun]
+        split
+        · rename_i h0 h1
+          have :x ∉ Ic := by
+            simp_all only [ContinuousMap.toFun_eq_coe, Subtype.forall, Subtype.coe_eta]
+            by_contra h_contra
+            push_neg at h0
+            let cont := h0 ⟨x,h1⟩
+            contradiction
+          contradiction
+        · simp_all only [MeasurableSet.univ, not_true_eq_false]
+    · dsimp [Function.extend]
+      split
+      ·
+        rename_i h h_1
+        simp_all only [MeasurableSet.univ]
+        obtain ⟨w, h_1⟩ := h_1
+        obtain ⟨val, property⟩ := w
+        subst h_1
+        simp_all only
+        contrapose! h
+        simp_all only [ne_eq]
+        exact property
+      · simp_all only [MeasurableSet.univ, Subtype.exists, mem_Icc, exists_prop, exists_eq_right, not_and, not_le]
+  simp_all only [ContinuousMap.toFun_eq_coe, Subtype.forall, Subtype.coe_eta, MeasurableSet.univ, dite_eq_ite]
+  convert h_meas_f_val
+  simp_all only [iff_true]
+  rwa [← this]
 
-    exact Measurable.piecewise hIc (f.measurable.comp measurable_subtype_coe) measurable_const
+lemma embedding_coe_NNReal :  Topology.IsEmbedding (fun x:NNReal => (x:ℝ)) :=
+by
+  rw [Topology.isEmbedding_iff]
+  apply And.intro
+  · apply Topology.IsInducing.induced
+  · exact Subtype.coe_injective
+
+theorem continuous_on_coe_NNReal {f : ℝ → NNReal} {s : Set ℝ}
+    (hs : IsCompact s) (hf : ContinuousOn (fun x ↦ ((f x) : ℝ)) s) :
+    ContinuousOn f s :=
+by
+  have: ContinuousOn f s :=
+  by
+    dsimp [ContinuousOn]
 
 
-  -- 4. piecewise 形式の可測性を証明
-  --    s.piecewise f g が可測になるには、s が可測 & f,g が可測であることが必要
-  --refine @Measurable.piecewise ℝ ℝ _ _ Ic (Classical.decPred _) hIc hf_full measurable_const
-  refine @Measurable.piecewise ℝ ℝ Ic _ _ _ _  (Classical.decPred _) hIc ?_ h0
+  convert (@Topology.IsEmbedding.continuousOn_iff ℝ NNReal ℝ _ _ _ f (fun x => (x : ℝ)) embedding_coe_NNReal s).mp hf
 
-  -- 5. `hf` は Ic 上の可測関数なので、ℝ 全体へは (hf.comp measurable_subtype_coe)
-  --    を使って拡張する
-  exact hf.comp measurable_subtype_coe
-  -/
+
+
+
+
+
+theorem continuous_on_coe_NNReal {f : ℝ → NNReal} {s : Set ℝ}
+    (hf : ContinuousOn (fun x ↦ ((f x) : ℝ)) s) :
+    ContinuousOn f s :=
+by
+  have eq_coe : (fun y : NNReal => (y : ℝ)) ∘ f = (fun x : ℝ => (f x : ℝ)) :=
+  by
+    funext x
+    rfl
+
+  have hf' : ContinuousOn ((fun y => (y : ℝ)) ∘ (Coe.coe ∘ f)) s :=
+  by
+    exact hf
+
+  exact (Topology.IsEmbedding.continuousOn_iff embedding_coe_NNReal).mp ?_
+
+
+
+
+theorem continuous_on_coe_NNReal {f : ℝ → NNReal} {s : Set ℝ}
+  (hf : ContinuousOn (fun x ↦ ((f x):ℝ)) s) : ContinuousOn f s :=
+by
+  exact (Topology.IsEmbedding.continuousOn_iff embedding_coe_NNReal).mp hf
+-- ContinuousOn の定義を展開
+  unfold ContinuousOn at *
+
+  -- 任意の点 x ∈ s とその近傍の開集合 t を考える
+  intro x xs
+
+  -- ContinuousAt の定義に進む
+  unfold ContinuousWithinAt
+
+  -- 目標は Tendsto f (nhdsWithin x s) (nhds (f x))
+  -- hf から得られるのは Tendsto (fun x ↦ ((f x):ℝ)) (nhdsWithin x s) (nhds ((f x):ℝ))
+
+  -- NNReal.val の連続性を利用
+  have val_continuous : Continuous (fun (x : NNReal) => (x : ℝ)) := by fun_prop
+  #check Continuous_iff_continuousAt.mp val_continuous (f x)
+  -- 連続関数の局所的な性質
+  have val_continuous_at : ContinuousAt f x := by
+    apply continuous_iff_continuousAt.mp
+    let hxs :=(hf x xs)
+    --unfold ContinuousWithinAt at hxs
+    --f xは場所の指定に使われているだけで、fの連続性ではない。
+    have val_continuous_at : ContinuousAt (fun x ↦ (x:ℝ)) (f x) := (@continuous_iff_continuousAt ℝ _ _ _ _ ).mp val_continuous (f x)
+
+
+   val_continuous (f x)
+
+  -- ContinuousAt から Tendsto への変換
+  have val_tendsto : Tendsto (fun (x : NNReal) => (x : ℝ)) (nhds (f x)) (nhds ((f x):ℝ)) := by
+    exact  Continuous.tendsto' val_continuous (f x) (↑(f x)) rfl
+
+  -- 合成関数の極限
+  -- Tendsto f (nhdsWithin x s) (nhds (f x)) と
+  -- Tendsto NNReal.val (nhds (f x)) (nhds ((f x):ℝ)) から
+  -- Tendsto (fun y ↦ ((f y):ℝ)) (nhdsWithin x s) (nhds ((f x):ℝ)) を得る
+
+  -- hf から (fun y ↦ ((f y):ℝ)) の Tendsto 性質を得る
+  have h_tendsto : Tendsto (fun y ↦ ((f y):ℝ)) (nhdsWithin x s) (nhds ((f x):ℝ)) := hf x xs
+
+  -- Tendsto の合成
+  apply Tendsto.comp val_tendsto
+  exact h_tendsto
+
 
 --距離空間の公理を満たすためには、定義域を[0,1]に制限する必要がある。
 noncomputable instance : MetricSpace C₀ where
@@ -1339,18 +1286,229 @@ noncomputable instance : MetricSpace C₀ where
 
     -- toFun f は [0,1] 以外では 0、として定義
     -- これが可測で、かつ L^2 に属すること (Memℓp f 2) は連続関数なので容易に示せる
-    have meas_f : Measurable (toFun f) := sorry
-    have meas_g : Measurable (toFun g) := sorry
-    have meas_h : Measurable (toFun h) := sorry
+    have meas_f : Measurable (toFun f) := toFun_measurable f
+    have meas_g : Measurable (toFun g) := toFun_measurable g
+    have meas_h : Measurable (toFun h) := toFun_measurable h
 
-    have f_in_L2 : Memℓp (toFun f) 2 volume := sorry
-    have g_in_L2 : Memℓp (toFun g) 2 volume := sorry
-    have h_in_L2 : Memℓp (toFun h) 2 volume := sorry
-
+    --have f_in_L2 : Memℓp (toFun f) (2 : ℝ≥0∞)  := sorry
     -- L^2 上の同値類に持ち上げる
-    let F := Lp.mk (toFun f) meas_f f_in_L2
-    let G := Lp.mk (toFun g) meas_g g_in_L2
-    let H := Lp.mk (toFun h) meas_h h_in_L2
+    have ASf:AEStronglyMeasurable (toFun f) volume :=
+    by
+      simp_all only [ContinuousMap.toFun_eq_coe, toFun]
+      exact meas_f |>.aestronglyMeasurable
+    let fₘ : ℝ →ₘ[volume] ℝ := AEEqFun.mk (toFun f) ASf
+
+    have ASfm:AEStronglyMeasurable (fₘ) volume :=
+    by
+      simp_all only [ContinuousMap.toFun_eq_coe, toFun, fₘ]
+      apply AEStronglyMeasurable.congr
+      on_goal 2 => {rfl
+      }
+      · apply AEEqFun.aestronglyMeasurable
+
+    have hIc:IsCompact Ic:=
+    by
+      simp_all only [ContinuousMap.toFun_eq_coe, toFun]
+      exact isCompact_Icc
+    have fcOn: ContinuousOn (toFun f) Ic:=
+    by
+      --simp_all only [ContinuousMap.toFun_eq_coe, toFun]
+      dsimp [toFun]
+      simp_all only [ContinuousMap.toFun_eq_coe, toFun]
+      rw [continuousOn_iff_continuous_restrict]
+      simp_all only [restrict_dite, Subtype.coe_eta, toFun]
+      fun_prop
+
+
+    have fₘ_in_L2 : Memℒp fₘ 2 volume :=
+    by
+      --#check @IsCompact.exists_bound_of_continuousOn ℝ _ _ _ Ic hIc _ fcOn
+      have :∃ M, ∀ x ∈ Icc 0 1, ‖toFun f x‖ ≤ M :=
+        @IsCompact.exists_bound_of_continuousOn ℝ _ _ _ Ic hIc _ fcOn
+      obtain ⟨M,hM⟩ := this
+
+      -- `|toFun f x|^2` の上界を与える
+      have bound : ∀ x ∈ Icc 0 1, ‖toFun f x‖^2 ≤ M^2 := by
+        intro x hx
+        simp [toFun]
+        specialize hM x
+        specialize hM hx
+        split
+        · dsimp [toFun] at hM
+          dsimp [Ic] at hM
+          simp_all
+          apply sq_le_sq'
+          · exact neg_le_of_abs_le hM
+          · simp_all only [ContinuousMap.toFun_eq_coe, toFun]
+            obtain ⟨left, right⟩ := hx
+            exact le_of_abs_le hM
+        · simp_all only [ContinuousMap.toFun_eq_coe, mem_Icc, ↓reduceDIte, norm_zero, pow_nonneg, toFun]
+
+      -- L²ノルムが有限であることを示す
+      refine ⟨?_, ?_⟩
+      · exact ASfm
+      · --MeasureTheory.set_lintegral_lt_top_of_isCompactは、実数全体で連続でないと使えないので、この場合は適さない。
+        have integral_bound :(∫ x in Icc (0:ℝ) 1, ‖toFun f x‖^2 ∂volume) ≤ (∫ x in Icc (0:ℝ) 1, M^2 ∂volume) := by
+          apply MeasureTheory.integral_mono
+          · show Integrable (fun a ↦ ‖toFun f a‖ ^ 2) (volume.restrict (Icc 0 1))
+            dsimp [Integrable]
+            constructor
+            · show AEStronglyMeasurable (fun a ↦ |toFun f a| ^ 2) (volume.restrict (Icc 0 1))
+              have :Measurable (fun a ↦toFun f a) :=
+              by
+                exact toFun_measurable f
+              have :Measurable (fun a ↦|toFun f a|^2) :=
+              by
+                apply Measurable.pow
+                --simp_all only [ContinuousMap.toFun_eq_coe, mem_Icc, norm_eq_abs, and_imp, sq_abs, dite_pow, ne_eq,
+                --  OfNat.ofNat_ne_zero, not_false_eq_true, zero_pow, toFun, fₘ]
+                · show Measurable fun x ↦ |toFun f x|
+                  --rw [← @Pi.abs_def]
+                  --simp_all only [ContinuousMap.toFun_eq_coe, mem_Icc, norm_eq_abs, and_imp, sq_abs, dite_pow, ne_eq,
+                  --  OfNat.ofNat_ne_zero, not_false_eq_true, zero_pow, toFun, fₘ]
+                  exact Measurable.comp measurable_abs this
+                  -- Measurable.abs this
+                · simp_all only [ContinuousMap.toFun_eq_coe, mem_Icc, norm_eq_abs, and_imp, sq_abs, dite_pow, ne_eq,
+                  OfNat.ofNat_ne_zero, not_false_eq_true, zero_pow, measurable_const, toFun, fₘ]
+              simp_all only [ContinuousMap.toFun_eq_coe, mem_Icc, norm_eq_abs, and_imp, sq_abs, dite_pow, ne_eq,
+                OfNat.ofNat_ne_zero, not_false_eq_true, zero_pow, toFun, fₘ]
+              exact this.aestronglyMeasurable
+
+            · show HasFiniteIntegral (fun a ↦ |toFun f a| ^ 2) (volume.restrict (Icc 0 1))
+              let gg : ℝ → NNReal := fun x => Real.toNNReal (|toFun f x|^2)
+              have :ContinuousOn (fun x ↦ (if hx : x ∈ Ic then (toFun f x) ^ 2 else 0).toNNReal) Ic := by
+                --let g : ℝ → NNReal := fun x => Real.toNNReal (|toFun f x|^2)
+                let g : ℝ → ℝ := fun x => (toFun f x) ^ 2
+                have h1 : ContinuousOn (fun x => (toFun f x)) (Icc 0 1) := by
+                  simp_all only [ContinuousMap.toFun_eq_coe, mem_Icc, norm_eq_abs, and_imp, sq_abs, dite_pow, ne_eq,
+                    OfNat.ofNat_ne_zero, not_false_eq_true, zero_pow, toFun, fₘ]
+                  exact fcOn
+
+                have h2 : ContinuousOn g (Icc 0 1) := by
+                  dsimp [g]
+                  apply ContinuousOn.pow
+                  exact h1
+
+                have h3 : ∀ x ∈ Icc 0 1, 0 ≤ g x := by
+                  intro x hx
+                  dsimp [g]
+                  simp_all only [ContinuousMap.toFun_eq_coe, mem_Icc, norm_eq_abs, and_imp, sq_abs, dite_pow, ne_eq,
+                    OfNat.ofNat_ne_zero, not_false_eq_true, zero_pow, toFun, g, fₘ]
+                  obtain ⟨left, right⟩ := hx
+                  split
+                  next h_1 => positivity
+                  next h_1 => simp_all only [le_refl, g, toFun, fₘ]
+
+                have h4 : ContinuousOn (fun x => (g x).toNNReal) (Icc 0 1) := by
+                  exact continuous_real_toNNReal.comp_continuousOn h2
+
+                refine ContinuousOn.congr h4 (fun x hx => ?_)
+                simp_all only [ContinuousMap.toFun_eq_coe, mem_Icc, norm_eq_abs, and_imp, sq_abs, dite_pow, ne_eq,
+                  OfNat.ofNat_ne_zero, not_false_eq_true, zero_pow, ↓reduceDIte, toFun, g, fₘ]
+
+                -- `Icc 0 1` はコンパクト、測度は有限
+              have measure_finite : volume Ic ≠ ⊤ := by exact IsCompact.measure_ne_top hIc
+
+              have gg_cont': ContinuousOn (fun x => (gg x)) Ic :=
+              by
+                simp_all only [ContinuousMap.toFun_eq_coe, mem_Icc, norm_eq_abs, and_imp, sq_abs, dite_pow, ne_eq,
+                  OfNat.ofNat_ne_zero, not_false_eq_true, zero_pow, ↓reduceDIte, toFun, fₘ, gg]
+
+              have ggg_cont': ContinuousOn (fun x ↦ (gg x : ℝ)) Ic :=
+              by
+                --simp_all only [ContinuousMap.toFun_eq_coe, mem_Icc, norm_eq_abs, and_imp, sq_abs, dite_pow, ne_eq,
+                --  OfNat.ofNat_ne_zero, not_false_eq_true, zero_pow, ↓reduceDIte, toFun, fₘ, gg]
+                apply ContinuousOn.comp NNReal.continuous_coe hf (subset_refl s)
+                sorry
+                simp_all only [ContinuousMap.toFun_eq_coe, mem_Icc, norm_eq_abs, and_imp, sq_abs, dite_pow, ne_eq,
+                  OfNat.ofNat_ne_zero, not_false_eq_true, zero_pow, ↓reduceDIte, toFun, fₘ, gg]
+
+
+
+
+
+
+
+              have integrable_on_Ic : IntegrableOn (fun x => (gg x : ℝ)) Ic volume := by
+                apply @ContinuousOn.integrableOn_compact' ℝ ℝ _ _ _ (fun x => gg x) volume _ Ic _
+                · exact isCompact_Icc  -- `Icc 0 1` はコンパクト
+                · exact measurableSet_Icc  -- `Icc 0 1` は可測
+                · exact ggg_cont'
+
+              -- 定理を適用
+              have lintegral_finite : ∫⁻ x in Ic, (gg x) ∂volume < ⊤ := by
+
+                refine @MeasureTheory.setLIntegral_lt_top_of_isCompact _ _ _ _ Ic measure_finite isCompact_Icc gg gg_cont'
+
+
+                apply MeasureTheory.setLIntegral_lt_top_of_isCompact
+                exact measure_finite
+                exact isCompact_Icc
+                exact g_cont'
+              have lintegral_finite : ∫⁻ x in Icc 0 1, ENNReal.ofReal (|toFun f x|^2) ∂volume < ⊤ := by
+
+                apply MeasureTheory.set_lintegral_lt_top_of_isCompact measure_finite isCompact_Icc g_cont
+
+              -- `HasFiniteIntegral` を示す
+              exact has_finite_integral_of_lintegral_ne_top lintegral_finiterw [this]
+
+              -- `HasFiniteIntegral` を示す
+              exact has_finite_integral_of_lintegral_ne_top lintegral_finite
+
+          · simp_all only [ContinuousMap.toFun_eq_coe, mem_Icc, norm_eq_abs, and_imp, sq_abs, dite_pow, ne_eq,
+            OfNat.ofNat_ne_zero, not_false_eq_true, zero_pow, integrable_const, toFun, fₘ]
+          · intro x
+            show (fun a ↦ ‖toFun f a‖ ^ 2) x ≤ (fun a ↦ M ^ 2) x
+            simp
+            show toFun f x ^ 2 ≤ M ^ 2
+            unfold toFun
+            split
+            · rename_i h0
+              let bh :=bound x h0
+              simp_all only [ContinuousMap.toFun_eq_coe, mem_Icc, norm_eq_abs, and_imp, ge_iff_le, toFun, fₘ]
+              apply le_trans
+              on_goal 2 => {exact bh
+              }
+              · simp_all only [ContinuousMap.toFun_eq_coe, ↓reduceDIte, norm_eq_abs, sq_abs, le_refl, toFun, fₘ]
+            ·
+              simp_all only [ContinuousMap.toFun_eq_coe, mem_Icc, norm_eq_abs, and_imp, sq_abs, dite_pow, ne_eq,
+                OfNat.ofNat_ne_zero, not_false_eq_true, zero_pow, toFun, fₘ]
+              positivity
+      /-
+      have integral_bound : ∫ x in Icc 0 1, ‖toFun f x‖^2 ∂volume ≤ M^2 * (1 - 0) := by
+          have meas : Measurable (fun x => |toFun f x|^2) := meas_f.norm.pow_const 2
+          have meas': Measurable (fun x => ‖toFun f x‖^2) := by
+            simp_all only [ContinuousMap.toFun_eq_coe, mem_Icc,
+            norm_eq_abs, and_imp, sq_abs, dite_pow, ne_eq, OfNat.ofNat_ne_zero, not_false_eq_true, zero_pow, toFun,
+            fₘ]
+          have integrable_const : @IntegrableOn ℝ _ _ _ _ (fun x => (M * M:ℝ)) (Icc 0 1) volume := by
+            simp_all only [ContinuousMap.toFun_eq_coe, mem_Icc, norm_eq_abs, and_imp, sq_abs, dite_pow, ne_eq,
+              OfNat.ofNat_ne_zero, not_false_eq_true, zero_pow, integrableOn_const, mul_eq_zero, or_self, volume_Icc,
+              sub_zero, ofReal_one, one_lt_top, or_true, toFun, fₘ]
+          have integral_const : ∫ x in Icc (0 : ℝ) (1 : ℝ), (M^2:ℝ) ∂(volume) = M^2 * ((1:ℝ) - (0:ℝ)) := by
+            simp_all only [ContinuousMap.toFun_eq_coe, mem_Icc, norm_eq_abs, and_imp, sq_abs, dite_pow, ne_eq,
+              OfNat.ofNat_ne_zero, not_false_eq_true, zero_pow, integrableOn_const, mul_eq_zero, or_self, volume_Icc,
+              sub_zero, ofReal_one, one_lt_top, or_true, integral_const, MeasurableSet.univ, Measure.restrict_apply,
+              univ_inter, one_toReal, smul_eq_mul, one_mul, mul_one, toFun, fₘ]
+          apply MeasureTheory.integral_mono
+          · exact integrable_f
+          · exact integrable_const M^2
+          · intro x
+            exact bound x (by simp)
+
+        -- 積分結果が有限であることを示す
+        calc
+          ∫ x in Icc 0 1, |toFun f x|^2 ∂volume
+              ≤ M^2 * (1 - 0) := integral_bound
+          _ = M^2 := by simp
+          _ < ⊤ := by exact ennreal.coe_lt_top
+      -/
+
+
+    have fLp:fₘ ∈ Lp ℝ 2 volume :=
+    by
+      exact Lp.mem_Lp_iff_memℒp.mpr fₘ_in_L2
+    let F : MeasureTheory.Lp ℝ 2 volume := ⟨fₘ, fLp⟩
 
     -- Lp.norm_sub_le （すなわち Minkowski の不等式）を適用できる
     -- 「L^2 ノルムの三角不等式」： ∥F - H∥ ≤ ∥F - G∥ + ∥G - H∥

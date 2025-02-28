@@ -58,7 +58,7 @@ import LeanCopilot
 --FiniteMeasureOnCompactsのinstanceの設定で3角不等式の部分の距離の有界性が示せた。
 
 --あと2日ぐらい頑張れば完全に証明できそうだが、ルベーグ積分について勉強してから再開するといいかも。
-
+set_option maxHeartbeats 2000000
 open Classical
 open MeasureTheory Real Set Metric Function Filter TopologicalSpace ENNReal
 
@@ -76,7 +76,7 @@ noncomputable instance : MeasureSpace ℝ := Real.measureSpace  --これはも�
 --Ic上のMeasureSpaceの定義。これがないと01上の積分がうまく定義できない。
 noncomputable instance : MeasureTheory.MeasureSpace Ic := --(Set.Icc (0 : ℝ) 1) :=
   MeasureTheory.Measure.Subtype.measureSpace
---noncomputable instance : MeasurableSpace Ic := by infer_instance
+noncomputable instance : MeasurableSpace Ic := by infer_instance
 --noncomputable instance : MeasureSpace Ic where
 --  volume := @MeasureTheory.Measure.restrict ℝ _ (MeasureTheory.MeasureSpace.volume : Measure ℝ) (Set.univ : Set Ic)
 --noncomputable instance : MeasureSpace Ic where
@@ -1302,9 +1302,484 @@ lemma open_ball_lemma_strong {U : Set ℝ} (hU : IsOpen U) {x : ℝ} (hxU : x �
         apply le_of_lt
         simp_all only [δ]
 
---うまくいかなかったIcにOpenPosのインスタンスを設定する部分。
+--IcにOpenPosのインスタンスを設定する部分。
 --このままだとopen_posに証明不可能な言明が出てくる。Uが01の範囲外だとゴールが成り立たない。
 --atをつかって回避。でも証明は未完。
+--Icのtopologyは、相対位相が導入済み。測度も誘導された測度。
+--import Mathlib.Topology.Instances.Real
+--import Mathlib.MeasureTheory.Measure.Space
+--import Mathlib.MeasureTheory.Measure.OpenPos
+--import Mathlib.Topology.SubsetProperties
+
+--open Set Filter Topology MeasureTheory
+
+--noncomputable def Ic : Set ℝ := Set.Icc (0 : ℝ) 1
+
+/--
+「Ic 上の開集合が非空ならば測度が正」という補題。
+
+アイデア:
+1. U が Ic の部分空間位相で開であり非空とする。
+2. U = V ∩ Ic を満たす開集合 V (ℝ の位相で開) が存在する。
+3. U が非空なので x ∈ U を取れる。
+4. V が ℝ 上で開なので、x を中心とする小区間 (x - ε, x + ε) ⊆ V を取れる。
+5. その区間をさらに Ic と交わすと (x - ε, x + ε) ∩ Ic ⊆ U となり、
+   これが非縮退区間なら Lebesgue 測度は正となる。
+6. 測度の単調性から U の測度も正となる。
+-/
+lemma openSubspace_nonempty_measure_pos
+    (U : Set Ic) (hU : IsOpen U) (hne : U.Nonempty) :
+    0 < (volume:Measure Ic) U :=
+by
+  let ⟨x, hxU⟩ := hne
+  -- U = V ∩ Ic となる V を得る
+  let ⟨V, hVU⟩ := isOpen_induced_iff.mp hU      -- isOpen_subtype': U が部分空間位相で開なら U= V ∩ univSet (ここでは Ic).
+  -- ただし mathlib には isOpen_subtype などの補題があるので使い方に合わせて調整
+  -- あるいは exists_open_subtype なども利用可能
+  -- ここでは単に「∃ V (ℝ の上で開), U = V ∩ Ic」という事実を指す
+  have xInV : x.1 ∈ V := by
+    -- x : Ic なので x.1 は ℝ 上で 0 ≤ x.1 ≤ 1
+    -- x ∈ U = V ∩ Ic なので x.1 ∈ V
+    obtain ⟨val, property⟩ := x
+    obtain ⟨left, right⟩ := hVU
+    subst right
+    simp_all only [mem_preimage]
+  -- V は ℝ 上で開なので、x.1 の付近に小区間がとれる
+  obtain ⟨ε, εpos, hball⟩ := Metric.isOpen_iff.1 (hVU.left) x.1 xInV
+
+  -- その区間を Ic と交わして得た集合が U に含まれることを示す
+  -- x は Ic の点だが、x.1 は [0,1] に入る実数
+  let I := (ball x.1 ε) ∩ (Icc 0 1)
+  have I_subset_U : I ⊆ U := by
+    intro y hy
+    have : y ∈ V ∩ Ic :=
+    by
+      simp_all only [gt_iff_lt, mem_inter_iff, mem_ball, mem_Icc, I]
+      obtain ⟨val, property⟩ := x
+      obtain ⟨left, right⟩ := hVU
+      obtain ⟨left_1, right_1⟩ := hy
+      obtain ⟨left_2, right_1⟩ := right_1
+      subst right
+      simp_all only [mem_preimage]
+      apply And.intro
+      · apply hball
+        simp_all only [mem_ball]
+      · constructor
+        · simp_all only
+        · simp_all only
+    simp_all [I]
+    obtain ⟨left, right⟩ := hVU
+    subst right
+    simp_all only [mem_preimage]
+  -- I が非空かどうかをチェック
+  -- x.1 ∈ ball x.1 ε かつ x.1 ∈ Icc 0 1 は明らか (ただし ε > 0 なので問題なし)
+  have xInI : x.1 ∈ I := ⟨mem_ball_self εpos, x.2⟩
+  -- ball x.1 ε は (x.1 - ε, x.1 + ε) のような開区間なので、I も区間の切り出しになり正 measure を持つ
+  -- measure を restricted measure (Ic 上の測度) で評価したいので、単調性を使う
+  have : 0 < (Measure.restrict volume Ic) I:= by
+    -- measureSpace の実装上 (Measure.subtype.measureSpace Ic) は
+    -- 実数上の Lebesgue measure を Ic に restrict したものと同じ
+    -- 従って I の測度は (x.1 - ε, x.1 + ε) ∩ [0,1] の実際の長さに等しく正
+    -- 正確には measure.restrict_eq_self や Ioc/Icc/Ioo の measure 計算などで示す
+    -- 以下はスケッチ
+    suffices volume.restrict Ic I = volume I by
+      -- 上記 = volume I > 0 を示せば良い
+      rw [this]
+      -- I を具体的区間 Ioo(...) に書き換えてその measure が正であることを示す
+      let a := max (x.1 - ε) 0
+      let b := min (x.1 + ε) 1
+      have a_lt_b : a < b := by
+        -- a = max(0, x-ε), b = min(1, x+ε)
+        -- x は [0,1], ε>0
+        -- 大雑把に 0 ≤ x ≤ 1 ⇒ x-ε ≤ x+ε ⇒ かつ端点考慮しても max(...) < min(...) が成立
+        -- 詳細には場合分けなしでも linarith などで示せることが多いです
+        -- ここでは手作業で不等式を確認するか linarith する
+        have : x - ε < x + ε := by linarith
+        -- max(0, x-ε) ≤ x+ε,  min(1, x+ε) ≥ x-ε など
+        -- さらに x ∈ [0,1] で ε>0 なのでしっかりと正の幅が出る
+        -- 以下は簡易に:
+        --   0 ≤ x ≤ 1 ⇒ x+ε > 0 ⇒ min(1, x+ε) > max(0, x-ε)
+        --   なぜなら x-ε < x+ε, 0 ≤ x+ε, などを合わせると
+        simp
+        dsimp [a]
+        dsimp [b]
+        rw [@lt_min_iff]
+        rw [@max_lt_iff]
+        rw [@max_lt_iff]
+        dsimp [I] at xInI
+        simp at xInI
+        have hx0: x.1 ≥ 0 :=
+        by
+          exact unitInterval.nonneg x
+        have hx1: x.1 ≤ 1 :=
+        by
+          exact unitInterval.le_one x
+        constructor
+        constructor
+        exact this
+        exact add_pos_of_nonneg_of_pos hx0 εpos
+        constructor
+        simp_all only [gt_iff_lt, ge_iff_le, a, b, I]
+        linarith
+        simp_all only [gt_iff_lt, ge_iff_le, zero_lt_one, a, b, I]
+      have Ioo_ab_subset : Ioo a b ⊆ I := by
+    -- 厳密には、これは成り立たない。|y-x| = εのケースが問題。
+    --「閉球 vs 開球」で端点をどう扱うかは measure 0 の問題なので
+    -- 下記では「|y - x| ≤ ε ⇒ y ∈ ball x ε」とは厳密には違うが
+    -- 一般に (closed_ball x ε) \ (ball x ε) は端点のみ (measure 0)
+    -- という事実で吸収可能です。
+    -- もしくは「実際に a < y < b を示し |y-x| < ε をチェック」としてもOK。
+        intro y hy
+        obtain ⟨y_ge_a, y_le_b⟩ := hy
+        -- y ≥ a = max(0,x-ε) ⇒ y ≥ 0, y ≥ x-ε
+        -- y ≤ b = min(1,x+ε) ⇒ y ≤ 1, y ≤ x+ε
+        dsimp [I]
+        simp_all only [gt_iff_lt, mem_inter_iff, mem_ball, dist_self, Subtype.coe_prop, and_self, lt_inf_iff,
+          sup_lt_iff, zero_lt_one, and_true, mem_Icc, a, b, I]
+        obtain ⟨val, property⟩ := x
+        obtain ⟨left, right⟩ := hVU
+        obtain ⟨left_1, right_1⟩ := a_lt_b
+        obtain ⟨left_2, right_2⟩ := y_ge_a
+        obtain ⟨left_3, right_3⟩ := y_le_b
+        obtain ⟨left_1, right_4⟩ := left_1
+        subst right
+        simp_all only [mem_preimage, Subtype.image_preimage_coe, subset_inter_iff]
+        obtain ⟨left_4, right⟩ := I_subset_U
+        apply And.intro
+        · rw [dist_eq_norm]
+          simp_all only [norm_eq_abs]
+          rw [abs]
+          simp_all only [neg_sub, sup_lt_iff]
+          apply And.intro
+          · linarith
+          · linarith
+        · apply And.intro
+          · positivity
+          · exact right_3.le
+        /-
+        have h0 : 0 ≤ y := by
+
+        have h1 : y ≤ 1 := by
+          simp_all only [gt_iff_lt, mem_inter_iff, mem_ball, dist_self, Subtype.coe_prop, and_self, lt_inf_iff,
+            sup_lt_iff, zero_lt_one, and_true, sup_le_iff, tsub_le_iff_right, le_inf_iff, a, b, I]
+        have h_ball' : |y - x| ≤ ε := by  --等号を外すと成り立たない。
+          have : x - ε ≤ y ∧ y ≤ x + ε := by
+            constructor
+            · simp_all only [gt_iff_lt, mem_inter_iff, mem_ball, dist_self, Subtype.coe_prop, and_self, lt_inf_iff,
+              sup_lt_iff, zero_lt_one, and_true, sup_le_iff, tsub_le_iff_right, le_inf_iff, a, b, I]
+            · simp_all only [gt_iff_lt, mem_inter_iff, mem_ball, dist_self, Subtype.coe_prop, and_self, lt_inf_iff,
+              sup_lt_iff, zero_lt_one, and_true, sup_le_iff, tsub_le_iff_right, le_inf_iff, a, b, I]
+          -- これで x - ε ≤ y ≤ x+ε ⇒ |y-x| ≤ ε
+          rw [abs_le]
+          simp_all only [gt_iff_lt, mem_inter_iff, mem_ball, dist_self, Subtype.coe_prop, and_self, lt_inf_iff,
+            sup_lt_iff, zero_lt_one, and_true, sup_le_iff, le_inf_iff, tsub_le_iff_right, neg_le_sub_iff_le_add,
+            true_and, a, b, I]
+          obtain ⟨val, property⟩ := x
+          obtain ⟨left, right⟩ := hVU
+          subst right
+          linarith
+        -- y がちょうど端点 x±ε の場合には `|y-x| = ε` となり "ball x ε" ではなく "closed_ball x ε"。
+        -- しかし measure の観点では端点差は 0 なので包含（up to measure 0）。
+        -- いちおう「subset でなく ⊆ᵐ (almost everywhere)」とするか、
+        --   measure(I \ (Icc a b)) = 0
+        -- のように述べてもOK。
+        -- ここでは簡潔に「ball と closed_ball の違いは measure 0 なので吸収」とするか、
+        --   'if h_ball < ε then done else boundary is measure zero'
+        --   としてまとめる。
+        refine mem_inter ?_ ?_
+        · -- y ∈ ball x ε up to measure zero
+          -- if h_ball < ε then trivially. if h_ball = ε then boundary...
+          -- measure 的には問題なし
+          -- Lean 上で厳密に "y ∈ ball x ε" を示すなら "h_ball < ε" が必要
+          -- しかし h_ball = ε のとき strict < にはならない
+          -- measure 0 という事実に頼るか,
+          --   or we can define a slightly smaller radius (ε/2) to do the containment
+          --   but that changes the length
+          -- → typical measure-theoretic approach: "almost everything"
+          -- ここでは 'subset' を使いたいなら,
+          --   alternative: y - x < ε or x - y < ε => strictly
+          --   we can do (ball x (ε - δ)) for small δ>0
+          -- "strictly" でなくても measure(Icc a b) ≤ measure( ball x ε )
+          show y ∈ ball (↑x) ε
+          dsimp [ball]
+          dsimp [dist]
+          sorry
+        · -- y ∈ [0,1]
+          exact ⟨h0, h1⟩
+      -/
+      show 0 < volume I
+      let a' := (3*a+b)/4
+      let b' := (a+3*b)/4
+      let I':= Icc a' b'
+      have a'_lt_b': a' < b':=
+      by
+        dsimp [a',b']
+        ring_nf
+        linarith
+      have sub' :I' ⊂ Ioo a b:=
+      by
+        dsimp [I',Ioo,Icc,a',b']
+        rw [@ssubset_def]
+        constructor
+        · intro x hx
+          simp at hx
+          simp
+          constructor
+          · have a_le_x: a≤x:=by
+              linarith
+            have a_ne_x: a≠ x:= by
+              by_contra h_contra
+              rw [h_contra] at hx
+              linarith
+            exact lt_of_le_of_ne a_le_x a_ne_x
+          · have x_le_b :x ≤ b :=by
+              linarith
+            have x_ne_b :x ≠ b := by
+              by_contra h_contra
+              rw [h_contra] at hx
+              linarith
+            exact lt_of_le_of_ne x_le_b x_ne_b
+        · by_contra h_contra
+          let y := a/8+(b*7/8)
+          have y_in_Ioo : y ∈ {x | a < x ∧ x < b} := by
+            constructor
+            · -- a < y を示す
+              calc
+                a = a * 8 / 8 := by ring
+                _ < (a + b*7) / 8 := by linarith
+                _ = y := by exact add_div a (b * 7) 8
+            · -- y < b を示す
+              calc
+                y = (a / 8 + b * 7 / 8) := by rfl
+                _ < (b * 8 / 8) := by linarith
+                _ = b := by ring
+          have y_not_in_Icc : y ∉ {x | (3 * a + b) / 4 ≤ x ∧ x ≤ (a + 3 * b) / 4} := by
+            by_contra h_contra'
+            simp at h_contra'
+            have : y > (a + 3 * b) / 4:= by
+              dsimp [y]
+              linarith
+            let h_c := h_contra'.2
+            rw [←ge_iff_le] at h_c
+            exact lt_irrefl y (lt_of_le_of_lt h_c this)
+          simp_all only [gt_iff_lt, mem_inter_iff, mem_ball, dist_self, Subtype.coe_prop, and_self, lt_inf_iff,
+            sup_lt_iff, zero_lt_one, and_true, subset_inter_iff, setOf_subset_setOf, and_imp, mem_setOf_eq,
+            not_true_eq_false, a, I', b, y, I, b', a']
+
+      have Icc_ab_subset : I' ⊆ I := by
+        intro y hy
+        have : y ∈ Ioo a b := by
+          exact sub'.1 hy
+        exact Ioo_ab_subset this
+
+      /-
+
+
+    -- 厳密には、これは成り立たない。|y-x| = εのケースが問題。
+    --「閉球 vs 開球」で端点をどう扱うかは measure 0 の問題なので
+    -- 下記では「|y - x| ≤ ε ⇒ y ∈ ball x ε」とは厳密には違うが
+    -- 一般に (closed_ball x ε) \ (ball x ε) は端点のみ (measure 0)
+    -- という事実で吸収可能です。
+    -- もしくは「実際に a < y < b を示し |y-x| < ε をチェック」としてもOK。
+        intro y hy
+        obtain ⟨y_ge_a, y_le_b⟩ := hy
+        -- y ≥ a = max(0,x-ε) ⇒ y ≥ 0, y ≥ x-ε
+        -- y ≤ b = min(1,x+ε) ⇒ y ≤ 1, y ≤ x+ε
+        dsimp [I]
+        have h0 : 0 ≤ y := by
+          simp_all only [gt_iff_lt, mem_inter_iff, mem_ball, dist_self, Subtype.coe_prop, and_self, lt_inf_iff,
+            sup_lt_iff, zero_lt_one, and_true, sup_le_iff, tsub_le_iff_right, le_inf_iff, a, b, I]
+        have h1 : y ≤ 1 := by
+          simp_all only [gt_iff_lt, mem_inter_iff, mem_ball, dist_self, Subtype.coe_prop, and_self, lt_inf_iff,
+            sup_lt_iff, zero_lt_one, and_true, sup_le_iff, tsub_le_iff_right, le_inf_iff, a, b, I]
+        have h_ball' : |y - x| ≤ ε := by  --等号を外すと成り立たない。
+          have : x - ε ≤ y ∧ y ≤ x + ε := by
+            constructor
+            · simp_all only [gt_iff_lt, mem_inter_iff, mem_ball, dist_self, Subtype.coe_prop, and_self, lt_inf_iff,
+              sup_lt_iff, zero_lt_one, and_true, sup_le_iff, tsub_le_iff_right, le_inf_iff, a, b, I]
+            · simp_all only [gt_iff_lt, mem_inter_iff, mem_ball, dist_self, Subtype.coe_prop, and_self, lt_inf_iff,
+              sup_lt_iff, zero_lt_one, and_true, sup_le_iff, tsub_le_iff_right, le_inf_iff, a, b, I]
+          -- これで x - ε ≤ y ≤ x+ε ⇒ |y-x| ≤ ε
+          rw [abs_le]
+          simp_all only [gt_iff_lt, mem_inter_iff, mem_ball, dist_self, Subtype.coe_prop, and_self, lt_inf_iff,
+            sup_lt_iff, zero_lt_one, and_true, sup_le_iff, le_inf_iff, tsub_le_iff_right, neg_le_sub_iff_le_add,
+            true_and, a, b, I]
+          obtain ⟨val, property⟩ := x
+          obtain ⟨left, right⟩ := hVU
+          subst right
+          linarith
+        -- y がちょうど端点 x±ε の場合には `|y-x| = ε` となり "ball x ε" ではなく "closed_ball x ε"。
+        -- しかし measure の観点では端点差は 0 なので包含（up to measure 0）。
+        -- いちおう「subset でなく ⊆ᵐ (almost everywhere)」とするか、
+        --   measure(I \ (Icc a b)) = 0
+        -- のように述べてもOK。
+        -- ここでは簡潔に「ball と closed_ball の違いは measure 0 なので吸収」とするか、
+        --   'if h_ball < ε then done else boundary is measure zero'
+        --   としてまとめる。
+        refine mem_inter ?_ ?_
+        · -- y ∈ ball x ε up to measure zero
+          -- if h_ball < ε then trivially. if h_ball = ε then boundary...
+          -- measure 的には問題なし
+          -- Lean 上で厳密に "y ∈ ball x ε" を示すなら "h_ball < ε" が必要
+          -- しかし h_ball = ε のとき strict < にはならない
+          -- measure 0 という事実に頼るか,
+          --   or we can define a slightly smaller radius (ε/2) to do the containment
+          --   but that changes the length
+          -- → typical measure-theoretic approach: "almost everything"
+          -- ここでは 'subset' を使いたいなら,
+          --   alternative: y - x < ε or x - y < ε => strictly
+          --   we can do (ball x (ε - δ)) for small δ>0
+          -- "strictly" でなくても measure(Icc a b) ≤ measure( ball x ε )
+          show y ∈ ball (↑x) ε
+          dsimp [ball]
+          dsimp [dist]
+          sorry
+        · -- y ∈ [0,1]
+          exact ⟨h0, h1⟩
+      -/
+      show 0 < volume I
+      have I_le_I:volume I' ≤ volume I  := by
+        exact OuterMeasureClass.measure_mono volume Icc_ab_subset
+
+      have measure_Icc_ab : 0 < volume I' := by
+    -- volume(Icc a b) = Real.volume (Icc a b) = ennreal.ofReal (b - a) (b>a)
+    --  b > a ⇒ b - a > 0 ⇒ ennreal.ofReal (b-a) > 0
+        rw [Real.volume_Icc]
+        simp_all only [gt_iff_lt, mem_inter_iff, mem_ball, dist_self, Subtype.coe_prop, and_self, lt_inf_iff,
+          sup_lt_iff, zero_lt_one, and_true, subset_inter_iff, ofReal_pos, sub_pos, a', b', a, b, I, I']
+      -- 以上より Icc a b ⊆ I up to measure 0 ⇒ measure(I) ≥ measure(Icc a b)
+      -- 従って measure(I) > 0
+      exact gt_of_ge_of_gt I_le_I measure_Icc_ab
+
+      /- grokに提案されたもの。本質的に同じだと思われるので、上のo1のものと未解決の部分を比べてみる。
+      suffices (Measure.restrict volume (Icc 0 1)) I = volume I from by
+      -- I は (Icc 0 1) の部分集合
+      simp_all only [gt_iff_lt, mem_inter_iff, mem_ball, dist_self, Subtype.coe_prop, and_self, measurableSet_Icc,
+        Measure.restrict_apply']
+      obtain ⟨val, property⟩ := x
+      obtain ⟨left, right⟩ := hVU
+      subst right
+      simp_all only [mem_preimage, Subtype.image_preimage_coe, subset_inter_iff]
+      obtain ⟨left_1, right⟩ := I_subset_U
+      have hI_eq : I = Ioo (max (val - ε) 0) (min (val + ε) 1) := by
+        ext y
+        simp only [mem_inter_iff, mem_ball, mem_Icc, mem_Ioo, Real.dist_eq]
+        constructor
+        · intro ⟨h_dist, h_Ic⟩
+          constructor
+          · apply max_lt
+            · exact sub_lt_of_abs_sub_lt_left h_dist
+            · sorry
+          · apply lt_min
+            · sorry
+            · sorry
+        · intro ⟨h_left, h_right⟩
+          constructor
+          · simp only [Real.dist_eq]
+            have h1 : val - ε < y := (max_lt_iff.mp h_left).1
+            have h2 : y < val + ε := by simp_all only [sup_lt_iff, true_and, lt_inf_iff]
+            sorry
+          ·
+            simp_all only [sup_lt_iff, lt_inf_iff, mem_Icc]
+            obtain ⟨left_2, right_1⟩ := h_left
+            obtain ⟨left_3, right_2⟩ := h_right
+            apply And.intro
+            · positivity
+            · linarith
+
+      rw [hI_eq]
+      have hI_pos : 0 < volume (Ioo (max (val - ε) 0) (min (val + ε) 1)) :=
+        -- Define the positivity condition of the interval length:
+        have h_length_pos : max (val - ε) 0 < min (val + ε) 1 :=
+          by
+            have h_left : max (val - ε) 0 ≤ val :=
+              by
+                apply max_le
+                simp_all only [mem_inter_iff, mem_ball, dist_self, mem_Icc, true_and, tsub_le_iff_right,
+                  le_add_iff_nonneg_right, volume_Ioo, I]
+                obtain ⟨left_2, right_1⟩ := xInI
+                positivity
+                exact property.1
+            have h_right : val ≤ min (val + ε) 1 :=
+              by
+                apply le_min
+                simp_all only [mem_inter_iff, mem_ball, dist_self, mem_Icc, true_and, sup_le_iff, tsub_le_iff_right,
+                  le_add_iff_nonneg_right, and_true, I]
+                simp_all only [mem_inter_iff, mem_ball, dist_self, mem_Icc, true_and, sup_le_iff, tsub_le_iff_right,
+                  le_add_iff_nonneg_right, and_true, I]
+            apply lt_of_le_of_lt h_left
+            sorry
+        (MeasureTheory.Measure.measure_Ioo_pos volume).mpr h_length_pos
+      sorry
+      -/
+    apply MeasureTheory.Measure.restrict_eq_self volume
+    simp_all only [gt_iff_lt, mem_inter_iff, mem_ball, dist_self, Subtype.coe_prop, and_self, inter_subset_right, I]
+      --apply MeasureTheory.Measure.measure_pos_of_nonempty_interior
+      --εpos : ε > 0
+      --ball val ε ∩ Icc 0 1 ⊆ V
+      --volume (ball val ε ∩ Icc 0 1 ∩ Icc 0 1) = volume (ball val ε ∩ Icc 0 1)
+      --exact ⟨x.1, xInI⟩
+    obtain ⟨val, property⟩ := x
+    obtain ⟨left, right⟩ := hVU
+    subst right
+    simp_all only [mem_preimage, Subtype.image_preimage_coe, subset_inter_iff]
+
+  calc
+     (0 : ℝ≥0∞) < (Measure.restrict volume Ic) I:= by exact this
+     _ ≤ (Measure.restrict volume Ic) U:= measure_mono I_subset_U
+     _ ≤  volume U := by
+      show (volume.restrict Ic) (Subtype.val '' U) ≤ volume U
+      have h_sub : Subtype.val '' U ⊆ Ic :=
+      by rintro x ⟨y, hy, rfl⟩; exact y.2
+      --have : U ⊆ Ic := fun u hu => u.2  -- U は Ic 上の集合なので, その carrier は常に Ic
+      rw [Measure.restrict_eq_self volume h_sub]
+      show  volume (Subtype.val '' U) ≤ volume U
+      have measU:MeasurableSet U :=
+      by
+        simp_all only [gt_iff_lt, mem_inter_iff, mem_ball, dist_self, Subtype.coe_prop, and_self, image_subset_iff,
+          Subtype.coe_preimage_self, subset_univ, I]
+        obtain ⟨val, property⟩ := x
+        obtain ⟨left, right⟩ := hVU
+        subst right
+        simp_all only [mem_preimage, Subtype.image_preimage_coe, subset_inter_iff]
+        obtain ⟨left_1, right⟩ := I_subset_U
+        exact hU.measurableSet
+      have measSU:MeasurableSet (Subtype.val '' U) :=
+      by
+        apply MeasurableSet.subtype_image
+        · dsimp [Ic]
+          exact measurableSet_Icc
+        · exact measU
+      let mr := measure_restrict_eq_measure measSU h_sub
+      rw [←mr]
+      have :volume (Subtype.val '' U) = volume U :=
+      by
+        let cs := comap_subtype_coe_apply measurableSet_Icc volume U
+        simp at cs
+        suffices  (Measure.comap Subtype.val volume) U = volume U from
+        by
+          exact id (Eq.symm cs)
+        simp_all only [gt_iff_lt, mem_inter_iff, mem_ball, dist_self, Subtype.coe_prop, and_self, I]
+        obtain ⟨val, property⟩ := x
+        obtain ⟨left, right⟩ := hVU
+        subst right
+        simp_all only [mem_preimage, Subtype.image_preimage_coe, subset_inter_iff]
+        obtain ⟨left_1, right⟩ := I_subset_U
+        rfl
+      simp_all only [gt_iff_lt, mem_inter_iff, mem_ball, dist_self, Subtype.coe_prop, and_self, le_refl, I, mr]
+
+-- 以上の補題を使って IsOpenPosMeasure を与える
+noncomputable instance : MeasureTheory.Measure.IsOpenPosMeasure (volume:Measure Ic) where
+  open_pos := fun U hU hne =>
+  by
+    let os := openSubspace_nonempty_measure_pos U hU hne
+    simp_all only [ne_eq]
+    apply Aesop.BuiltinRules.not_intro
+    intro a
+    simp [a] at os
+
+
+
 /-
 instance : @MeasureTheory.Measure.IsOpenPosMeasure Ic _ _ (MeasureTheory.MeasureSpace.volume.restrict (Set.univ:Set Ic)) where
   open_pos := fun U hU hU_nonempty =>

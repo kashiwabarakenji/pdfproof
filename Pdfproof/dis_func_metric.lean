@@ -79,7 +79,7 @@ def C₀ := ContinuousMap (Set.Icc (0 : ℝ) 1) ℝ
 
 --使ってないかも。
 lemma measure_restrict_eq_measure {K : Set ℝ} (hK : MeasurableSet K) (hK_sub : K ⊆ Ic) :
-  (volume.restrict Ic) K = (volume : Measure ℝ) K :=
+  (.restrict Icvolume) K = (volume : Measure ℝ) K :=
 by
   -- `Measure.restrict_apply` を適用
   rw [MeasureTheory.Measure.restrict_apply hK]
@@ -709,6 +709,56 @@ by
           ofReal_eq_zero, inv_neg'', inv_pos, Nat.ofNat_pos, and_true, or_false, not_and, not_lt, Nat.ofNat_nonneg,
           implies_true]
 
+--noncomputable def L2_norm (f : C₀) : ℝ := ENNReal.toReal (eLpNorm (fun x : Ic => f.1 x) 2 (volume:Measure Ic))
+
+/-
+
+instance : AddCommGroup C₀ where
+  add := (· + ·)
+  add_assoc := by
+    intro a b c
+    simp [add_assoc]
+  zero_add := by intros; apply ContinuousMap.ext; simp
+  add_zero := by intros; apply ContinuousMap.ext; simp
+  neg := (- ·)
+  --add_left_neg := by intros; apply ContinuousMap.ext; simp
+  add_comm := by
+    intro a b
+    simp_all only
+    --simp [add_comm]
+    --連続関数の和が連続で、順番を取り替えても値が等しい。
+    search_proof
+
+instance : MetricSpace C₀ where
+  dist f g := L2_norm_ext (f - g)
+  dist_self f := by simp [L2_norm_ext, snorm_zero]
+  dist_comm f g := by simp [L2_norm_ext, norm_sub_rev]
+  dist_triangle f g h := by
+    rw [← sub_add_sub_cancel]
+    apply snorm_add_le (mem_L2_f_ext (f - g)) (mem_L2_f_ext (g - h))
+  eq_of_dist_eq_zero := by
+    intros f g hfg
+    have : toFun f =ᵐ[volume] toFun g := snorm_eq_zero_iff.mp hfg
+    apply ContinuousMap.ext
+    intro x
+    apply this.eq_of_mem
+
+instance : NormedAddCommGroup C₀ where
+  norm := L2_norm_ext
+  dist_eq := rfl
+
+instance : NormedAddCommGroup C₀ where
+  norm f := L2_norm f
+  dist f g := L2_norm (f - g)
+  add_comm f :=
+  dist_self f :=
+  dist_comm :=
+  dist_triangle :=
+  eq_of_dist_eq_zero :=
+
+-/
+
+
 noncomputable def functionIntegrable (f : C₀) : MeasureTheory.Lp ℝ 2 (volume: Measure ℝ) :=
 by
   have meas_f : Measurable (toFun f) := toFun_measurable f
@@ -815,18 +865,19 @@ noncomputable instance : MetricSpace C₀ where
     ring
 
   dist_triangle f g h := by
-    let fₘ := mem_L2_f_ext f
-    let gₘ := mem_L2_f_ext g
-    let hₘ := mem_L2_f_ext h
-    set F := functionIntegrable f with h_F
-    set G := functionIntegrable g with h_G
-    set H := functionIntegrable h with h_H
+    let fₘ := @mem_L2_f_ext f
+    let gₘ := @mem_L2_f_ext g
+    let hₘ := @mem_L2_f_ext h
+    let f_L2 := fₘ.toLp
+    let g_L2 := gₘ.toLp
+    let h_L2 := hₘ.toLp
     calc
       L2_distance_Ic f h
-        = ‖F - H‖ := by rw [LP2norm h_F h_H]
-      _ ≤ ‖F - G‖ + ‖G - H‖ := norm_sub_le_norm_sub_add_norm_sub F G H
+        = ‖f_L2 - h_L2‖ := by rw [Lp.norm_def]
+      _ ≤ ‖f_L2 - g_L2‖ + ‖g_L2 - h_L2‖ := norm_sub_le_norm_sub_add_norm_sub f_L2 g_L2 h_L2
       _ = L2_distance_Ic f g + L2_distance_Ic g h
-        := by rw [LP2norm h_F h_G, LP2norm h_G h_H]
+        := by rw [Lp.norm_def]
+
 
   eq_of_dist_eq_zero := by
     intro f g hfg

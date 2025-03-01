@@ -20,3 +20,5 @@ require LeanCopilot from git "https://github.com/lean-dojo/LeanCopilot.git" @ "v
 @[default_target]
 lean_lib «Pdfproof» where
   -- add any library configuration options here
+  srcDir := "."
+  roots := #[`Pdfproof.lattice_common, `Pdfproof.lattice_closure_set, `Pdfproof.lattice_closure,  `Pdfproof.dis_func_metric, `Pdfproof.Ic_OpenPosMeasure]

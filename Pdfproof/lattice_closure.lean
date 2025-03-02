@@ -13,7 +13,7 @@ import Mathlib.Order.Lattice
 import Mathlib.Data.Finset.Lattice.Basic
 import Init.Data.List.MinMax
 import Mathlib.Data.List.MinMax
-import Mathlib.Algebra.BigOperators.Group.Finset
+--import Mathlib.Algebra.BigOperators.Group.Finset
 import Init.Data.List.Lemmas
 import Pdfproof.closure_lemma
 import Pdfproof.lattice_common
@@ -254,6 +254,7 @@ by
 
   have : sval ∈ F.ground.powerset := by
     simp_all only [Finset.mem_powerset]
+    simp_all only [sval]
 
   have h2 := intersectionExtension F sval this
   simp_all only [Finset.mem_subtype, sval]
@@ -782,7 +783,7 @@ noncomputable def closure_operator_from_CS {α :Type} [DecidableEq α][Fintype �
         obtain ⟨val, property⟩ := x_1
         simp_all only
         apply a
-        simp_all only
+        simp_all only [cl_s, sval, cl]
 
     have h_cl_s_in_sets : C.sets cl_s := by
       apply finite_intersection_in_C

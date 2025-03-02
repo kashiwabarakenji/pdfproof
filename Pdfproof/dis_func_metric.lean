@@ -547,7 +547,7 @@ by
   simp_all only
   exact this _ property
 
-lemma mem_L2_f_ext : Memℒp (toFun f) 2 volume :=
+lemma mem_L2_f_ext {f: C₀}: Memℒp (toFun f) 2 volume :=
 by
   constructor
   · convert toFun_measurable f
@@ -1086,17 +1086,236 @@ noncomputable instance : MetricSpace C₀ where
     dsimp [eLpNorm] at hfg
     simp at hfg
     dsimp [eLpNorm'] at hfg
-    unfold toFun at hfg
+    --unfold toFun at hfg
     simp at hfg
     --ここで関数の値をIc上とIc以外のところにわける。補題を作る。
 
-    have h_integral_zero : ∫⁻ x in (Set.univ:Set Ic), ENNReal.ofReal ((f.1 x - g.1 x) ^ 2) = 0 :=
+    have h_integral_zero:((∫⁻ (a : ℝ),  (‖toFun (f - g) a‖ₑ ^ 2)) ) = 0 := by
+      rw [ENNReal.toReal_eq_zero_iff] at hfg
+      cases hfg
+      case inl h' =>
+        --rw [ENNReal.rpow_eq_zero_iff]
+        have hr : (0:ℝ) < ((2⁻¹):ℝ) := by norm_num
+        let ere := (@ENNReal.rpow_eq_zero_iff ((∫⁻ (a : ℝ), (‖toFun (f - g) a‖ₑ ^ 2)) ) (2⁻¹:ℝ) ).mp h'
+        simp_all only [inv_pos, Nat.ofNat_pos]
+        obtain ⟨val, property⟩ := x
+        simp_all only [mem_Icc]
+        obtain ⟨left, right⟩ := property
+        cases ere with
+        | inl h => simp_all only [zero_rpow_of_pos, inv_pos, Nat.ofNat_pos, and_true]
+        | inr h_1 =>
+          exfalso
+          simp at h_1
+          linarith
+        --h'を書き換える必要。
+      case inr h_inf => -- `∞` の場合は矛盾（ルベーグ積分は有限）
+        exfalso
+        -- ここで `∫⁻` が有限であることを仮定する
+        have h_integral_finite : (∫⁻ (a : ℝ), (‖toFun (f - g) a‖ₑ ^ 2)) < ⊤ := by
+        /-
+          let M:= (∫⁻ (a : ℝ), ‖toFun (f - g) a‖ₑ ^ 2)^ (2⁻¹:ℝ)
+          have :(∫⁻ (a : ℝ), ‖toFun (f - g) a‖ₑ ^ 2)  = M ^ (2:ℝ) := by
+            norm_num
+            simp_all only [rpow_eq_top_iff, inv_neg'', inv_pos, Nat.ofNat_pos, and_true, one_div, M]
+            obtain ⟨val, property⟩ := x
+            simp_all only [mem_Icc, M]
+            obtain ⟨left, right⟩ := property
+            cases h_inf with
+            | inl h =>
+              simp_all only [inv_pos, Nat.ofNat_pos, zero_rpow_of_pos, ne_eq, OfNat.ofNat_ne_zero, not_false_eq_true,
+                zero_pow, M]
+            | inr h_1 =>
+              simp_all only [inv_pos, Nat.ofNat_pos, top_rpow_of_pos, M]
+              rfl
+          rw [this] at h_inf
+          rw [this]
+          simp
+          --閉区間で連続なので、有界という事実を使う必要がありそう。
+          -- ここで関数が有界であることを示す補題を導入する。
+        -/
+          let fₘ := (@mem_L2_f_ext f).toLp
+          let gₘ := (@mem_L2_f_ext g).toLp
+          let fgₘ := (@mem_L2_f_ext (f - g)).toLp
+          let fglp := fgₘ.2
+          have h_memℒp : Memℒp (toFun (f - g)) 2 volume := @mem_L2_f_ext (f - g)
+          -- `Memℒp` の定義から `eLpNorm` が有限
+          have h_norm : eLpNorm (toFun (f - g)) 2 volume < ∞ := h_memℒp.2
+          -- `eLpNorm` の定義を適用
+          rw [MeasureTheory.eLpNorm_eq_lintegral_rpow_enorm] at h_norm
+          -- `ENNReal.rpow_lt_top_of_nonneg` を適用
+          --let erl := @ENNReal.rpow_lt_top_of_nonneg (∫⁻ (a : ℝ), ‖toFun (f - g) a‖ₑ^2) 1 (by norm_num)
+          --apply erl
+          simp_all only [rpow_eq_top_iff, inv_neg'', inv_pos, Nat.ofNat_pos, and_true, toReal_ofNat, rpow_ofNat,
+            one_div, gt_iff_lt]
+          obtain ⟨val, property⟩ := x
+          obtain ⟨val_1, property_1⟩ := fₘ
+          obtain ⟨val_2, property_2⟩ := gₘ
+          obtain ⟨val_3, property_3⟩ := fgₘ
+          simp_all only [mem_Icc]
+          obtain ⟨left, right⟩ := property
+          cases h_inf with
+          | inl h => simp_all only [inv_pos, Nat.ofNat_pos, zero_rpow_of_pos, zero_lt_top]
+          | inr h_1 => simp_all only [inv_pos, Nat.ofNat_pos, top_rpow_of_pos, lt_self_iff_false]
+
+          · simp_all only [rpow_eq_top_iff, inv_neg'', inv_pos, Nat.ofNat_pos, and_true, ne_eq, OfNat.ofNat_ne_zero,
+            not_false_eq_true]
+
+          · simp_all only [rpow_eq_top_iff, inv_neg'', inv_pos, Nat.ofNat_pos, and_true, ne_eq, ofNat_ne_top,
+              not_false_eq_true]
+
+        simp_all only [rpow_eq_top_iff, inv_neg'', inv_pos, Nat.ofNat_pos, and_true]
+        obtain ⟨val, property⟩ := x
+        simp_all only [mem_Icc]
+        obtain ⟨left, right⟩ := property
+        cases h_inf with
+        | inl h =>
+          simp_all only [zero_lt_top]
+          obtain ⟨left_1, right_1⟩ := h
+          linarith
+        | inr h_1 => simp_all only [lt_self_iff_false]
+
+    have h_integral_zero:((∫⁻ (a : ℝ),  ENNReal.ofReal (‖toFun (f - g) a‖ ^ 2)) ) = 0 := by
+      --convert h_integral_zero
+      let lc := @lintegral_congr _ _ volume (fun a => ENNReal.ofReal (‖toFun (f - g) a‖ ^ 2)) (fun a => ‖toFun (f - g) a‖ₑ ^ 2)
+      have :∀ a:ℝ, ENNReal.ofReal (‖toFun (f - g) a‖ ^ 2) = ‖toFun (f - g) a‖ₑ ^ 2 := by
+        let eq_pointwise : ∀ x : ℝ, ENNReal.ofReal (‖toFun (f - g) x‖ ^ 2) = ‖toFun (f - g) x‖ₑ ^ 2 :=
+          fun x => by
+            simp_all only [ContinuousMap.toFun_eq_coe, norm_eq_abs, sq_abs, ContinuousMap.coe_sub, ContinuousMap.coe_mk]
+            rw [Real.enorm_eq_ofReal_abs]
+            rw [←abs_sq]
+            rename_i x_1
+            simp_all only [inv_pos, Nat.ofNat_pos, zero_rpow_of_pos, zero_toReal, abs_pow, sq_abs]
+            obtain ⟨val, property⟩ := x_1
+            simp_all only [mem_Icc]
+            obtain ⟨left, right⟩ := property
+            rw [← ENNReal.ofReal_pow]
+            · simp_all only [sq_abs]
+            · simp_all only [abs_nonneg]
+        intro a
+        simp_all only [norm_eq_abs, sq_abs]
+        obtain ⟨val, property⟩ := x
+        obtain ⟨left, right⟩ := property
+        simpa using eq_pointwise a
+      simp_all only [inv_pos, Nat.ofNat_pos, zero_rpow_of_pos, zero_toReal, norm_eq_abs, sq_abs]
+
+    have h_integral_Ic_c : ∫⁻ x in (Set.univ:Set Ic_c), ENNReal.ofReal ((toFun f x - toFun g x) ^ 2) = 0 :=
     by
-      rw [piecewise_lem (f-g)]
-      rw [zero_Ic_c_lem]
+      let zic := zero_Ic_c_lem (⟨fun x:Ic => ((f.1 x) + - (g.1 x))^(2:ℝ),by
+        simp_all only [ContinuousMap.toFun_eq_coe, Real.rpow_two]
+        obtain ⟨val, property⟩ := x
+        simp_all only [mem_Icc]
+        obtain ⟨left, right⟩ := property
+        fun_prop
+      ⟩)
+      simp at zic
+      simp
+      dsimp [Ic] at zic
+      dsimp [Ic_c]
+      dsimp [Ic]
+
+      convert zic
+      rw [MeasureTheory.lintegral_congr_ae]
+      · simp_all only
+        symm
+        rw [lintegral_zero]
+
+      · --show (fun x ↦ ENNReal.ofReal ((toFun f ↑x - toFun g ↑x) ^ 2)) =ᶠ[ae volume] fun a ↦ 0
+        have h : ∀ (x : Ic_c), ENNReal.ofReal ((toFun f ↑x - toFun g ↑x) ^ 2) = 0 := by
+          intro x
+          unfold toFun
+          split
+          case isTrue h' =>
+            simp_all only [ContinuousMap.toFun_eq_coe, Real.rpow_two]
+            obtain ⟨val, property⟩ := x
+            simp_all only [mem_Icc]
+            simp_all only [ofReal_eq_zero]
+            obtain ⟨val_1, property_1⟩ := x
+            rw [← zic] at zic
+            simp_all only
+            simp_all only [mem_Icc]
+            obtain ⟨left, right⟩ := property_1
+            norm_cast
+          case isFalse h' =>
+            simp
+        simp_all only [ofReal_eq_zero, Subtype.forall]
+        obtain ⟨val, property⟩ := x
+        filter_upwards with x
+        simp_all only [ofReal_eq_zero, Subtype.coe_prop]
+    --have :∫⁻ (x : ↑Ic) in univ, ENNReal.ofReal ((f - g).toFun x ^ 2) ∂@volume = 0 :=
+    --by
+    have :∀ x∈ Icᶜ, ‖toFun (f - g) x‖ ^ 2= (toFun f x - toFun g x) ^ 2 := by
+      intro x hx
+      simp_all only [ContinuousMap.toFun_eq_coe, norm_eq_abs, sq_abs, ContinuousMap.coe_sub, ContinuousMap.coe_mk
+        , ContinuousMap.toFun_eq_coe]
+      unfold toFun
+      split
+      case isTrue h' =>
+        simp_all only [ContinuousMap.toFun_eq_coe, Real.rpow_two]
+        rfl
+      case isFalse h' =>
+        simp
+
+
+    have integral_zoro: ∫⁻ (x : ℝ) in Icᶜ, ENNReal.ofReal (‖toFun (f - g) x‖ ^ 2) = 0 :=
+    by
+      have : ∫⁻ (x : ℝ) in Icᶜ, ENNReal.ofReal (‖toFun (f - g) x‖ ^ 2) = ∫⁻ (x : ℝ) in Icᶜ, ENNReal.ofReal ((toFun f x - toFun g x) ^ 2) :=
+      by
+        apply lintegral_congr
+        intro x
+        unfold toFun
+        split
+        case isTrue h' =>
+          simp_all only [ContinuousMap.toFun_eq_coe, Real.rpow_two]
+          rename_i x_1
+          simp_all only [Measure.restrict_univ, mem_compl_iff, norm_eq_abs, sq_abs]
+          --obtain ⟨val, property⟩ := x_1
+          --simp_all only [mem_Icc]
+          --obtain ⟨left, right⟩ := property
+          rfl
+        case isFalse h' =>
+          simp
+      rw [this]
+      convert h_integral_Ic_c
+      simp
+      have mIc_c : MeasurableSet (Icᶜ) := measurableSet_Icc.compl
+      dsimp [Ic_c]
+      let mls :=(@MeasureTheory.lintegral_subtype_comap ℝ _ volume Ic_c mIc_c (fun x => ENNReal.ofReal ((toFun f x - toFun g x) ^ 2))).symm
+      dsimp [Ic_c] at mls
+      exact mls
+
+    have :((∫⁻ (a : ℝ), ENNReal.ofReal (‖toFun (f - g) a‖ ^ 2)) ) = ((∫⁻ (a : ℝ) in Ic, ENNReal.ofReal (‖toFun (f - g) a‖ ^ 2)) ) :=
+    by
+      rw [piecewise_lem (f - g)]
+      simp_all only [Measure.restrict_univ, mem_compl_iff, norm_eq_abs, sq_abs, add_zero]
+
+    have :((∫⁻ (a : ℝ) in Ic, ENNReal.ofReal (‖toFun (f - g) a‖ ^ 2)) ) = 0 :=
+    by
+      simp_all only [inv_pos, Nat.ofNat_pos, zero_rpow_of_pos, zero_toReal, norm_eq_abs, sq_abs, Measure.restrict_univ,
+        mem_compl_iff]
+    have :∫⁻ (x : ↑Ic) in univ, ENNReal.ofReal (toFun (f - g) x ^ 2) = 0:=
+    by
+      let mls := (@MeasureTheory.lintegral_subtype_comap ℝ _ volume Ic mIc (fun x => ENNReal.ofReal (((toFun (f - g)) x )^ 2)))
+      simp
+      simp at mls
+      simp at this
+      rw [←mls] at this
+      exact this
+
+    have :∫⁻ (x : ↑Ic) in univ, ENNReal.ofReal ((f - g).1 x ^ 2) = 0 := by
+      convert this
+      rename_i x_1
+      unfold toFun
+      split
+      case isTrue h' =>
+        simp_all only [ContinuousMap.toFun_eq_coe, Real.rpow_two]
+        rfl
+      case isFalse h' =>
+        simp
+        simp_all only [inv_pos, Nat.ofNat_pos, zero_rpow_of_pos, zero_toReal, norm_eq_abs, sq_abs,
+          Measure.restrict_univ, mem_compl_iff, Subtype.coe_prop, not_true_eq_false]
 
     let diff := ContinuousMap.mk (λ x => f.1 x - g.1 x) (f.continuous_toFun.sub g.continuous_toFun)
-    let cs := @continuous_sq_eq_zero_of_integral_zero_Ic (f-g) h_integral_zero
+    let cs := @continuous_sq_eq_zero_of_integral_zero_Ic (f-g) this
     have h_eq : ∀ x ∈ Set.Icc 0 1, diff.toFun x = 0 :=
     by
       intro x_1 a

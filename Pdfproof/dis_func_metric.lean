@@ -502,6 +502,50 @@ theorem measurable_pow_two_enn {α : Type*} {m : MeasurableSpace α}
   refine Measurable.ennreal_ofReal ?_
   exact Measurable.pow_const hf 2
 
+lemma piecewise_lem (f:C₀):(∫⁻ (x : ℝ), ENNReal.ofReal (‖toFun f x‖ ^ (2:ℕ))) = (∫⁻ (x : ℝ) in Ic, ENNReal.ofReal (‖toFun f x‖ ^ (2:ℕ))) + (∫⁻ (x : ℝ) in Icᶜ, ENNReal.ofReal (‖toFun f x‖ ^ (2:ℕ))) :=
+by
+  let lac:= @lintegral_add_compl ℝ Real.measurableSpace volume (fun x => ENNReal.ofReal (‖toFun f x‖ ^ (2:ℕ))) Ic mIc
+  exact lac.symm
+
+lemma zero_Ic_c_lem (f:C₀): (∫⁻ (x : ℝ) in Icᶜ, ENNReal.ofReal (‖toFun f x‖ ^ (2:ℕ))) = 0 :=
+by
+  apply (lintegral_eq_zero_iff (measurable_pow_two_enn (toFun_measurable f))).mpr
+  --apply Filter.Eventually
+  have : ∀ x, x ∉ Ic → ENNReal.ofReal (‖toFun f x‖ ^ (2:ℕ)) = 0 :=
+    by
+      intro x hx
+      dsimp [toFun]
+      simp [hx]
+  have h_ae : (fun x:(Ic_c) => ENNReal.ofReal (‖toFun f x.val‖ ^ 2)) =ᶠ[ae (volume:Measure Ic_c)] 0 := by
+    simp_all only [mem_Icc, norm_eq_abs, and_imp, sq_abs, ofReal_eq_zero, implies_true]
+    filter_upwards with x
+    simp_all only [Pi.zero_apply, ofReal_eq_zero]
+    obtain ⟨val, property⟩ := x
+    simp_all only
+    exact this _ property
+
+  --apply Filter.Eventually.of_forall
+
+  have measurableSet_Ic_c: MeasurableSet Ic_c := by
+    simp_all only [Ic_c, MeasurableSet.compl]
+    simp_all only [mem_Icc, norm_eq_abs, and_imp, implies_true, sq_abs, ofReal_eq_zero, MeasurableSet.compl_iff]
+    apply MeasurableSet.congr
+    on_goal 2 => ext x : 1
+    on_goal 2 => apply Iff.intro
+    on_goal 2 => {
+      intro a
+      exact a
+    }
+    · apply measurableSet_Icc
+    · intro a
+      simp_all only
+
+  apply (ae_restrict_iff_subtype measurableSet_Ic_c).mpr
+  simp_all only [mem_Icc, norm_eq_abs, and_imp, sq_abs, ofReal_eq_zero, Pi.zero_apply, implies_true]
+  filter_upwards with x
+  obtain ⟨val, property⟩ := x
+  simp_all only
+  exact this _ property
 
 lemma mem_L2_f_ext : Memℒp (toFun f) 2 volume :=
 by
@@ -1048,7 +1092,8 @@ noncomputable instance : MetricSpace C₀ where
 
     have h_integral_zero : ∫⁻ x in (Set.univ:Set Ic), ENNReal.ofReal ((f.1 x - g.1 x) ^ 2) = 0 :=
     by
-      sorry
+      rw [piecewise_lem (f-g)]
+      rw [zero_Ic_c_lem]
 
     let diff := ContinuousMap.mk (λ x => f.1 x - g.1 x) (f.continuous_toFun.sub g.continuous_toFun)
     let cs := @continuous_sq_eq_zero_of_integral_zero_Ic (f-g) h_integral_zero

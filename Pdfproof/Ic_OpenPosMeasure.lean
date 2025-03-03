@@ -46,6 +46,8 @@ import LeanCopilot
 open Classical
 open MeasureTheory Real Set Metric Function Filter TopologicalSpace ENNReal
 
+--このファイルは、dis_func_metricの証明を補助するもの。01連続関数がL2ノルムで距離空間になることの証明で、
+--01閉区間がOpenPosMeasureを持つことを証明する。そのために、Ic上の測度を定義し、その測度がOpenPosMeasureを持つことを証明する。
 --基本的な定義とinstanceの設定
 
 def Ic := Set.Icc (0:Real) 1
@@ -152,7 +154,7 @@ by
           sup_lt_iff, zero_lt_one, and_true, mem_Icc, a, b, I]
         obtain ⟨val, property⟩ := x
         obtain ⟨left, right⟩ := hVU
-        obtain ⟨left_1, right_1⟩ := a_lt_b
+        obtain ⟨left_1, right_1⟩ := a_lt_b  --この辺りをコメントアウトすると、linarithが失敗する。
         obtain ⟨left_2, right_2⟩ := y_ge_a
         obtain ⟨left_3, right_3⟩ := y_le_b
         obtain ⟨left_1, right_4⟩ := left_1
@@ -343,6 +345,20 @@ def mIc:MeasurableSet Ic:=
 by
   exact measurableSet_Icc
 
+def measurableSet_Ic_c: MeasurableSet Ic_c := by
+    simp_all only [Ic_c, MeasurableSet.compl]
+    simp_all only [mem_Icc, norm_eq_abs, and_imp, implies_true, sq_abs, ofReal_eq_zero, MeasurableSet.compl_iff]
+    apply MeasurableSet.congr
+    on_goal 2 => ext x : 1
+    on_goal 2 => apply Iff.intro
+    on_goal 2 => {
+      intro a
+      exact a
+    }
+    · apply measurableSet_Icc
+    · intro a
+      simp_all only
+
 instance : TopologicalSpace Ic := inferInstance
 
 --インスタンスの証明でつかっている。
@@ -497,11 +513,13 @@ noncomputable instance : IsFiniteMeasureOnCompacts (volume : Measure Ic) where
     exact compact_set_has_finite_measure hK
     --let mi := @measure_Icc_lt_top  Ic _ _ _ _ volume _ 0 1
 
+
+
 ------------------------------------------------------
 ----古いものや、証明に使ってないもの。保存しているものなど。
 ------------------------------------------------------
 
---これは頑張って証明した。現在は使ってないかも。OpenPosiの照明に使えるかもしれない。
+--これは頑張って証明した。現在は使ってないかも。OpenPosiの証明に使えるかもしれないと思ったが使ってない。
 lemma open_ball_lemma {U : Set ℝ} (hU : IsOpen U) {x : ℝ} (hxU : x ∈ U) :
     ∃ ε > 0, Ioo (x - ε) (x + ε) ⊆ U :=
 by

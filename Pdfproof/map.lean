@@ -41,6 +41,13 @@ example {X Y : Type} (f : X → Y) {A B : Set X} (h : A ⊆ B) : f '' A ⊆ f ''
       rw [fx_eq_y] at rst
       exact rst
 
+--deepseek proverでの解答。
+example {X Y : Type} (f : X → Y) {A B : Set X} (h : A ⊆ B) : f '' A ⊆ f '' B :=
+by
+ intro x hx;
+ obtain ⟨y, hy, rfl⟩ := hx
+ exact ⟨y, h hy, rfl⟩
+
 --写像 練習4
 -- f(A ∩ B) ⊆ f(A) ∩ f(B) を証明する
 example {X Y : Type} (f : X → Y) (A B : Set X) : f '' (A ∩ B) ⊆ (f '' A) ∩ (f '' B) :=
@@ -101,6 +108,11 @@ example {X Y : Type} (f : X → Y) (A B : Set X) : f '' (A ∪ B) = f '' A ∪ f
         | intro x hxB =>
           let fx_eq_y := hxB.2
           exact ⟨x, Or.inr hxB.1, fx_eq_y⟩
+
+--deepseek proverでの解答
+example {X Y : Type} (f : X → Y) (A B : Set X) : f '' (A ∪ B) = f '' A ∪ f '' B :=
+by
+  apply Set.image_union
 
 --写像 練習6(前半)
 -- 任意の A, B ⊆ Y に対して f^{-1}(A ∩ B) = f^{-1}(A) ∩ f^{-1}(B) を証明。
@@ -263,6 +275,7 @@ by
       subst this -- goal: f a ∈ f '' (A ∩ B)
       exact ⟨a, ⟨haA, hbB⟩, rfl⟩
 
+
 --写像 練習8
 --lean copilotを使った証明。やや冗長か。このあとに短くした証明ものせる。
 example {α β : Type}  (f : α → β) :
@@ -411,6 +424,36 @@ example : (∀ A : Set α, (f '' A)ᶜ ⊆ f '' (Aᶜ)) ↔ Function.Surjective 
     on_goal 2 => {rfl
     }
     · simp_all only
+
+example {α β : Type}  (f : α → β) :
+  (∀ A : Set α, (f '' A)ᶜ ⊆ f '' (Aᶜ)) ↔ Function.Surjective f :=
+by
+  constructor
+  · intro h
+    intro b
+    have h1 : f ⁻¹' {b} ⊆ f ⁻¹' ({b} : Set β) := by simp
+    have h2 : (f '' (f ⁻¹' {b}))ᶜ ⊆ f '' (f ⁻¹' {b})ᶜ := h _
+    search_proof
+
+
+  · intro h
+    intro A
+    intro b hb
+    simp at hb
+    simp [hb]
+    dsimp [Function.Surjective] at h
+    push_neg at hb
+    obtain ⟨a, ha⟩ := h b
+    use a
+    constructor
+    subst ha
+    simp_all only [ne_eq]
+    apply Aesop.BuiltinRules.not_intro
+    intro a_1
+    exact hb a a_1 (by simp)
+    exact ha
+
+
 
 
 --写像 練習9

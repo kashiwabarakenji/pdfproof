@@ -154,9 +154,42 @@ instance : Lattice Divides where
 
 --以下がdistributive latticeを示す部分。
 
+--2025年9月 QwenとChatGPT5の合わせ技。
+theorem gcd_lcm_eq_lcm_gcd (a b c : ℕ) :
+    Nat.gcd (Nat.lcm a b) (Nat.lcm a c) = Nat.lcm a (Nat.gcd b c) := by
+  classical
+  cases' a with a; · simp
+  cases' b with b; · simp
+  cases' c with c; · simp
+  apply Nat.eq_of_factorization_eq
+  intro p
+  · simp_all only [Nat.gcd_eq_zero_iff, Nat.lcm_eq_zero_iff, Nat.add_eq_zero, one_ne_zero, and_false, or_self, and_self]
+  · simp_all only [ne_eq, Nat.lcm_eq_zero_iff, Nat.add_eq_zero, one_ne_zero, and_false, Nat.gcd_eq_zero_iff, and_self,
+    or_self, not_false_eq_true]
+  · intro p
+    rw [Nat.factorization_lcm, Nat.factorization_gcd, Nat.factorization_lcm]
+    set x := (a+1).factorization p
+    set y := (b+1).factorization p
+    set z := (c+1).factorization p
+    -- 分配律： (x ⊔ y) ⊓ (x ⊔ z) = x ⊔ (y ⊓ z) を
+    -- ℕ の max/min に言い換えたもの
+    · have hx :
+        min (max x y) (max x z) = max x (min y z) := by
+        exact Eq.symm (Nat.max_min_distrib_left x y z)
+    -- 目標の等式は factorization を評価して hx に落ちます
+      simpa [x, y, z, Nat.factorization_lcm, Nat.factorization_gcd] using hx
+    · exact Ne.symm (Nat.zero_ne_add_one a)
+    · exact Ne.symm (Nat.zero_ne_add_one b)
+    · simp_all only [ne_eq, Nat.lcm_eq_zero_iff, Nat.add_eq_zero, one_ne_zero, and_false, or_self, not_false_eq_true]
+    · simp_all only [ne_eq, Nat.lcm_eq_zero_iff, Nat.add_eq_zero, one_ne_zero, and_false, or_self, not_false_eq_true]
+    · simp_all only [ne_eq, Nat.add_eq_zero, one_ne_zero, and_false, not_false_eq_true]
+    · simp_all only [ne_eq, Nat.gcd_eq_zero_iff, Nat.add_eq_zero, one_ne_zero, and_false, and_self, not_false_eq_true]
+
+
 instance: GCDMonoid ℕ := instGCDMonoidNat --これを探すのも時間がかかった。
 
-theorem gcd_lcm_eq_lcm_gcd (a b c : ℕ) :
+--上の定理の2024年版の証明。大きくは違わないのかも。
+theorem gcd_lcm_eq_lcm_gcd.old (a b c : ℕ) :
     Nat.gcd (Nat.lcm a b) (Nat.lcm a c) = Nat.lcm a (Nat.gcd b c) := by
   -- We use `Nat.eq_of_factorization_eq`:
   --   Two numbers are equal if, for every prime p, their exponent in
@@ -223,141 +256,6 @@ theorem gcd_lcm_eq_lcm_gcd (a b c : ℕ) :
             rw [this] at h
             rw [lcm_eq_zero_iff] at h
             simp_all only [or_self]
-
-/- 既存の定理を使わずに証明しようとして、方針は悪くなかったが、定義に戻って証明するのが大変で断念。しばらくしたら消す。
-noncomputable def padicVal (p n : Nat) : Nat :=
-  if h : p.Prime then
-    -- 素数 p に対する定義
-    Nat.strongRecOn n fun m IH =>
-      if hm:m = 0 then 0
-      else if p ∣ m then 1 + IH (m / p) (Nat.div_lt_self (Nat.pos_of_ne_zero (by exact hm)) (Nat.Prime.one_lt h))
-      else 0
-  else
-    0
-
-/-- 記法: v_p(n) を `padicVal p n` の糖衣構文で書けるようにする -/
-notation "v_p(" n ", " p ")" => padicVal p n
-notation "v_p" => padicVal
-
-/--
-「`p^k` が `n` を割り切る」ことと「`v_p(n) ≥ k`」が同値になることを示す。
-
-この定理は，`padicVal p n` の定義を展開しつつ，
-- p が素数かどうか
-- n = 0 かどうか
-- p ∣ n かどうか
-
-などで場合分けをして証明します。
--/
-lemma prime_pow_div_iff (p n k : Nat) (hp : p.Prime) :
-    p^k ∣ n ↔ v_p(n, p) ≥ k := by
-  -- 完全に再帰定義にもとづく場合分けを行なう
-  induction n generalizing k with
-  | zero =>
-    -- n=0 の場合，p^k ∣ 0 は常に真だが，v_p(0,p) = if p.Prime then 0 else 0 なので 0。
-    -- 従って「p^k ∣ 0 ↔ 0 ≥ k」は「k=0 のときのみ真」となる。
-    -- p^k with k>0 は 0 を割り切るが v_p(0,p)=0 なので≥kは false になる…
-    -- ただし Lean の自然数割り算の取り扱いで微妙になるので補足が必要
-    -- ここでは p^k | 0 は k≥0 なら常に真ともいえるが v_p(0,p)=0 => k≤0 でないとダメ
-    -- ということで最終的には k=0 なら両辺真，k>0 なら両辺偽
-    cases k with
-    | zero =>
-      -- k=0 => p^0=1 ∣ 0 は真，v_p(0,p)=0 ≥ 0 も真
-      simp
-    | succ k' =>
-      -- k>0 => p^(k'+1) ∣ 0 も真だが v_p(0,p)=0 ≥ (k'+1) は偽
-      -- Lean 標準の「0 を割り切る」は 0 mod p^(k'+1) = 0 なので「常に真」
-      -- よってここの場合分けは矛盾が出ますが，「↔」の両辺偽…？など細かいです。
-      -- ひとまず contradiction or 反例… ここは少し丁寧に扱う必要があるが
-      -- 細かいことは省略して gcd-lcm 証明には支障ないので sorry でもOKな箇所です。
-      apply Iff.intro
-      · intro h
-        -- ここには到達しないはず
-        --simp at h
-        simp
-        dsimp [padicVal]
-        --show k' + 1 ≤ if h:Nat.Prime p then Nat.strongRecOn 0 fun m IH ↦ if hm : m = 0 then 0 else if p ∣ m then 1 + IH (m / p) ⋯ else 0 else 0
-        have : v_p(0,p) = 0 := by dsimp [padicVal]; rw [dif_pos hp]; rfl
-        simp [this] at h
-        sorry
-      ·
-        intro a
-        simp_all only [ge_iff_le, dvd_zero]
-
-  | succ n' IH =>
-    -- n>0 の場合
-    if hprime : p.Prime then
-      -- p は素数
-      if hdiv : p ∣ (Nat.succ n') then
-        -- p∣(n'+1) => v_p(n'+1,p)=1 + v_p((n'+1)/p,p)
-        -- ここでさらに k との大小関係で場合分け
-        dsimp [padicVal]
-        have : Nat.succ n' = p * (Nat.succ n' / p) := by
-          simp_all only [ge_iff_le, Nat.succ_eq_add_one]
-          rw [mul_comm]
-          rw [Nat.div_mul_cancel hdiv]
-        --show (p ^ k ∣ n' + 1) ↔
-        --  (if h : Nat.Prime p then
-        --  Nat.strongRecOn (n' + 1) fun m IH ↦ if hm : m = 0 then 0 else if p ∣ m then 1 + IH (m / p) ⋯ else 0
-        -- else 0) ≥  k
-        sorry
-      else
-        -- p ∣ (n'+1) が成り立たない => v_p(n'+1,p)=0
-        show p ^ k ∣ n' + 1 ↔ v_p(n' + 1, p) ≥ k
-        apply Iff.intro
-        · intro h
-          -- ここには到達しないはず
-          simp at h
-          simp
-          dsimp [padicVal]
-          --show k ≤ if h : Nat.Prime p then Nat.strongRecOn (n' + 1) fun m IH ↦ if hm : m = 0 then 0 else if p ∣ m then 1 + IH (m / p) ⋯ else 0 else 0
-          sorry
-        · dsimp [padicVal]
-          -- (if h : Nat.Prime p then
-          -- Nat.strongRecOn (n' + 1) fun m IH ↦ if hm : m = 0 then 0 else if p ∣ m then 1 + IH (m / p) ⋯ else 0
-          -- else 0) ≥   k → p ^ k ∣ n' + 1
-          sorry
-    else
-      -- p が素数でない => 定義上 v_p(n'+1,p)=0
-      -- p^k ∣ n'+1 => k=0 でしかあり得ない… など
-      simp_all only
-
-theorem gcd_lcm_eq_lcm_gcd (a b c : ℕ) :
-    Nat.gcd (Nat.lcm a b) (Nat.lcm a c) = Nat.lcm a (Nat.gcd b c) := by
-  -- 場合分け：0 が絡むときは簡単に終わる
-  cases a with
-  | zero =>
-    -- a = 0 の場合，左辺も右辺も最小公倍数や最大公約数が 0 になったりする。
-    -- lcm 0 b = 0, gcd 0 b = b などの補題を使えば，ごく簡単に両辺 0=0 が示せる。
-    simp_all only [Nat.lcm_zero_left, Nat.gcd_self]
-  | succ a' =>
-    -- a ≠ 0 の場合はもっと一般的な手法で証明する
-    cases b with
-    | zero =>
-      show ((a' + 1).lcm 0).gcd ((a' + 1).lcm c) = (a' + 1).lcm (Nat.gcd 0 c)
-      -- b = 0 の場合は，lcm a 0 = 0, gcd a 0 = a などを使って証明する
-      simp_all only [Nat.lcm_zero_right, Nat.gcd_zero_right]
-      simp_all only [Nat.gcd_zero_left]
-    | succ b' =>
-      cases c with
-      | zero =>
-        simp_all only [Nat.lcm_zero_right, Nat.gcd_zero_right]
-      | succ c' =>
-        -- ここで、gcd_mul_lcm や dvd_gcd_iff, lcm_dvd_iff を駆使して
-        --   gcd(lcm a b, lcm a c) と lcm a (gcd b c) を
-        --   いずれも「a*(何か)/gcd(...)」の形に書き表す。
-        --  そのうえで「同じ値だ」と示す。
-        show ((a' + 1).lcm (b' + 1)).gcd ((a' + 1).lcm (c' + 1)) = (a' + 1).lcm ((b' + 1).gcd (c' + 1))
-        sorry
-
-/--
-  上記の等式から割り切りがただちに従う。
-  すなわち ∀ a b c, gcd(lcm a b, lcm a c) ∣ lcm a (gcd b c).
--/
-theorem lcm_gcd_divides_lcm_gcd (a b c : ℕ) :
-    Nat.gcd (Nat.lcm a b) (Nat.lcm a c) ∣ Nat.lcm a (Nat.gcd b c) := by
-  rw [← gcd_lcm_eq_lcm_gcd]  -- 左辺を右辺と同じ形に書き直す
--/
 
 ------------------
 ------練習6--------

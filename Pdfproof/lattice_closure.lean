@@ -259,7 +259,7 @@ by
   have h2 := intersectionExtension F sval this
   simp_all only [Finset.mem_subtype, sval]
   obtain ⟨val, property⟩ := x
-  simp_all only [Finset.mem_subtype]
+  simp_all only
 
   apply h2
   simp_all only [Finset.mem_map, Function.Embedding.coeFn_mk, Subtype.exists, exists_and_right, exists_eq_right, exists_const]--
@@ -278,7 +278,7 @@ noncomputable def preclosure_operator_from_SF {α :Type} [DecidableEq α][Fintyp
   by
     let ef := extensive_from_SF F
     intro s
-    simp_all only [cl, ef]
+    simp_all only [cl]
 
   monotone := by
     have h1 : ∀ s t : Finset F.ground, s ⊆ t → cl s ⊆ cl t := by
@@ -320,12 +320,12 @@ noncomputable def preclosure_operator_from_SF {α :Type} [DecidableEq α][Fintyp
         intro y
         intro hy
         use y
-        simp_all only [Subtype.forall, Finset.mem_subtype, Finset.map_subset_map, true_and, and_imp, Finset.mem_filter,
+        simp_all only [Subtype.forall, Finset.mem_subtype, true_and, and_imp, Finset.mem_filter,
           Finset.mem_powerset, and_self, subset_refl, cl, ft, fs, T, S]
 
       simp --ないとエラー
       apply finsetInter_mono' arg
-      simp_all only [Subtype.forall, Finset.mem_subtype, Finset.map_subset_map, true_and, and_imp, Finset.mem_filter,
+      simp_all only [Subtype.forall, Finset.mem_subtype, true_and, and_imp, Finset.mem_filter,
         Finset.mem_powerset, cl, ft, fs, T, S]
 
     exact h1
@@ -395,8 +395,8 @@ by
           -- s = ∅ の場合
           subst h_empty
           simp_all only [Finset.mem_singleton, forall_eq, Finset.mem_insert, forall_eq_or_imp, and_imp,
-            Finset.not_mem_empty, not_false_eq_true, Finset.not_nonempty_empty, forall_const, not_isEmpty_of_nonempty,
-            IsEmpty.forall_iff, insert_emptyc_eq, Finset.singleton_nonempty]
+            Finset.notMem_empty, not_false_eq_true, Finset.not_nonempty_empty, forall_const, not_isEmpty_of_nonempty,
+            IsEmpty.forall_iff, LawfulSingleton.insert_empty_eq, Finset.singleton_nonempty]
       | inr h_nonempty_S =>
           -- s≠ ∅ の場合。このケースでihを暗黙に使っている。
           simp_all only [Finset.mem_singleton, forall_eq, Finset.mem_insert, forall_eq_or_imp, and_imp, or_true,
@@ -486,7 +486,7 @@ by
      --iliはlem2の証明で暗黙につかっている。
     have nonemp2: (Finset.image (fun t ↦ t.subtype (λ x => x ∈ F.ground)) filtered).Nonempty :=
     by
-      simp_all only [nonemp, Finset.image_eq_empty, Finset.image_empty, filtered]
+      simp_all only [Finset.image_eq_empty, filtered]
       simp_all only [Finset.image_nonempty]
       rwa [Finset.nonempty_iff_ne_empty]
     let ili := (intersection_lemma_image (fun x => x ∈ F.ground) (filtered.image (λ t => t.subtype (λ x => x ∈ F.ground))) nonemp2).symm
@@ -497,7 +497,7 @@ by
     --lem2はlem5の証明に使っている。lem 5の直前に移動すると何故かエラー。
     have lem2:finsetInter tmpimage2 = Finset.image Subtype.val (finsetInter tmp_right) :=
     by
-      simp_all only [Finset.map_inj, tmpimage2, tmp, filtered, tmp_right]
+      simp_all only [tmpimage2, tmp, filtered, tmp_right]
       rw [Finset.map_eq_image]  --これはimageを増やす方向。simpによって、mapができてしまた。
       simp_all only [Function.Embedding.coeFn_mk]
       ext a : 1
@@ -526,12 +526,11 @@ by
     by
       intro s_1
       ext a : 1
-      simp_all only [Finset.mem_image, Finset.mem_subtype, Subtype.exists, exists_and_left, exists_prop,
-        exists_eq_right_right, Finset.mem_filter]
+      simp_all only [Finset.mem_filter]
 
     -- lem4はlem 5の証明中で使っている。ただし、lem　4もlem 5もlem_mainの証明で使っている。
     have lem4: Finset.image (fun t ↦ Finset.image Subtype.val t) (Finset.image (fun t ↦ Finset.subtype (fun x ↦ x ∈ F.ground) t) filtered) = filtered := by
-      simp_all only [Finset.mem_image, Function.Embedding.coeFn_mk, Subtype.exists, exists_and_right, exists_eq_right]
+      simp_all only
       ext x
       simp
       dsimp [filtered]
@@ -587,7 +586,7 @@ by
         simp_all only [filtered, tmpimage2, tmp, tmp_right]
         rw [Finset.map_eq_image]
         ext x
-        simp_all only [Finset.mem_image, Function.Embedding.coeFn_mk, Subtype.exists, exists_and_right, exists_eq_right]
+        simp_all only [Function.Embedding.coeFn_mk]
         apply Iff.intro
         · intro a
           simp_all only [implies_true, Finset.mem_subtype, Finset.mem_image, Subtype.exists, exists_and_right,
@@ -659,7 +658,7 @@ by
     --以下は頑張って示した。
     let candidates_subtype := candidates.image (λ t => t.subtype (λ x => x ∈ F.ground))
     have h_candidates_subtype_nonempty : candidates_subtype.Nonempty := by
-      simp only [Finset.Nonempty, Finset.mem_image]
+      simp only [Finset.Nonempty]
       use F.ground.subtype (λ x => x ∈ F.ground)
       dsimp [candidates]
       dsimp [candidates_subtype]
@@ -720,12 +719,12 @@ noncomputable def closure_operator_from_CS {α :Type} [DecidableEq α][Fintype �
   by
     let ef := extensive_from_SF C.toSetFamily
     intro s
-    simp_all only [cl, ef]
+    simp_all only [cl]
 
   monotone := by
     let po := (preclosure_operator_from_SF C.toSetFamily).monotone
     intro s t hst
-    simp_all only [cl, po]
+    simp_all only [cl]
     tauto
 
   idempotent :=
@@ -783,11 +782,11 @@ noncomputable def closure_operator_from_CS {α :Type} [DecidableEq α][Fintype �
         obtain ⟨val, property⟩ := x_1
         simp_all only
         apply a
-        simp_all only [cl_s, sval, cl]
+        simp_all only [cl_s, sval]
 
     have h_cl_s_in_sets : C.sets cl_s := by
       apply finite_intersection_in_C
-      simp only [Finset.filter_nonempty_iff, Finset.mem_filter, Finset.mem_powerset]
+      simp only [Finset.filter_nonempty_iff, Finset.mem_powerset]
       use C.ground
       simp only [subset_refl, true_and]
       constructor
@@ -810,8 +809,8 @@ noncomputable def closure_operator_from_CS {α :Type} [DecidableEq α][Fintype �
       simp_all
       apply (finset_inter_subset_iff _ _).mpr
       intro t ht
-      simp_all only [Finset.mem_filter, Finset.mem_powerset, Finset.mem_map, Function.Embedding.coeFn_mk, Subtype.exists,
-        exists_and_right, exists_eq_right, cl, cl_s, sval]
+      simp_all only [Finset.mem_map, Function.Embedding.coeFn_mk, Subtype.exists, exists_and_right,
+        exists_eq_right, cl, cl_s, sval]
       obtain ⟨w, h⟩ := ht
       simp_all only [cl, cl_cl_s, cl_s, sval]
       simpa using ef h
@@ -838,7 +837,7 @@ noncomputable def closure_operator_from_CS {α :Type} [DecidableEq α][Fintype �
     --以下の部分はcl_in_F_setsを用いて証明するはずだったが、ChatGPTはその道を取らなかった。ということは、cl_in_F_setsももっと簡単に証明できるかも。
     have h_cl_cl_s_eq_cl_s : cl_cl_s = cl_s := by
       apply finsetInter_eq_s
-      simp only [Finset.filter_nonempty_iff, Finset.mem_filter, Finset.mem_powerset]
+      simp only [Finset.mem_filter, Finset.mem_powerset]
       constructor
       -- Groundの部分集合のfinsetInterがGroundsetであることを利用する。
       · dsimp [cl_s]
@@ -856,7 +855,7 @@ noncomputable def closure_operator_from_CS {α :Type} [DecidableEq α][Fintype �
         simp_all only [Finset.mem_filter, Finset.mem_powerset, cl, cl_s, sval, cl_cl_s]
     dsimp [cl_cl_s] at h_cl_cl_s_eq_cl_s
     dsimp [cl_s] at h_cl_s_in_sets
-    dsimp [h_cl_cl_s_eq_cl_s]
+    --dsimp [h_cl_cl_s_eq_cl_s]
     simp_all only [cl, cl_s, sval, cl_cl_s]
 }
 
@@ -866,7 +865,7 @@ noncomputable def closure_operator_from_CS {α :Type} [DecidableEq α][Fintype �
 lemma listInter_mono {α : Type u} [DecidableEq α] [Fintype α]
     {L1 L2 : List (Finset α)}
     (h_len : L1.length = L2.length)
-    (h_sub : ∀ i : Nat, i < L1.length → L1.get! i ⊆ L2.get! i) :
+    (h_sub : ∀ i : Nat, i < L1.length → L1[i]! ⊆ L2[i]!) :
     listInter L1 ⊆ listInter L2 := by
   -- 証明は L1 に対する単純な再帰 (induction) で行うのが分かりやすいです
   cases hl1:L1 with
@@ -877,11 +876,11 @@ lemma listInter_mono {α : Type u} [DecidableEq α] [Fintype α]
     have :L2 = [] := by
       rw [←hl1]
       subst hl1
-      simp_all only [List.length_nil, List.get!_eq_getElem!, List.getElem!_eq_getElem?_getD, List.getElem?_eq_getElem,
+      simp_all only [List.length_nil, List.getElem!_eq_getElem?_getD, List.getElem?_eq_getElem,
         Option.getD_some]
       simpa using h_len.symm
     subst this hl1
-    simp_all only [List.length_nil, not_lt_zero', List.get!_eq_getElem!, List.getElem!_eq_getElem?_getD,
+    simp_all only [List.length_nil, not_lt_zero', List.getElem!_eq_getElem?_getD,
       List.getElem?_eq_getElem, Option.getD_some, subset_refl, implies_true, List.foldr_nil]
   | cons x xs =>
     -- L1 = x :: xs の場合
@@ -890,7 +889,7 @@ lemma listInter_mono {α : Type u} [DecidableEq α] [Fintype α]
       -- L2 = [] は長さ一致に反するので矛盾
       exfalso
       subst hl2
-      simp_all only [List.length_cons, List.length_nil, AddLeftCancelMonoid.add_eq_zero, List.length_eq_zero,
+      simp_all only [List.length_cons, List.length_nil, AddLeftCancelMonoid.add_eq_zero, List.length_eq_zero_iff,
         one_ne_zero, and_false]
     | cons y ys =>
       -- L2 = y :: ys
@@ -908,10 +907,10 @@ lemma listInter_mono {α : Type u} [DecidableEq α] [Fintype α]
       dsimp [listInter]  -- listInter (x :: xs) = x ∩ listInter xs
       apply Finset.subset_inter
       · -- x ⊆ y 先頭のものが包含関係があること。
-        have hx:x = L1.get! 0 := by
+        have hx:x = L1[0]! := by
           rw [hl1]
           simp
-        have hy:y = L2.get! 0 := by
+        have hy:y = L2[0]! := by
           rw [hl2]
           simp
         have h0 : 0 < L1.length := by
@@ -919,30 +918,30 @@ lemma listInter_mono {α : Type u} [DecidableEq α] [Fintype α]
           simp
         let h0' := h_sub 0 h0
         subst hl1 hl2
-        simp_all only [List.get!_eq_getElem!, List.getElem!_eq_getElem?_getD, List.length_cons,
+        simp_all only [List.getElem!_eq_getElem?_getD, List.length_cons,
           add_pos_iff, zero_lt_one, or_true, List.getElem?_eq_getElem, List.getElem_cons_zero, Option.getD_some]--
         intro i hi
         simp_all only [Finset.mem_inter]
         --obtain ⟨left, right⟩ := hi
         apply h0'
-        simp_all only [List.get!_eq_getElem!, List.getElem!_eq_getElem?_getD,
-         List.getElem?_eq_getElem, List.getElem_cons_zero, Option.getD_some]--
+        simp_all only [List.getElem!_eq_getElem?_getD, List.getElem?_eq_getElem,
+          List.getElem_cons_zero, Option.getD_some]--
       · -- listInter xs ⊆ listInter ys 残りの部分も包含関係があること。これは帰納法の仮定を使う。
-        have arg: ∀ (i : ℕ), i  < xs.length → xs.get! i ⊆ ys.get! i:=
+        have arg: ∀ (i : ℕ), i  < xs.length → xs[i]! ⊆ ys[i]! :=
         by
           let fun_ih := (fun i hi => h_sub (i+1) hi) --帰納法の仮定の仮定が満たされていることを確認。
           rw [hl1] at fun_ih
           rw [hl2] at fun_ih
           intro i a
           subst hl1 hl2
-          simp_all only [List.length_cons, add_lt_add_iff_right, List.get!_eq_getElem!,
-            List.getElem!_eq_getElem?_getD, List.getElem?_eq_getElem, List.getElem_cons_succ, Option.getD_some,
-            h_len']
+          simp_all only [List.length_cons, add_lt_add_iff_right,
+            List.getElem!_eq_getElem?_getD, List.getElem?_eq_getElem, List.getElem_cons_succ,
+            Option.getD_some]
 
         let ih := listInter_mono h_len' arg
         subst hl1 hl2
-        simp_all only [List.length_cons, List.get!_eq_getElem!, List.getElem!_eq_getElem?_getD,
-          List.getElem?_eq_getElem, Option.getD_some, h_len']
+        simp_all only [List.length_cons, List.getElem!_eq_getElem?_getD,
+          List.getElem?_eq_getElem, Option.getD_some]
         intro i hi
         simp_all only [Finset.mem_inter]
         obtain ⟨left, right⟩ := hi
@@ -954,7 +953,7 @@ theorem finsetInter_mono {α : Type} [DecidableEq α] [Fintype α]
     {A B : Finset (Finset α)}
     (h_len : A.toList.length = B.toList.length)
     (h_sub : ∀ i : Nat, i < A.toList.length →
-              A.toList.get! i ⊆ B.toList.get! i) :
+              A.toList[i]! ⊆ B.toList[i]! ) :
     finsetInter (A : Finset (Finset α)) ⊆ finsetInter (B : Finset (Finset α)) := by
   -- finsetInter A = listInter A.toList, finsetInter B = listInter B.toList
   simp [finsetInter]
@@ -1156,7 +1155,7 @@ by
           by_cases mm <= a
           case pos =>
             left
-            simp_all only [true_or]
+            simp_all only
           case neg =>
             right
             have : mm = a ⊔ mm := by
@@ -1261,7 +1260,7 @@ by
   -- リストの最大値は `s.card` に等しい
   let ls := l.map (fun x ↦ x.card)
   have ls_ne : ls ≠ [] := by
-    simp_all only [ne_eq, List.map_eq_nil_iff, not_false_eq_true]
+    simp_all only [ne_eq]
     simp_all only [List.mem_map, forall_exists_index, and_imp, forall_apply_eq_imp_iff₂, implies_true, List.map_eq_nil_iff, ls]
     apply Aesop.BuiltinRules.not_intro
     intro a_1
@@ -1319,7 +1318,7 @@ theorem largestCard_spec  (l : List (Finset α)) (hne : l ≠ []) :
   -/
   rcases List.max?_spec l'_ne with ⟨m, hm_eq, hm_forall, hm_in⟩
   rw [← hm_eq] at *
-  simp only [Option.getD_some] at hm_eq
+  simp only at hm_eq
 
   -- m ∈ l' とは ∃ s ∈ l, s.card = m の意味
   rcases List.mem_map.mp hm_in with ⟨s, hs_in_l, rfl⟩

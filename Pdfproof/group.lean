@@ -121,12 +121,11 @@ by
       inv_mem' := by
         intro a ha
         specialize h_condition a h ha hHnon
-        group at h_condition
-        simp_all only [implies_true, and_true, Int.reduceNeg, zpow_neg, zpow_one]
+        exact hinv a ha
       mul_mem' := by
         intro a b ha hb
         specialize h_condition a (b⁻¹)
-        simp_all only [true_and, inv_inv, forall_const]
+        simp_all only [inv_inv, forall_const]
     }
     use S
 

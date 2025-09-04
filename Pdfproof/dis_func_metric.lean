@@ -7,7 +7,7 @@ import Mathlib.Data.Real.Basic
 import Mathlib.Data.NNReal.Defs
 import Mathlib.Data.ENNReal.Basic
 import Mathlib.Order.Basic
-import Mathlib.Order.CompleteLattice
+--import Mathlib.Order.CompleteLattice
 import Mathlib.Order.ConditionallyCompleteLattice.Basic
 import Mathlib.Order.SetNotation
 import Mathlib.Order.Filter.Basic
@@ -27,7 +27,7 @@ import Mathlib.Topology.Order.Monotone
 import Mathlib.Topology.Order.Compact
 import Mathlib.Topology.UniformSpace.HeineCantor
 import Mathlib.Analysis.SpecialFunctions.Sqrt
-import Mathlib.Analysis.SpecialFunctions.Integrals
+--import Mathlib.Analysis.SpecialFunctions.Integrals
 import Mathlib.Analysis.InnerProductSpace.Basic
 import Mathlib.Analysis.InnerProductSpace.PiL2
 import Mathlib.Analysis.Normed.Lp.lpSpace
@@ -38,9 +38,13 @@ import Mathlib.MeasureTheory.Measure.Lebesgue.EqHaar
 import Mathlib.MeasureTheory.Measure.OpenPos
 import Mathlib.MeasureTheory.MeasurableSpace.Basic
 import Mathlib.MeasureTheory.MeasurableSpace.Defs
-import Mathlib.MeasureTheory.Integral.SetIntegral
+import Mathlib.MeasureTheory.Integral.Bochner.ContinuousLinearMap
+import Mathlib.MeasureTheory.Integral.Bochner.FundThmCalculus
+import Mathlib.MeasureTheory.Integral.Bochner.Set
 import Mathlib.MeasureTheory.Integral.BoundedContinuousFunction
-import Mathlib.MeasureTheory.Integral.Bochner
+import Mathlib.MeasureTheory.Integral.Bochner.Basic
+import Mathlib.MeasureTheory.Integral.Bochner.L1
+import Mathlib.MeasureTheory.Integral.Bochner.VitaliCaratheodory
 import Mathlib.MeasureTheory.Function.L1Space.HasFiniteIntegral
 import Mathlib.MeasureTheory.Order.Group.Lattice
 import Pdfproof.Ic_OpenPosMeasure
@@ -195,9 +199,7 @@ by
           rename_i h1
           have ch1: choose (Exists.intro val1 property1 : ∃ a, ↑a = x) = x :=
           by
-            simp_all only [ContinuousMap.toFun_eq_coe, Subtype.forall, Subtype.coe_eta]
-            subst property1
-            simp_all only [MeasurableSet.univ, Subtype.coe_prop, choose_eq]
+            simp_all
           have ch2: choose (Exists.intro (↑val1) property1 : ∃ a, a = x) = x :=
           by
             subst property1
@@ -206,7 +208,7 @@ by
           by
             have ch4: (choose (Exists.intro (val1) property1 : ∃ a, a.val = x)).val = x :=
             by
-              simp_all only [MeasurableSet.univ, Subtype.coe_prop, choose_eq]
+              simp_all only [MeasurableSet.univ,choose_eq]
               set chosen_val := choose (Exists.intro val1 property1: ∃ a, a.val = x) with h_choose
               have h_chosen_property : chosen_val.val = x := choose_spec (Exists.intro val1 property1: ∃ a, a.val = x)
               exact h_chosen_property
@@ -224,11 +226,12 @@ by
         split
         · rename_i h0 h1
           have :x ∉ Ic := by
-            simp_all only [ContinuousMap.toFun_eq_coe, Subtype.forall, Subtype.coe_eta]
+            simp_all
             by_contra h_contra
-            push_neg at h0
-            let cont := h0 ⟨x,h1⟩
-            contradiction
+            simp_all only [not_false_eq_true]
+            obtain ⟨y, hy⟩ := h1
+            simp_all only [forall_const]
+            linarith
           contradiction
         · simp_all only [MeasurableSet.univ, not_true_eq_false]
     · dsimp [Function.extend]
@@ -264,7 +267,7 @@ by
 
   let g:Ic→ ℝ := fun x => 0
   have :Continuous g:= by
-    simp_all only [ContinuousMap.toFun_eq_coe, ne_eq, g]
+    simp_all only [ContinuousMap.toFun_eq_coe, g]
     fun_prop
 
   let cae := Continuous.ae_eq_iff_eq (volume:Measure Ic) f.2 this
@@ -281,7 +284,7 @@ lemma continuous_nonneg_eq_zero_of_integral_zero_Ic (f : C(Ic, ℝ))(hf_nonneg :
 by
   have h_nonneg : 0 ≤ fun x => f x := by
     intro x
-    simp_all only [ContinuousMap.toFun_eq_coe, Subtype.forall, Measure.restrict_univ, Pi.zero_apply]
+    simp_all only [ContinuousMap.toFun_eq_coe, Subtype.forall,Pi.zero_apply]
 
   -- `f` が積分可能であることを示す
   have h_cont : ContinuousOn f (Set.univ : Set Ic) := f.continuous.continuousOn
@@ -344,19 +347,19 @@ by
     specialize cne this
     have :∫⁻ (x : Ic), ENNReal.ofReal ((f.1 x) ^ 2) = 0 :=
     by
-      simp_all only [Measure.restrict_univ, ContinuousMap.toFun_eq_coe, integral_zero, le_refl, implies_true, ge_iff_le,
+      simp_all only [Measure.restrict_univ, ContinuousMap.toFun_eq_coe, le_refl, implies_true, ge_iff_le,
         mem_Icc, zero_le', true_and, ne_eq, OfNat.ofNat_ne_zero, not_false_eq_true, pow_eq_zero_iff, Subtype.forall,
-        forall_const, zero_pow, f2c, f2]
+        forall_const, zero_pow,  f2]
 
     specialize cne this
     show f.toFun x ^ 2 = 0
-    simp_all only [Measure.restrict_univ, ContinuousMap.toFun_eq_coe, integral_zero, le_refl, implies_true, ge_iff_le,
+    simp_all only [Measure.restrict_univ, ContinuousMap.toFun_eq_coe, le_refl, implies_true,
       mem_Icc, zero_le', true_and, ne_eq, OfNat.ofNat_ne_zero, not_false_eq_true, pow_eq_zero_iff, Subtype.forall,
-      f2c, f2]
-    simp_all only [ContinuousMap.toFun_eq_coe, f2, f2c]
+       f2]
+    simp_all only [ContinuousMap.toFun_eq_coe, f2]
     obtain ⟨val, property⟩ := x
 
-    simp_all only [f2c, f2]
+    simp_all
 
   show ∀ (x : ↑Ic), f.toFun x = 0
   intro x
@@ -459,7 +462,7 @@ by
       dsimp [toFun]
       simp [hx]
   have h_ae : (fun x:(Ic_c) => ENNReal.ofReal (‖toFun f x.val‖ ^ 2)) =ᶠ[ae (volume:Measure Ic_c)] 0 := by
-    simp_all only [mem_Icc, norm_eq_abs, and_imp, sq_abs, ofReal_eq_zero, implies_true]
+    simp_all only [norm_eq_abs,  sq_abs, ofReal_eq_zero]
     filter_upwards with x
     simp_all only [Pi.zero_apply, ofReal_eq_zero]
     obtain ⟨val, property⟩ := x
@@ -467,14 +470,14 @@ by
     exact this _ property
 
   apply (ae_restrict_iff_subtype measurableSet_Ic_c).mpr
-  simp_all only [mem_Icc, norm_eq_abs, and_imp, sq_abs, ofReal_eq_zero, Pi.zero_apply, implies_true]
+  simp_all only [ norm_eq_abs, sq_abs, ofReal_eq_zero, Pi.zero_apply]
   filter_upwards with x
   obtain ⟨val, property⟩ := x
   simp_all only
   exact this _ property
 
 
-lemma mem_L2_f_ext {f: C₀}: Memℒp (toFun f) 2 volume :=
+lemma mem_L2_f_ext {f: C₀}: MemLp (toFun f) 2 volume :=
 by
   constructor
   · convert toFun_measurable f
@@ -511,8 +514,8 @@ by
     by
       have : 0 ≤ ‖toFun f 0‖:=
       by
-        simp_all only [mem_Icc, norm_eq_abs, ge_iff_le, abs_nonneg]
-      let h0 := hM 0 (by simp [Ic])
+        simp_all only [mem_Icc, norm_eq_abs,  abs_nonneg]
+      let h0 := hM 0 (by simp)
       linarith
 
     --実数全体で不等号がなりたつこと。これもR全体である必要はなかった。
@@ -544,12 +547,12 @@ by
 
     let mtl := @MeasureTheory.lintegral_mono Ic _ volume (fun x => ENNReal.ofReal (‖toFun f x‖^2)) (fun x => ENNReal.ofReal (M^2)) h_f_sq4
     -- ルベーグ積分を評価する
-    let eel := @eLpNorm_eq_lintegral_rpow_enorm ℝ ℝ _ 2 volume _ (by norm_num) (by simp) (toFun f)
+    let eel := @eLpNorm_eq_lintegral_rpow_enorm ℝ ℝ _ 2 _ volume (by norm_num) (by simp)
 
     have :(∫⁻ (x : ℝ), (‖toFun f x‖ₑ ^ (2:ℕ))) = (∫⁻ (x : ℝ), ENNReal.ofReal (‖toFun f x‖ ^ (2:ℕ))) :=
     by
-      simp_all only [mem_Icc, norm_eq_abs, and_imp, sq_abs, const_apply, lintegral_const,
-        measure_univ_of_isAddLeftInvariant, implies_true]
+      simp_all only [mem_Icc, norm_eq_abs, and_imp, sq_abs,
+         implies_true]
       rw [lintegral_congr]
       · intro x
         ring_nf
@@ -565,7 +568,7 @@ by
             show ENNReal.ofReal |f.1 ⟨x, h'⟩| ^ 2 = ENNReal.ofReal (f.1 ⟨x, h'⟩ ^ 2)
             have : |f.1 ⟨x, h'⟩| ^ 2 = (f.1 ⟨x, h'⟩) ^ 2:=
             by
-              simp_all only [Nat.ofNat_nonneg, ContinuousMap.toFun_eq_coe, sq_abs]
+              simp_all only [ContinuousMap.toFun_eq_coe, sq_abs]
             rw [←this]
             have : |f.1 ⟨x, h'⟩| ≥ 0:=
             by
@@ -607,6 +610,9 @@ by
       let lac:= @lintegral_add_compl ℝ Real.measurableSpace volume (fun x => ENNReal.ofReal (‖toFun f x‖ ^ (2:ℕ))) Ic mIc
       exact lac.symm
 
+    have :∀ x, ‖toFun f x‖ₑ ^ (2:ℝ) = ‖toFun f x‖ₑ ^ (2:ℕ):= by
+       exact fun x ↦ ENNReal.rpow_two ‖toFun f x‖ₑ
+
     --証明が長いのでcalcにしなくてもよかったかも。
     calc
       eLpNorm (toFun f) 2 volume
@@ -618,10 +624,10 @@ by
               simp
             rw [this]
       _ = ((∫⁻ (x : ℝ), ‖toFun f x‖ₑ ^ (2:ℕ))) ^ (1 / (2:ℝ)):= by
-        simp_all only [mem_Icc, norm_eq_abs, and_imp, sq_abs, rpow_ofNat, one_div]
+        simp_all only [mem_Icc, norm_eq_abs, and_imp, sq_abs, one_div]
       --_ = ((∫⁻ (x : ℝ), ‖toFun f x‖ₑ ^ (2:ℕ))) ^ (1 / (2:ℕ)):= by
       _ = ((∫⁻ (x : ℝ), ENNReal.ofReal (‖toFun f x‖ ^ (2:ℕ)))) ^ (1 / (2:ℝ)) :=
-        by simp_all only [mem_Icc, norm_eq_abs, and_imp, sq_abs, Nat.reduceDiv, pow_zero]
+        by simp_all only [mem_Icc, norm_eq_abs, and_imp, sq_abs]
       --積分範囲に注意。ここから変わっている。IcとIc以外で積分を分けた方がいいのかも。Ic以外の積分の値は0となる。
       _ = ((∫⁻ (x : ℝ) in Ic, ENNReal.ofReal (‖toFun f x‖ ^ (2:ℕ))) + (∫⁻ (x : ℝ) in Icᶜ, ENNReal.ofReal (‖toFun f x‖ ^ (2:ℕ)))) ^ (1 / (2:ℝ)) :=
         by
@@ -654,10 +660,10 @@ by
       _ = (ENNReal.ofReal (M^2) * volume Ic)^ (1 / (2:ℝ))  :=
         by
           simp_all only [mem_Icc, norm_eq_abs, and_imp, sq_abs, ofReal_one, lintegral_const, MeasurableSet.univ,
-            Measure.restrict_apply, univ_inter, one_mul, Nat.reduceDiv, pow_zero]
+            Measure.restrict_apply, univ_inter, one_mul]
       _ < ⊤ :=
       by
-        simp_all only [mem_Icc, norm_eq_abs, and_imp, sq_abs, Nat.reduceDiv, pow_zero, one_lt_top,h_measure_finite,Nat.cast_two,implies_true, Nat.cast_ofNat, one_div,ENNReal.ofReal_pow,lt_top_iff_ne_top]
+        simp_all only [mem_Icc, norm_eq_abs, and_imp, sq_abs, implies_true, one_div,ENNReal.ofReal_pow,lt_top_iff_ne_top]
         have : ENNReal.ofReal M^2 * volume Ic ≠ ∞ := by
           simp_all only [ne_eq]
           apply Aesop.BuiltinRules.not_intro
@@ -683,7 +689,7 @@ lemma LP2norm {f h : C₀} :
   L2_distance_Ic f h = ‖(@mem_L2_f_ext f).toLp-(@mem_L2_f_ext h).toLp‖ :=
 by
   simp [L2_distance_Ic]
-  dsimp [Memℒp.toLp]
+  dsimp [MemLp.toLp]
 
   dsimp [Lp.norm_def]
   dsimp [eLpNorm ]
@@ -691,7 +697,7 @@ by
   rw [eLpNorm'_eq_lintegral_enorm, eLpNorm'_eq_lintegral_enorm]
   simp
   rw [lintegral_congr_ae]
-  simp only [AEEqFun.coeFn_sub, sub_eq_add_neg]
+  simp only [sub_eq_add_neg]
   simp
   --fh_rw3で暗黙につかっている。
   have fh_rw2:∀ x, (toFun f + -toFun h) x = toFun (f + -h) x := by
@@ -763,7 +769,7 @@ by
     simp_all only [AEEqFun.coeFn_mk]
 
   rename_i this_5
-  simp_all only [const_apply, Pi.add_apply, Pi.neg_apply]
+  simp_all only [ Pi.add_apply, Pi.neg_apply]
   filter_upwards [this_5] with a ha
   simp_all only
 
@@ -779,7 +785,7 @@ by
   rw [eLpNorm'_eq_lintegral_enorm, eLpNorm'_eq_lintegral_enorm]
 
   rw [lintegral_congr_ae]
-  simp_all only [enorm_neg, toReal_ofNat, rpow_ofNat, EventuallyEq.refl]
+  simp_all only [enorm_neg, toReal_ofNat,EventuallyEq.refl]
 
 --距離空間の公理を満たすためには、定義域を[0,1]に制限する必要がある。
 noncomputable instance : MetricSpace C₀ where
@@ -787,7 +793,6 @@ noncomputable instance : MetricSpace C₀ where
    exact L2_distance_Ic
 
   dist_self f := by
-    simp_all only
     simp [L2_distance_Ic]
     unfold toFun
     simp
@@ -806,7 +811,7 @@ noncomputable instance : MetricSpace C₀ where
       split
       · rename_i h0
         simp [h0]
-        simp only [neg_sub, sub_eq_add_neg]
+        simp only [sub_eq_add_neg]
         rw [ContinuousMap.add_apply]
         rw [ContinuousMap.add_apply]
         simp
@@ -865,7 +870,7 @@ noncomputable instance : MetricSpace C₀ where
         simp_all only [mem_Icc]
         obtain ⟨left, right⟩ := property
         cases ere with
-        | inl h => simp_all only [zero_rpow_of_pos, inv_pos, Nat.ofNat_pos, and_true]
+        | inl h => simp_all only [inv_pos, Nat.ofNat_pos, and_true]
         | inr h_1 =>
           exfalso
           simp at h_1
@@ -880,13 +885,13 @@ noncomputable instance : MetricSpace C₀ where
           let gₘ := (@mem_L2_f_ext g).toLp
           let fgₘ := (@mem_L2_f_ext (f - g)).toLp
           let fglp := fgₘ.2
-          have h_memℒp : Memℒp (toFun (f - g)) 2 volume := @mem_L2_f_ext (f - g)
+          have h_memLp : MemLp (toFun (f - g)) 2 volume := @mem_L2_f_ext (f - g)
           -- `Memℒp` の定義から `eLpNorm` が有限
-          have h_norm : eLpNorm (toFun (f - g)) 2 volume < ∞ := h_memℒp.2
+          have h_norm : eLpNorm (toFun (f - g)) 2 volume < ∞ := by exact MemLp.eLpNorm_lt_top h_memLp--h_memℒp.2
           -- `eLpNorm` の定義を適用
           rw [MeasureTheory.eLpNorm_eq_lintegral_rpow_enorm] at h_norm
 
-          simp_all only [rpow_eq_top_iff, inv_neg'', inv_pos, Nat.ofNat_pos, and_true, toReal_ofNat, rpow_ofNat,
+          simp_all only [rpow_eq_top_iff, inv_neg'', inv_pos, Nat.ofNat_pos, and_true, toReal_ofNat,
             one_div, gt_iff_lt]
           obtain ⟨val, property⟩ := x
           --obtain ⟨val_1, property_1⟩ := fₘ
@@ -895,8 +900,8 @@ noncomputable instance : MetricSpace C₀ where
           simp_all only [mem_Icc]
           obtain ⟨left, right⟩ := property
           cases h_inf with
-          | inl h => simp_all only [inv_pos, Nat.ofNat_pos, zero_rpow_of_pos, zero_lt_top]
-          | inr h_1 => simp_all only [inv_pos, Nat.ofNat_pos, top_rpow_of_pos, lt_self_iff_false]
+          | inl h => simp_all only [ zero_lt_top]
+          | inr h_1 => simp_all only [ENNReal.rpow_ofNat, inv_pos, Nat.ofNat_pos, top_rpow_of_pos, lt_self_iff_false]
 
           · simp_all only [rpow_eq_top_iff, inv_neg'', inv_pos, Nat.ofNat_pos, and_true, ne_eq, OfNat.ofNat_ne_zero,
             not_false_eq_true]
@@ -922,11 +927,11 @@ noncomputable instance : MetricSpace C₀ where
       have :∀ a:ℝ, ENNReal.ofReal (‖toFun (f - g) a‖ ^ 2) = ‖toFun (f - g) a‖ₑ ^ 2 := by
         let eq_pointwise : ∀ x : ℝ, ENNReal.ofReal (‖toFun (f - g) x‖ ^ 2) = ‖toFun (f - g) x‖ₑ ^ 2 :=
           fun x => by
-            simp_all only [ContinuousMap.toFun_eq_coe, norm_eq_abs, sq_abs, ContinuousMap.coe_sub, ContinuousMap.coe_mk]
+            simp_all only [norm_eq_abs, sq_abs]
             rw [Real.enorm_eq_ofReal_abs]
             rw [←abs_sq]
             rename_i x_1
-            simp_all only [inv_pos, Nat.ofNat_pos, zero_rpow_of_pos, zero_toReal, abs_pow, sq_abs]
+            simp_all only [inv_pos, Nat.ofNat_pos, zero_rpow_of_pos, toReal_zero, abs_pow, sq_abs]
             obtain ⟨val, property⟩ := x_1
             simp_all only [mem_Icc]
             --obtain ⟨left, right⟩ := property
@@ -938,7 +943,7 @@ noncomputable instance : MetricSpace C₀ where
         --obtain ⟨val, property⟩ := x
         --obtain ⟨left, right⟩ := property
         simpa using eq_pointwise a
-      simp_all only [inv_pos, Nat.ofNat_pos, zero_rpow_of_pos, zero_toReal, norm_eq_abs, sq_abs]
+      simp_all only [inv_pos, Nat.ofNat_pos, zero_rpow_of_pos, toReal_zero, norm_eq_abs, sq_abs]
 
     have h_integral_Ic_c : ∫⁻ x in (Set.univ:Set Ic_c), ENNReal.ofReal ((toFun f x - toFun g x) ^ 2) = 0 :=
     by
@@ -967,9 +972,9 @@ noncomputable instance : MetricSpace C₀ where
           unfold toFun
           split
           case isTrue h' =>
-            simp_all only [ContinuousMap.toFun_eq_coe, Real.rpow_two]
+            simp_all only [ContinuousMap.toFun_eq_coe]
             obtain ⟨val, property⟩ := x  --とるとエラー
-            simp_all only [mem_Icc]
+            simp_all only
             simp_all only [ofReal_eq_zero]
             --obtain ⟨val_1, property_1⟩ := x
             rw [← zic] at zic
@@ -987,12 +992,11 @@ noncomputable instance : MetricSpace C₀ where
     --by
     have :∀ x∈ Icᶜ, ‖toFun (f - g) x‖ ^ 2= (toFun f x - toFun g x) ^ 2 := by
       intro x hx
-      simp_all only [ContinuousMap.toFun_eq_coe, norm_eq_abs, sq_abs, ContinuousMap.coe_sub, ContinuousMap.coe_mk
-        , ContinuousMap.toFun_eq_coe]
+      simp_all only [norm_eq_abs, sq_abs]
       unfold toFun
       split
       case isTrue h' =>
-        simp_all only [ContinuousMap.toFun_eq_coe, Real.rpow_two]
+        simp_all only [ContinuousMap.toFun_eq_coe]
         rfl
       case isFalse h' =>
         simp
@@ -1007,7 +1011,7 @@ noncomputable instance : MetricSpace C₀ where
         unfold toFun
         split
         case isTrue h' =>
-          simp_all only [ContinuousMap.toFun_eq_coe, Real.rpow_two]
+          simp_all only [ContinuousMap.toFun_eq_coe]
           rename_i x_1
           simp_all only [Measure.restrict_univ, mem_compl_iff, norm_eq_abs, sq_abs]
 
@@ -1030,7 +1034,7 @@ noncomputable instance : MetricSpace C₀ where
 
     have :((∫⁻ (a : ℝ) in Ic, ENNReal.ofReal (‖toFun (f - g) a‖ ^ 2)) ) = 0 :=
     by
-      simp_all only [inv_pos, Nat.ofNat_pos, zero_rpow_of_pos, zero_toReal, norm_eq_abs, sq_abs, Measure.restrict_univ,
+      simp_all only [inv_pos, Nat.ofNat_pos, zero_rpow_of_pos,  norm_eq_abs, sq_abs, Measure.restrict_univ,
         mem_compl_iff]
     have :∫⁻ (x : ↑Ic) in univ, ENNReal.ofReal (toFun (f - g) x ^ 2) = 0:=
     by
@@ -1047,11 +1051,11 @@ noncomputable instance : MetricSpace C₀ where
       unfold toFun
       split
       case isTrue h' =>
-        simp_all only [ContinuousMap.toFun_eq_coe, Real.rpow_two]
+        simp_all only [ContinuousMap.toFun_eq_coe]
         rfl
       case isFalse h' =>
         simp
-        simp_all only [inv_pos, Nat.ofNat_pos, zero_rpow_of_pos, zero_toReal, norm_eq_abs, sq_abs,
+        simp_all only [inv_pos, Nat.ofNat_pos, zero_rpow_of_pos, ENNReal.toReal_zero, norm_eq_abs, sq_abs,
           Measure.restrict_univ, mem_compl_iff, Subtype.coe_prop, not_true_eq_false]
 
     let diff := ContinuousMap.mk (λ x => f.1 x - g.1 x) (f.continuous_toFun.sub g.continuous_toFun)
@@ -1059,8 +1063,8 @@ noncomputable instance : MetricSpace C₀ where
     have h_eq : ∀ x ∈ Set.Icc 0 1, diff.toFun x = 0 :=
     by
       intro x_1 a
-      simp_all only [Measure.restrict_univ, ContinuousMap.toFun_eq_coe, ge_iff_le, Pi.sub_apply, mem_Icc, zero_le',
-        true_and, ContinuousMap.coe_mk, sqrt_zero, le_refl, diff]
+      simp_all only [Measure.restrict_univ, ContinuousMap.toFun_eq_coe, mem_Icc, zero_le', true_and,
+        diff]
       obtain ⟨val, property⟩ := x
       obtain ⟨val_1, property_1⟩ := x_1
       simp_all only [mem_Icc]
@@ -1075,6 +1079,5 @@ noncomputable instance : MetricSpace C₀ where
     specialize h_eq this
     simp_all only [Set.mem_Icc, zero_le', true_and, ContinuousMap.toFun_eq_coe]
     obtain ⟨val, property⟩ := x
-    simp_all only [ge_iff_le, le_refl, Measure.restrict_univ, Pi.sub_apply, ContinuousMap.toFun_eq_coe,
-      ContinuousMap.coe_mk, sqrt_zero, diff]
+    simp_all only [Measure.restrict_univ, ContinuousMap.toFun_eq_coe, ContinuousMap.coe_mk, diff]
     exact sub_eq_zero.mp h_eq

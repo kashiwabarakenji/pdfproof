@@ -2,7 +2,7 @@ import Mathlib.Algebra.Group.Defs
 import Mathlib.Algebra.Group.Basic
 import Mathlib.Algebra.Group.Subgroup.Basic
 import Mathlib.Algebra.Group.Hom.Defs
-import Mathlib.Deprecated.Subgroup
+--import Mathlib.Deprecated.Subgroup
 import Mathlib.GroupTheory.Coset.Basic
 import Mathlib.Algebra.Group.Subsemigroup.Basic
 
@@ -49,9 +49,9 @@ by
 
 -- 群準同型写像の像が部分群であることを示す定理 既存の定理を利用した場合。
 --isSubgroupは、Deprecatedな関数。
-example {G G' : Type*} [Group G] [Group G']
-  (f : G →* G') : IsSubgroup (Set.range f) := by
-  exact f.range.isSubgroup
+example {G G' : Type*} [Group G] [Group G'] (f : G →* G') :
+    Subgroup G' :=
+  f.range
 
 --こちらは定義をしてからinstanceを確認。
 def group_hom_image_is_subgroup {G G' : Type*} [Group G] [Group G'] (f : G →* G') : Subgroup (G') :=
@@ -78,7 +78,6 @@ instance {G G' : Type*} [Group G] [Group G'] (f : G →* G') : Group (group_hom_
   inv := λ a => ⟨a.1⁻¹, (group_hom_image_is_subgroup f).inv_mem' a.2⟩,
   div := λ a b => ⟨a.1 * b.1⁻¹, (group_hom_image_is_subgroup f).mul_mem' a.2 ((group_hom_image_is_subgroup f).inv_mem' b.2)⟩,
   div_eq_mul_inv := λ a b => Subtype.ext (by
-  simp_all only [Submonoid.coe_mul, Subgroup.coe_toSubmonoid]
   obtain ⟨val, property⟩ := a
   obtain ⟨val_1, property_1⟩ := b
   simp_all only
@@ -104,7 +103,7 @@ def group_hom_comp_is_group_hom {G : Type*} [Group G] (f g : G →* G) : G →* 
   map_mul' := by
     -- (g ∘ f)(x * y) = (g ∘ f)(x) * (g ∘ f)(y) を示す
     intros x y                  -- 任意の x, y ∈ G を取る
-    simp only [Function.comp_apply, f.map_mul, g.map_mul]    -- 定義により (g ∘ f)(x * y) = g(f(x * y))
+    simp only [Function.comp_apply]    -- 定義により (g ∘ f)(x * y) = g(f(x * y))
     simp_all only [OneHom.toFun_eq_coe, MonoidHom.toOneHom_coe, map_mul]
 }
 
@@ -140,7 +139,6 @@ instance {G G' : Type*} [Group G] [Group G'] (f : G →* G') : Group (group_hom_
   inv := λ a => ⟨a.1⁻¹, (group_hom_ker_is_subgroup f).inv_mem' a.2⟩,
   div := λ a b => ⟨a.1 * b.1⁻¹, (group_hom_ker_is_subgroup f).mul_mem' a.2 ((group_hom_ker_is_subgroup f).inv_mem' b.2)⟩,
   div_eq_mul_inv := λ a b => Subtype.ext (by
-  simp_all only [Submonoid.coe_mul, Subgroup.coe_toSubmonoid]
   obtain ⟨val, property⟩ := a
   obtain ⟨val_1, property_1⟩ := b
   simp_all only
@@ -387,9 +385,7 @@ theorem normal_iff_left_cosets_eq_right_cosets {G : Type*} [Group G] {H : Subgro
     have _ : ∀ (h : G) (hh : h ∈ H), x * h = (f ⟨h, hh⟩) * x :=
       by
         intro h hh
-        simp only [Function.comp_apply]
-        simp only [mul_assoc]
-        simp_all only [inv_mul_cancel, mul_one, f]
+        simp_all only [inv_mul_cancel_right, f]
 
     -- Set.image (λ h => x * h) H = Set.image (λ h => f h * x) H であることを示す
     have h1 : Set.image (λ h => x * h) H.carrier = Set.image (λ h => f h * x) (Set.univ:Set H.carrier) := by
@@ -408,14 +404,9 @@ theorem normal_iff_left_cosets_eq_right_cosets {G : Type*} [Group G] {H : Subgro
         · exact Set.mem_univ (f ⟨h, hH⟩)
         · --↑(f (f ⟨h, hH⟩)) * x = (fun h ↦ x * h) h
           dsimp [f]
-          simp_all
-          rw [←mul_assoc]
-          rw [←mul_assoc]
-          rw [mul_inv_cancel]
-          rw [one_mul]
-          rw [mul_assoc]
-          rw [mul_inv_cancel]
-          simp_all only [mul_one, f]
+          simp only [mul_assoc, mul_inv_cancel_left]
+          simp_all only [inv_mul_cancel_right, implies_true, Subsemigroup.mem_carrier, Submonoid.mem_toSubsemigroup,
+             Subgroup.mem_toSubmonoid, inv_mul_cancel, mul_one, f]
 
       · intro hy
         rcases hy with ⟨h, _, rfl⟩
@@ -475,7 +466,7 @@ theorem normal_iff_left_cosets_eq_right_cosets {G : Type*} [Group G] {H : Subgro
       constructor
       · dsimp [f]
         simp_all
-        exact conj_mem_normal h_normal x hr hrH
+
       · dsimp [f]
         simp_all
     · intro h
@@ -496,12 +487,10 @@ theorem normal_iff_left_cosets_eq_right_cosets {G : Type*} [Group G] {H : Subgro
       simp_all
       let h_conj := conj_mem_normal h_normal x⁻¹ hr hrH
       simp at h_conj
-      exact h_conj
-
-      dsimp [f]
-      rw [←mul_assoc]
-      rw [←mul_assoc]
-      simp_all
+      simp_all only [inv_mul_cancel_right, implies_true, Set.image_mul_left, Set.image_univ, SetLike.mem_coe, mul_right_inj,
+        exists_eq_right, f, g]
+      simp_all only [SetLike.mem_coe]
+      simp [mul_assoc]
 
    -- ∀x, Set.image (λ h => x * h) H = Set.image (λ h => h * x) H から H.Normal を示す
   · intro h_cosets_eq

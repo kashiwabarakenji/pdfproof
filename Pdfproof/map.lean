@@ -1,4 +1,4 @@
-import LeanCopilot
+--import LeanCopilot
 import Mathlib.Data.Set.Basic
 import Mathlib.Data.Set.Function
 
@@ -163,7 +163,7 @@ example {X Y : Type} (f : X → Y) (A B : Set Y) : f ⁻¹' (A ∪ B) = f ⁻¹'
 --下の証明で使う補助補題。補題を用いる例になっている。
 lemma diff_empty {α : Type} {x₁ x₂ : α} (h : ¬(x₁ = x₂)) : {x₁} ∩ {x₂} = (∅ : Set α) :=
   by
-    apply Set.eq_empty_iff_forall_not_mem.mpr --mprは左から右の部分を取り出したもの。
+    apply Set.eq_empty_iff_forall_notMem.mpr --mprは左から右の部分を取り出したもの。
     intro y
     intro hy
     cases hy with
@@ -188,7 +188,7 @@ example  {X Y : Type} (f : X → Y) :
       -- f({x₁}) = {f(x₁)} かつ f({x₂}) = {f(x₂)} より、仮定 f(x₁) = f(x₂) から同じ像が得られる
       have h₁ : f '' ({x₁} ∩ {x₂}) = {f x₁} := by
         simp_all only [Set.image_singleton, Set.inter_self]
-      simp only [Set.image_singleton, Set.inter_self] at h₁
+      simp only  at h₁
       by_contra conh
       have h3: f '' ({x₁} ∩ {x₂}) = (∅ : Set Y) := by
         rw[diff_empty conh]
@@ -243,11 +243,11 @@ by
     intro x₁ x₂ hfx
     -- Consider A = {x₁}, B = {x₂} and use the given condition on intersections
     have h := h_inj {x₁} {x₂}
-    simp only [Set.image_singleton, Set.inter_empty, Set.image_empty] at h
+    simp only [Set.image_singleton] at h
     -- From f(x₁) = f(x₂), we get the same image for both sets
     by_contra hne -- Goal False
     have : f '' ({x₁} ∩ {x₂}) = ∅ := by
-      simp [hne]
+      simp
       simp_all only [Set.image_singleton]
       tauto
     -- But f '' ({x₁} ∩ {x₂}) = {f x₁}, which leads to a contradiction
@@ -275,6 +275,49 @@ by
       subst this -- goal: f a ∈ f '' (A ∩ B)
       exact ⟨a, ⟨haA, hbB⟩, rfl⟩
 
+--写像 練習7 の別証明 2025年9月 ChatGPT 5 Thinking (微修正)　特に短くはなってない。
+-- 任意の A, B ⊆ X について f(A ∩ B) = f(A) ∩ f(B) であることが、f が単射であることと同値であることを示す
+example {X Y : Type} (f : X → Y) :
+  (∀ A B : Set X, f '' (A ∩ B) = f '' A ∩ f '' B) ↔ Function.Injective f := by
+  classical
+  constructor
+  · intro h
+    intro x₁ x₂ hfx
+    -- A={x₁}, B={x₂} で等式を使う
+    have h₀ := h ({x₁}) ({x₂})
+    -- 右辺は {f x₁} ∩ {f x₂}
+    have himg_nonempty : (f '' ({x₁} ∩ {x₂} : Set X)).Nonempty := by
+      -- {f x₁} と {f x₂} の交わりは hfx から非空
+      have : ({f x₁} ∩ {f x₂} : Set Y).Nonempty := by
+        refine ⟨f x₁, ?_⟩
+        constructor
+        · simp
+        · exact hfx
+      simpa [h₀, Set.image_singleton] using this
+    -- 画像が非空 ⇒ 元の集合が非空 ⇒ x₁ = x₂
+    rcases himg_nonempty with ⟨y, hy⟩
+    rcases hy with ⟨x, hx, rfl⟩
+    rcases hx with ⟨hx1, hx2⟩
+    have hx1' : x = x₁ := by simpa [Set.mem_singleton_iff] using hx1
+    have hx2' : x = x₂ := by simpa [Set.mem_singleton_iff] using hx2
+    rw [←hx1', hx2']
+  · intro hinj
+    intro A B
+    -- 両包含で示す
+    apply le_antisymm
+    · intro y hy
+      rcases hy with ⟨x, hxAB, rfl⟩
+      rcases hxAB with ⟨hxA, hxB⟩
+      constructor
+      · exact ⟨x, hxA, rfl⟩
+      · exact ⟨x, hxB, rfl⟩
+    · intro y hy
+      rcases hy with ⟨hyA, hyB⟩
+      rcases hyA with ⟨x₁, hx₁A, rfl⟩
+      rcases hyB with ⟨x₂, hx₂B, h₂⟩  -- h₂ : f x₂ = f x₁
+      have hx : x₁ = x₂ := hinj (by simpa [eq_comm] using h₂)
+      rw [hx] at hx₁A
+      refine ⟨x₂, ⟨hx₁A, hx₂B⟩, h₂⟩
 
 --写像 練習8
 --lean copilotを使った証明。やや冗長か。このあとに短くした証明ものせる。
@@ -292,10 +335,10 @@ by
     obtain ⟨y, hy⟩ := hns
 
     have h1 : y ∈ (f '' Set.univ)ᶜ := by
-      simp_all only [Set.compl_subset_compl, ne_eq, Set.image_univ,
+      simp_all only [ ne_eq, Set.image_univ,
         Set.mem_compl_iff, Set.mem_range, exists_false, not_false_eq_true]
     have h2 : y ∉ f '' (Set.univᶜ) := by
-      simp_all only [Set.mem_range, exists_false, not_false_eq_true, Set.compl_univ, Set.image_empty,
+      simp_all only [ not_false_eq_true, Set.compl_univ, Set.image_empty,
     Set.mem_empty_iff_false]
     exact h2 (h Set.univ h1)
 
@@ -361,7 +404,7 @@ example {α β : Type}  (f : α → β) :
       -- このとき、y は f '' α に含まれないので y ∈ (f '' Set.univ)ᶜ となる
       -- Set.univは全体集合
       have hynot : y ∈ (f '' Set.univ)ᶜ := by
-        simp_all only [Set.mem_compl_iff, Set.mem_range]
+        simp_all only [Set.mem_compl_iff]
         --Set.mem_compl_iff:  a ∈ UpperSet.compl s ↔ a ∉ s
         --Set.mem_range  : x ∈ Set.range f ↔ ∃ y, f y = x
         simp [hy]
@@ -374,7 +417,7 @@ example {α β : Type}  (f : α → β) :
 
       -- よって (f '' Set.univ)ᶜ ⊆ ∅
       -- すると y ∈ ∅ となり矛盾が生じる
-      exact Set.not_mem_empty y (h hynot)
+      exact Set.notMem_empty y (h hynot)
       --a ∉ ∅
 
     -- (←) 方向: f(A)^c ⊆ f(A^c) なら f が全射であることを示す
@@ -423,38 +466,28 @@ example : (∀ A : Set α, (f '' A)ᶜ ⊆ f '' (Aᶜ)) ↔ Function.Surjective 
     apply hy
     on_goal 2 => {rfl
     }
-    · simp_all only
+    exact a
 
-example {α β : Type}  (f : α → β) :
-  (∀ A : Set α, (f '' A)ᶜ ⊆ f '' (Aᶜ)) ↔ Function.Surjective f :=
-by
+--練習8の別証明: 2025年9月 ChatGPT 5 Thinking (修正不要)
+example {α β : Type} (f : α → β) :
+    (∀ A : Set α, (f '' A)ᶜ ⊆ f '' (Aᶜ)) ↔ Function.Surjective f := by
+  classical
   constructor
   · intro h
-    intro b
-    have h1 : f ⁻¹' {b} ⊆ f ⁻¹' ({b} : Set β) := by simp
-    have h2 : (f '' (f ⁻¹' {b}))ᶜ ⊆ f '' (f ⁻¹' {b})ᶜ := h _
-    search_proof
-
-
-  · intro h
-    intro A
-    intro b hb
-    simp at hb
-    simp [hb]
-    dsimp [Function.Surjective] at h
-    push_neg at hb
-    obtain ⟨a, ha⟩ := h b
-    use a
-    constructor
-    subst ha
-    simp_all only [ne_eq]
-    apply Aesop.BuiltinRules.not_intro
-    intro a_1
-    exact hb a a_1 (by simp)
-    exact ha
-
-
-
+    intro y
+    have hU : (Set.univ : Set β) ⊆ Set.range f := by
+      simpa [Set.image_univ] using h (∅ : Set α)
+    have : y ∈ Set.range f := hU (Set.mem_univ y)
+    rcases this with ⟨x, rfl⟩
+    exact ⟨x, rfl⟩
+  · intro hsurj
+    intro A y hy
+    rcases hsurj y with ⟨x, rfl⟩
+    have hy' : f x ∈ (f '' A)ᶜ := by simpa using hy
+    have hxnot : x ∉ A := by
+      intro hxA
+      exact hy' ⟨x, hxA, rfl⟩
+    exact ⟨x, by simpa using hxnot, rfl⟩
 
 --写像 練習9
 --単射と単射の合成は単射

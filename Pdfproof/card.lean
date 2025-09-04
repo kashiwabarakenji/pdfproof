@@ -298,7 +298,7 @@ theorem countable_integers : #ℤ = aleph0 := by
           · simp_all only [zero_le, not_true_eq_false]
           · simp_all only [zero_le, not_true_eq_false]
           · simp_all only [zero_le, not_true_eq_false]
-      simp_all only [Int.ofNat_eq_coe, Int.ofNat_ediv, Nat.cast_ofNat, Nat.cast_add, Nat.cast_one]
+      simp_all only [Int.ofNat_eq_coe]
       tauto
 
     right_inv := by
@@ -316,7 +316,6 @@ theorem countable_integers : #ℤ = aleph0 := by
           split
           next h_1 =>
             norm_cast
-            simp_all only [Int.ofNat_ediv, Nat.cast_ofNat]
             omega
           next h_1 =>
             simp_all only [Nat.mod_two_ne_zero]
@@ -435,7 +434,7 @@ theorem q_countable : Set.Countable (Set.univ: Set ℚ) := by
 
   have qz:#ℚ ≥ #ℤ :=
   by
-    simp_all only [mk_eq_aleph0, le_refl, ge_iff_le]
+    simp_all only [mk_eq_aleph0, le_refl]
 
   have : #ℚ = #ℤ :=
   by
@@ -551,7 +550,7 @@ theorem real_card_le_set_of_rational  : #ℝ ≤ 2^#ℚ := by
           case pos =>
             rw [hq] at hq_props
             subst hq
-            simp_all only [Rat.cast_le, Rat.cast_lt, le_refl, and_true, lt_self_iff_false, or_true]
+            simp_all only [Rat.cast_le, Rat.cast_lt, lt_self_iff_false]
           case neg =>
             obtain ⟨_, right⟩ := hq_props
             contrapose! hq
@@ -576,10 +575,10 @@ theorem real_card_le_set_of_rational  : #ℝ ≤ 2^#ℚ := by
           simp [real_to_rational_subset_type]
           exact hq_props.right
         have q_in_y_set : q ∈ real_to_rational_subset_type y := by
-          simp_all only [gt_iff_lt, Set.mem_setOf_eq, not_le, real_to_rational_subset_type]
+          simp_all only [Set.mem_setOf_eq,  real_to_rational_subset_type]
           obtain ⟨left,_⟩ := hq_props
           linarith
-        simp_all only [gt_iff_lt, not_true_eq_false, real_to_rational_subset_type]
+        simp_all only [ not_true_eq_false, real_to_rational_subset_type]
 
   let result := @Cardinal.mk_le_of_injective ℝ (Set ℚ) real_to_rational_subset_type func_inj
   simpa using result --#R <= #(Set ℚ)から #R <= 2^#Q に変換

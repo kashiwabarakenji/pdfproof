@@ -6,7 +6,7 @@ import Mathlib.Data.Real.Archimedean
 import Mathlib.Data.Real.Basic
 import Mathlib.Data.NNReal.Defs
 import Mathlib.Order.Basic
-import Mathlib.Order.CompleteLattice
+--import Mathlib.Order.CompleteLattice
 import Mathlib.Order.ConditionallyCompleteLattice.Basic
 import Mathlib.Order.SetNotation
 import Mathlib.Algebra.Order.Monoid.Defs
@@ -25,7 +25,7 @@ import Mathlib.Topology.Order.Monotone
 import Mathlib.Topology.Order.Compact
 import Mathlib.Topology.UniformSpace.HeineCantor
 import Mathlib.Analysis.SpecialFunctions.Sqrt
-import Mathlib.Analysis.SpecialFunctions.Integrals
+--import Mathlib.Analysis.SpecialFunctions.Integrals
 import Mathlib.Analysis.InnerProductSpace.Basic
 import Mathlib.Analysis.InnerProductSpace.PiL2
 import Mathlib.Analysis.Normed.Lp.lpSpace
@@ -36,9 +36,17 @@ import Mathlib.MeasureTheory.Measure.Lebesgue.EqHaar
 import Mathlib.MeasureTheory.Measure.OpenPos
 import Mathlib.MeasureTheory.MeasurableSpace.Basic
 import Mathlib.MeasureTheory.MeasurableSpace.Defs
-import Mathlib.MeasureTheory.Integral.SetIntegral
+--import Mathlib.MeasureTheory.Integral.SetIntegral
+import Mathlib.MeasureTheory.Integral.Bochner.ContinuousLinearMap
+import Mathlib.MeasureTheory.Integral.Bochner.FundThmCalculus
+import Mathlib.MeasureTheory.Integral.Bochner.Set
+
 import Mathlib.MeasureTheory.Integral.BoundedContinuousFunction
-import Mathlib.MeasureTheory.Integral.Bochner
+--import Mathlib.MeasureTheory.Integral.Bochner
+import Mathlib.MeasureTheory.Integral.Bochner.ContinuousLinearMap
+import Mathlib.MeasureTheory.Integral.Bochner.FundThmCalculus
+import Mathlib.MeasureTheory.Integral.Bochner.Set
+
 import Mathlib.MeasureTheory.Function.L1Space.HasFiniteIntegral
 import Mathlib.MeasureTheory.Order.Group.Lattice
 import LeanCopilot
@@ -143,9 +151,9 @@ by
         exact this
         exact add_pos_of_nonneg_of_pos hx0 εpos
         constructor
-        simp_all only [gt_iff_lt, ge_iff_le, a, b, I]
+        simp_all only [gt_iff_lt, ge_iff_le, I]
         linarith
-        simp_all only [gt_iff_lt, ge_iff_le, zero_lt_one, a, b, I]
+        simp_all only [gt_iff_lt, ge_iff_le, zero_lt_one, I]
       have Ioo_ab_subset : Ioo a b ⊆ I := by
         intro y hy
         obtain ⟨y_ge_a, y_le_b⟩ := hy
@@ -228,9 +236,9 @@ by
             let h_c := h_contra'.2
             rw [←ge_iff_le] at h_c
             exact lt_irrefl y (lt_of_le_of_lt h_c this)
-          simp_all only [gt_iff_lt, mem_inter_iff, mem_ball, dist_self, Subtype.coe_prop, and_self, lt_inf_iff,
-            sup_lt_iff, zero_lt_one, and_true, subset_inter_iff, setOf_subset_setOf, and_imp, mem_setOf_eq,
-            not_true_eq_false, a, I', b, y, I, b', a']
+          simp_all only [gt_iff_lt, mem_inter_iff, mem_ball, dist_self, Subtype.coe_prop, and_self,
+            lt_inf_iff, sup_lt_iff, zero_lt_one, and_true, subset_inter_iff, setOf_subset_setOf,
+            and_imp, mem_setOf_eq, not_true_eq_false, a, b, y, I, b', a']
 
       have Icc_ab_subset : I' ⊆ I := by
         intro y hy
@@ -250,10 +258,10 @@ by
           sup_lt_iff, zero_lt_one, and_true, subset_inter_iff, ofReal_pos, sub_pos, a', b', a, b, I, I']
       -- 以上より Icc a b ⊆ I up to measure 0 ⇒ measure(I) ≥ measure(Icc a b)
       -- 従って measure(I) > 0
-      exact gt_of_ge_of_gt I_le_I measure_Icc_ab
+      exact lt_of_le_of_lt' I_le_I measure_Icc_ab
 
     apply MeasureTheory.Measure.restrict_eq_self volume
-    simp_all only [gt_iff_lt, mem_inter_iff, mem_ball, dist_self, Subtype.coe_prop, and_self, inter_subset_right, I]
+    simp_all only [gt_iff_lt, mem_inter_iff, mem_ball, dist_self, Subtype.coe_prop, and_self, I]
     obtain ⟨val, property⟩ := x
     obtain ⟨left, right⟩ := hVU
     subst right
@@ -346,8 +354,8 @@ by
   exact measurableSet_Icc
 
 def measurableSet_Ic_c: MeasurableSet Ic_c := by
-    simp_all only [Ic_c, MeasurableSet.compl]
-    simp_all only [mem_Icc, norm_eq_abs, and_imp, implies_true, sq_abs, ofReal_eq_zero, MeasurableSet.compl_iff]
+    simp_all only [Ic_c]
+    simp_all only [MeasurableSet.compl_iff]
     apply MeasurableSet.congr
     on_goal 2 => ext x : 1
     on_goal 2 => apply Iff.intro
@@ -385,12 +393,12 @@ by
 
     have preimage:Subtype.val ⁻¹' (Subtype.val '' K) = K:=
     by
-      simp_all only [inter_univ, Subtype.val_injective, preimage_image_eq, subset_refl]
+      simp_all only [inter_univ, Subtype.val_injective, preimage_image_eq]
     rw [preimage]
 
     have :Subtype.val '' K ∩ Ic = Subtype.val '' K:=
     by
-      simp_all only [inter_univ, subset_refl, Subtype.val_injective, preimage_image_eq,
+      simp_all only [inter_univ, Subtype.val_injective, preimage_image_eq,
         image_val_inter_self_left_eq_coe]
 
     rw [this] at mtm
@@ -398,16 +406,16 @@ by
 
     suffices (volume.restrict Ic) K = volume K from
     by
-      simp_all only [inter_univ, subset_refl, Subtype.val_injective, preimage_image_eq,
+      simp_all only [inter_univ, Subtype.val_injective, preimage_image_eq,
         image_val_inter_self_left_eq_coe, Measure.restrict_apply]
 
     have : Measure.comap Subtype.val volume = volume.restrict (univ : Set Ic):=
     by
-      simp_all only [inter_univ, subset_refl, Measure.restrict_apply, Subtype.val_injective, preimage_image_eq,
+      simp_all only [inter_univ, Measure.restrict_apply, Subtype.val_injective, preimage_image_eq,
         image_val_inter_self_left_eq_coe, Measure.restrict_univ]
       rfl
-    simp_all only [inter_univ, subset_refl, Measure.restrict_apply, Subtype.val_injective, preimage_image_eq,
-        image_val_inter_self_left_eq_coe, Measure.restrict_univ]
+    simp_all only [inter_univ, Measure.restrict_apply, Subtype.val_injective, preimage_image_eq,
+      image_val_inter_self_left_eq_coe, Measure.restrict_univ]
     rw [←this]
     dsimp [volume]
     rw [MeasureTheory.Measure.comap_apply]
@@ -444,14 +452,14 @@ by
         (MeasureTheory.MeasureSpace.volume : Measure ℝ) (Subtype.val '' K) :=
       by
         --let mtm := @MeasureTheory.Measure.restrict_apply _ _  volume Ic (Subtype.val '' K) h_meas2
-        simp_all only [inter_univ, Subtype.val_injective, preimage_image_eq, subset_refl, le_refl]
+        simp_all only [inter_univ, Subtype.val_injective, preimage_image_eq, le_refl]
 
-      simp_all only [inter_univ, Subtype.val_injective, preimage_image_eq, subset_refl, le_refl]
+      simp_all only [inter_univ, Subtype.val_injective, preimage_image_eq, le_refl]
     -- `K ∩ Set.univ = K` なので書き換える
     rw [eq_univ]
     have :Subtype.val ⁻¹' (Subtype.val '' K) = K:=
     by
-      simp_all only [inter_univ, Subtype.val_injective, preimage_image_eq, subset_refl]
+      simp_all only [inter_univ, Subtype.val_injective, preimage_image_eq]
     rw [this] at measure_mono_r
     exact measure_mono_r
 
@@ -460,7 +468,7 @@ by
 
   have measure_mono3 :  MeasureTheory.MeasureSpace.volume (K ∩ Set.univ) ≤ MeasureTheory.MeasureSpace.volume (Subtype.val '' K):=
   by
-    simp_all only [inter_univ, Subtype.val_injective, preimage_image_eq, subset_refl]
+    simp_all only [inter_univ, Subtype.val_injective, preimage_image_eq]
 
   simp_all only [inter_univ, gt_iff_lt]
   exact measure_mono3.trans_lt hK_finite
@@ -572,19 +580,21 @@ lemma open_ball_lemma_strong {U : Set ℝ} (hU : IsOpen U) {x : ℝ} (hxU : x �
     rw [mem_Ioo] at hy ⊢
     constructor
     ·
-      simp_all only [gt_iff_lt, sub_zero, lt_inf_iff, sub_pos, and_self, δ]
+      simp_all only [gt_iff_lt, sub_zero, δ]
       obtain ⟨left, right⟩ := hy
       apply lt_of_le_of_lt
       on_goal 2 => {exact left
       }
       ·
-        simp_all only [lt_inf_iff, sub_pos, and_self, div_pos_iff_of_pos_left, Nat.ofNat_pos, sub_nonneg, δ]
+        simp_all only [lt_inf_iff, sub_pos, and_self, div_pos_iff_of_pos_left, Nat.ofNat_pos,
+          sub_nonneg]
         rw [div_le_iff₀ ]
-        simp_all only [inf_le_iff, le_mul_iff_one_le_right, Nat.one_le_ofNat, tsub_le_iff_right, true_or, or_true, δ]
-        simp_all only [Nat.ofNat_pos, δ]
+        simp_all only [inf_le_iff, le_mul_iff_one_le_right, Nat.one_le_ofNat, tsub_le_iff_right,
+          true_or, or_true]
+        simp_all only [Nat.ofNat_pos]
 
     ·
-      simp_all only [gt_iff_lt, sub_zero, lt_inf_iff, sub_pos, and_self, δ]
+      simp_all only [gt_iff_lt, sub_zero, δ]
       obtain ⟨left, right⟩ := hy
       apply lt_of_lt_of_le
       exact right
@@ -592,11 +602,12 @@ lemma open_ball_lemma_strong {U : Set ℝ} (hU : IsOpen U) {x : ℝ} (hxU : x �
       by
         have :(1 - x)/2 < 1 -x :=
         by
-          simp_all only [lt_inf_iff, sub_pos, and_self, div_pos_iff_of_pos_left, Nat.ofNat_pos, half_lt_self_iff, δ]
+          simp_all only [lt_inf_iff, sub_pos, and_self, div_pos_iff_of_pos_left, Nat.ofNat_pos,
+            half_lt_self_iff]
         have :(ε /2 ⊓ (x /2 ⊓ (1 - x)/2 ))  < 1-x:=
         by
-          simp_all only [lt_inf_iff, sub_pos, and_self, div_pos_iff_of_pos_left, Nat.ofNat_pos, half_lt_self_iff,
-            inf_lt_iff, or_true, δ]
+          simp_all only [lt_inf_iff, sub_pos, and_self, div_pos_iff_of_pos_left, Nat.ofNat_pos,
+            half_lt_self_iff, inf_lt_iff, or_true]
         have :(ε /2 ⊓ (x /2 ⊓ (1 - x)/2 )) = (ε ⊓ (x ⊓ (1 - x))) / 2 :=
         by
           --simp_all only [lt_inf_iff, sub_pos, and_self, div_pos_iff_of_pos_left, Nat.ofNat_pos, half_lt_self_iff, δ]
@@ -604,13 +615,15 @@ lemma open_ball_lemma_strong {U : Set ℝ} (hU : IsOpen U) {x : ℝ} (hxU : x �
           rw [min_div_div_right]  -- `min (a / 2) (b / 2) = (min a b) / 2`
           rw [← min_assoc]
           rw [min_div_div_right]  -- `min (a / 2) (b / 2) = (min a b) / 2`
-          simp_all only [lt_inf_iff, sub_pos, and_self, div_pos_iff_of_pos_left, Nat.ofNat_pos, half_lt_self_iff,
-            inf_lt_iff, or_true, δ]
+          simp_all only [lt_inf_iff, sub_pos, and_self, div_pos_iff_of_pos_left, Nat.ofNat_pos,
+            half_lt_self_iff, inf_lt_iff, or_true]
           ac_rfl
           exact zero_le_two
           exact zero_le_two
-        simp_all only [lt_inf_iff, sub_pos, and_self, div_pos_iff_of_pos_left, Nat.ofNat_pos, half_lt_self_iff, δ]
-      simp_all only [lt_inf_iff, sub_pos, and_self, div_pos_iff_of_pos_left, Nat.ofNat_pos, ge_iff_le, δ]
+        simp_all only [lt_inf_iff, sub_pos, and_self, div_pos_iff_of_pos_left, Nat.ofNat_pos,
+          half_lt_self_iff]
+      simp_all only [lt_inf_iff, sub_pos, and_self, div_pos_iff_of_pos_left, Nat.ofNat_pos,
+        ge_iff_le]
       linarith
 
   -- したがって `Ioo (x - δ) (x + δ) ⊆ U ∩ Ioo 0 1` となる
@@ -625,28 +638,28 @@ lemma open_ball_lemma_strong {U : Set ℝ} (hU : IsOpen U) {x : ℝ} (hxU : x �
       suffices   δ < x from by
         simp_all [δ]
         rw [abs]
-        simp_all only [lt_sup_iff, true_or, δ]
+        simp_all only [lt_sup_iff, true_or]
       dsimp [δ]
       simp_all only [gt_iff_lt, sub_zero, lt_inf_iff, sub_pos, and_self, div_pos_iff_of_pos_left, Nat.ofNat_pos, δ]
       rw [div_lt_iff₀ (zero_lt_two' ℝ)]
-      simp_all only [inf_lt_iff, lt_mul_iff_one_lt_right, Nat.one_lt_ofNat, true_or, or_true, δ]
+      simp_all only [inf_lt_iff, lt_mul_iff_one_lt_right, Nat.one_lt_ofNat, true_or, or_true]
     · suffices δ < 1 - x from by
         simp_all only [gt_iff_lt, sub_zero, lt_inf_iff, sub_pos, and_self, div_pos_iff_of_pos_left, Nat.ofNat_pos, δ]
         rw [abs]
-        simp_all only [neg_sub, lt_sup_iff, or_true, δ]
+        simp_all only [neg_sub, lt_sup_iff, or_true]
       dsimp [Ioo] at hIoo_sub_Ioo01
       rw [@setOf_and] at hIoo_sub_Ioo01
       dsimp [δ]
       simp_all only [gt_iff_lt, sub_zero, lt_inf_iff, sub_pos, and_self, div_pos_iff_of_pos_left, Nat.ofNat_pos, δ]
       rw [div_lt_iff₀']
-      simp_all only [inf_lt_iff, sub_pos, lt_mul_iff_one_lt_right, Nat.one_lt_ofNat, or_true, δ]
-      simp_all only [sub_pos, lt_mul_iff_one_lt_left, Nat.one_lt_ofNat, or_true, δ]
-      simp_all only [Nat.ofNat_pos, δ]
+      simp_all only [inf_lt_iff]
+      simp_all only [sub_pos, lt_mul_iff_one_lt_left, Nat.one_lt_ofNat, or_true]
+      simp_all only [Nat.ofNat_pos]
 
   · dsimp [Ioo] at hIoo_subU
     dsimp [Ioo] at hIoo_sub_Ioo01
     simp at hIoo_sub_Ioo01
-    simp_all only [gt_iff_lt, sub_zero, lt_inf_iff, sub_pos, and_self, δ]
+    simp_all only [gt_iff_lt, sub_zero, δ]
     constructor
     · dsimp [Ioo]
       intro y hy
@@ -657,19 +670,20 @@ lemma open_ball_lemma_strong {U : Set ℝ} (hU : IsOpen U) {x : ℝ} (hxU : x �
         simp
         have : ε > (ε ⊓ (x ⊓ (1 - x))) / 2 :=
           by
-            simp_all only [gt_iff_lt, sub_zero, lt_inf_iff, sub_pos, and_self, div_pos_iff_of_pos_left, Nat.ofNat_pos, δ]
+            simp_all only [gt_iff_lt, lt_inf_iff, sub_pos, and_self, div_pos_iff_of_pos_left,
+              Nat.ofNat_pos]
             rw [div_lt_iff₀ (zero_lt_two' ℝ)]
-            simp_all only [inf_lt_iff, lt_mul_iff_one_lt_right, Nat.one_lt_ofNat, true_or, or_true, δ]
+            simp_all only [inf_lt_iff, lt_mul_iff_one_lt_right, Nat.one_lt_ofNat, true_or]
         constructor
         ·
-          simp_all only [sub_lt_self_iff, lt_add_iff_pos_right, Nat.ofNat_pos, div_pos_iff_of_pos_right, lt_inf_iff,
-            sub_pos, true_and, gt_iff_lt, δ]
+          simp_all only [sub_lt_self_iff, lt_add_iff_pos_right, Nat.ofNat_pos,
+            div_pos_iff_of_pos_right, lt_inf_iff, sub_pos, true_and, gt_iff_lt]
           obtain ⟨left_1, right_1⟩ := hδ_pos
           linarith
         · linarith
-      simp_all only [mem_setOf_eq, δ]
-      simp_all only [sub_lt_self_iff, lt_add_iff_pos_right, Nat.ofNat_pos, div_pos_iff_of_pos_right, lt_inf_iff,
-        sub_pos, true_and, δ]
+      simp_all only [mem_setOf_eq]
+      simp_all only [sub_lt_self_iff, lt_add_iff_pos_right, Nat.ofNat_pos, div_pos_iff_of_pos_right,
+        lt_inf_iff, sub_pos, true_and]
       obtain ⟨left_1, right_1⟩ := hδ_pos
       obtain ⟨left_2, right_2⟩ := this
       exact hIoo_subU ⟨left_2, right_2⟩
@@ -679,16 +693,16 @@ lemma open_ball_lemma_strong {U : Set ℝ} (hU : IsOpen U) {x : ℝ} (hxU : x �
       simp
       constructor
       · simp at hy
-        simp_all only [sub_lt_self_iff, lt_add_iff_pos_right, Nat.ofNat_pos, div_pos_iff_of_pos_right, lt_inf_iff,
-          sub_pos, true_and, δ]
+        simp_all only [sub_lt_self_iff, lt_add_iff_pos_right, Nat.ofNat_pos,
+          div_pos_iff_of_pos_right, lt_inf_iff, sub_pos, true_and]
         obtain ⟨left, right⟩ := hδ_pos
         obtain ⟨left_1, right_1⟩ := hy
         apply le_of_lt
-        simp_all only [δ]
+        simp_all only
       ·
-        simp_all only [sub_lt_self_iff, lt_add_iff_pos_right, Nat.ofNat_pos, div_pos_iff_of_pos_right, lt_inf_iff,
-          sub_pos, true_and, mem_setOf_eq, δ]
+        simp_all only [sub_lt_self_iff, lt_add_iff_pos_right, Nat.ofNat_pos,
+          div_pos_iff_of_pos_right, lt_inf_iff, sub_pos, true_and, mem_setOf_eq]
         obtain ⟨left, right⟩ := hδ_pos
         obtain ⟨left_1, right_1⟩ := hy
         apply le_of_lt
-        simp_all only [δ]
+        simp_all only

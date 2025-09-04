@@ -169,7 +169,7 @@ theorem gcd_lcm_eq_lcm_gcd (a b c : ℕ) :
     by_cases hb : b = 0
     case pos =>
       subst hb
-      simp_all only [Nat.lcm_zero_right, Nat.gcd_zero_right]
+      simp_all only [Nat.lcm_zero_right]
       simp_all only [Nat.gcd_zero_left]
     case neg =>
       by_cases hc : c = 0
@@ -196,7 +196,7 @@ theorem gcd_lcm_eq_lcm_gcd (a b c : ℕ) :
           rw [Nat.factorization_gcd, Nat.factorization_lcm, Nat.factorization_lcm]
           rw [Nat.factorization_lcm]
           rw [Nat.factorization_gcd]
-          simp_all only [Finsupp.inf_apply, Finsupp.sup_apply, nnn]
+          simp_all only [Finsupp.inf_apply, Finsupp.sup_apply]
           --補題を適用する時にゼロでないという条件が必要なので後ろでまとめて証明。
           · exact hb
           · exact hc
@@ -215,7 +215,7 @@ theorem gcd_lcm_eq_lcm_gcd (a b c : ℕ) :
             by
               rfl
             rw [this] at h
-            simp_all only [or_self, lez]
+            simp_all only [or_self]
           · intro h
             have : a.lcm c = lcm a c :=
             by
@@ -416,7 +416,7 @@ theorem inf_sup_distrib (a b c : R2) :
 noncomputable instance : DistribLattice R2 where
   le_sup_inf a b c := by
     let sid := sup_inf_distrib a b c
-    simp_all only [le_refl, sid]
+    simp_all only [le_refl]
 
 end R2
 
@@ -591,7 +591,7 @@ by
       rw [inf_comm]
       exact m3n5
 
-      simp_all only [inf_le_left, sup_of_le_right, le_inf_iff, and_self, le_sup_left, inf_of_le_right, Y, X, Zb]
+      simp_all only [inf_le_left, sup_of_le_right, le_inf_iff, and_self, Y, X, Zb]
       rw [inf_assoc]
       rw [inf_comm]
       rw [inf_comm (b ⊔ c) b]
@@ -602,9 +602,9 @@ by
     let left_hand:= Y ⊔ (X ⊓ Zb)
     let right_hand:= (Y ⊔ Zb) ⊓ (Y ⊔ X)
     have left_eq: Y ⊔ (X ⊓ Zb) = Y := by
-      simp_all only [inf_le_left, sup_of_le_left, le_refl, le_sup_left, inf_of_le_left, not_true_eq_false, X, Y, Zb]
+      simp_all only [sup_of_le_left, X, Y, Zb]
     have right_eq: (Y ⊔ Zb) ⊓ (Y ⊔ X) = X := by
-      simp_all only [inf_le_left, sup_of_le_left, le_refl, le_sup_left, inf_of_le_left, not_true_eq_false, X, Y, Zb]
+      simp_all only [sup_of_le_left, X, Y, Zb]
       simp_all only [inf_le_left, sup_of_le_right, ne_eq, le_inf_iff, true_and, ge_iff_le, inf_of_le_right]
     have h4 : left_hand = right_hand := by
       dsimp [left_hand, right_hand]
@@ -638,7 +638,7 @@ by
       rw [inf_comm]
       simp_all only [inf_le_left, sup_of_le_right, not_false_eq_true, le_inf_iff, and_self, le_sup_left, X, Y, Zb]
 
-      simp_all only [inf_le_left, sup_of_le_right, le_inf_iff, and_self, le_sup_left, inf_of_le_right, Y, X, Zb]
+      simp_all only [inf_le_left, sup_of_le_right, le_inf_iff, and_self, Y, X, Zb]
       rw [inf_assoc]
       rw [inf_comm]
       rw [inf_comm (b ⊔ c) b]
@@ -648,9 +648,9 @@ by
     let left_hand:= Y ⊔ (X ⊓ Zb)
     let right_hand:= (Y ⊔ Zb) ⊓ (Y ⊔ X)
     have left_eq: Y ⊔ (X ⊓ Zb) = Y := by
-      simp_all only [inf_le_left, sup_of_le_left, le_refl, le_sup_left, inf_of_le_left, not_true_eq_false, X, Y, Zb]
+      simp_all only [sup_of_le_left, X, Y, Zb]
     have right_eq: (Y ⊔ Zb) ⊓ (Y ⊔ X) = X := by
-      simp_all only [inf_le_left, sup_of_le_left, le_refl, le_sup_left, inf_of_le_left, not_true_eq_false, X, Y, Zb]
+      simp_all only [sup_of_le_left, X, Y, Zb]
       simp_all only [inf_le_left, sup_of_le_right, ne_eq, le_inf_iff, true_and, ge_iff_le, inf_of_le_right]
     have h4 : left_hand = right_hand := by
       dsimp [left_hand, right_hand]

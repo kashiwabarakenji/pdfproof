@@ -311,7 +311,7 @@ by
       · intro a_1
         simp_all only [and_self]
     let perm_eq := List.Perm.foldr_eq lp (f := fun (x1 x2 : Finset α) => x1 ∩ x2)
-    simp_all only [perm_eq]
+    simp_all only
 
   -- fold_map_eq の本体を証明
   intro xs hxs
@@ -369,9 +369,8 @@ by
   | empty =>
       -- 矛盾: A が空集合の場合、s ∈ A が成り立たない
       exfalso
-      exact Finset.not_mem_empty s h_mem
-  | insert a_not_s  ih =>
-      rename_i ft  s' A' -- ftはFintype。使わないかも。
+      exact Finset.notMem_empty s h_mem
+  | insert s' A' a_not_s  ih =>
 
       -- A = insert x A' の場合
       rw [finsetInter]
@@ -387,12 +386,11 @@ by
         have : s ⊆ s' := by
           apply h_subset s' (Finset.mem_insert_self s' A')
         ext
-        simp [List.subset_def]
         rename_i this_1 a_1
-        intro a_2
-        subst this_1
-        simp_all only [Finset.mem_insert, or_true, implies_true, forall_const, forall_eq_or_imp, true_and]
-        exact this a_2
+        constructor
+        · exact fun a ↦ mem_of_mem_inter_right a
+        · exact fun a ↦
+          mem_inter_of_mem (this (h_subset s h_mem a)) (h_subset s h_mem (h_subset s h_mem a))
 
       case neg =>
         -- サブケース: a ≠ s の場合

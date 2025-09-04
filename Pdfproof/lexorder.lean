@@ -18,23 +18,29 @@ import Init.Data.List.Basic
 variable {P : Type} [LinearOrder P]
 
 --Listをつけないとなぜかlength_consが見つからない。
-theorem List.findIdx?_le_length' {α : Type} {xs : List α} {p : α → Bool}
-    (h : List.findIdx? p xs = some i) : i < xs.length :=
-by
+
+theorem List.findIdx?_le_length' {α : Type} {xs : List α} {p : α → Bool} (h : List.findIdx? p xs = some i) : i < xs.length := by
   induction xs generalizing i with
-  | nil => simp at h
-  | cons a as h_ih =>
-    simp [List.findIdx?] at h
-    split at h
-    · simp_all only [Option.some.injEq, length_cons]
+  | nil =>
+    cases h
+  | cons x xs' ih =>
+    rw [List.findIdx?_cons] at h
+    split_ifs at h with hp
+    · -- p x is true, so index is 0
+      simp_all only [Option.some.injEq, length_cons]
       subst h
       simp_all only [Nat.zero_lt_succ]
-    ·
-      simp_all only [Bool.not_eq_true, Option.map_eq_some', length_cons]
-      obtain ⟨w, h⟩ := h
-      obtain ⟨left, right⟩ := h
-      subst right
-      simp_all only [Option.some.injEq, forall_eq', Nat.add_lt_add_iff_right]
+    · -- p x is false, so index is 1 + index in tail
+      cases h' : List.findIdx? p xs' with
+      | none =>
+        simp_all only [reduceCtorEq, IsEmpty.forall_iff, implies_true, Bool.not_eq_true, Option.map_none]
+
+      | some i' =>
+        have j_lt := ih h'
+        simp [List.length]
+        simp_all only [Option.some.injEq, forall_eq', Bool.not_eq_true, Option.map_some]
+        subst h
+        simp_all only [Nat.add_lt_add_iff_right]
 
 def smallestDiffWithProof
   {n : ℕ} {P : Type}
@@ -46,7 +52,7 @@ by
   let listfin := List.ofFn (λ i : Fin n => i)
   have listlen: listfin.length = n := by --これのせいで1日かかった。4.15にすることで解決。
     dsimp [listfin]
-    exact (List.length_ofFn (λ i : Fin n => i))
+    exact List.length_ofFn
 
   --candidatesを使わずにこっちを返り値としてつかったほうがいいかも。
   let idxo := List.findIdx? (λ i => a i ≠ b i) listfin
@@ -61,11 +67,9 @@ by
         simp
       --rw [this]
       --dsimp [List.ofFn]
-      rw [List.mem_ofFn (fun i => i) w]
+      rw [List.mem_ofFn]
+      exact exists_apply_eq_apply (fun a ↦ a) w
       dsimp [Set.range]
-      use w
-
-      rw [←ne_eq]
       exact h
 
     rw [List.findIdx?_isSome]
@@ -86,7 +90,7 @@ by
       rw [List.any_eq_true] at idxfsome
       simp at idxfsome
       obtain ⟨x, hx_mem, hx⟩ := idxfsome
-      let lf := List.findIdx?_of_eq_none m x
+      let lf := List.of_findIdx?_eq_none m x
       dsimp [listfin] at lf
       simp at lf
       contradiction
@@ -219,7 +223,6 @@ instance lexPreorder : Preorder (Fin n → P) where
       | inr hyz2 =>
         rw [←hyz2]
         subst hyz2
-        simp_all only
         obtain ⟨w, h⟩ := hxy1
         constructor
         use w
@@ -227,7 +230,7 @@ instance lexPreorder : Preorder (Fin n → P) where
     | inr hxy2 =>
       rw [hxy2]
       exact hyz
-
+/-
   lt_iff_le_not_le := by
     intro x y
     apply Iff.intro
@@ -239,6 +242,7 @@ instance lexPreorder : Preorder (Fin n → P) where
     constructor
     · exact h.left
     · exact h.right
+-/
 
 instance  lexPartialOrder : PartialOrder (Fin n → P) where
   le := (· ≤ ·) -- `LE` 型クラスで定義した `le` を利用
@@ -331,7 +335,7 @@ noncomputable instance lexLinearOrder: LinearOrder (Fin n → P) where
     case pos =>
       right
       subst h
-      simp_all only [lt_self_iff_false, implies_true, and_true, exists_false, or_true]
+      --simp_all only [lt_self_iff_false, implies_true, and_true, exists_false, or_true]
       simp_all only [le_refl]
     case neg =>
       have : ∃ i : Fin n, ¬ (a i = b i) :=
@@ -355,9 +359,9 @@ noncomputable instance lexLinearOrder: LinearOrder (Fin n → P) where
         subst this
         simp_all only [not_true_eq_false]
       let ⟨i_min,hi⟩ := smallestDiffWithProof a b this
-      simp_all only [or_false]
+      --simp_all only [or_false]
       have : (b i_min < a i_min) ∨ (a i_min < b i_min) := by
-        simp_all only [gt_iff_lt, lt_or_lt_iff_ne, ne_eq]
+        simp_all only [lt_or_lt_iff_ne, ne_eq]
         apply Aesop.BuiltinRules.not_intro
         intro a_1
         simp [a_1] at hi
@@ -378,7 +382,7 @@ noncomputable instance lexLinearOrder: LinearOrder (Fin n → P) where
         dsimp [LE.le]
         left
         use i_min
-
+/-
   lt_iff_le_not_le := by
     intro x y
     apply Iff.intro
@@ -390,6 +394,7 @@ noncomputable instance lexLinearOrder: LinearOrder (Fin n → P) where
     constructor
     · exact h.left
     · exact h.right
+-/
 
   min x y := minFinFun x y
 
@@ -398,13 +403,13 @@ noncomputable instance lexLinearOrder: LinearOrder (Fin n → P) where
     by_cases h : x ≤ y
     case pos =>
       simp_all only [↓reduceIte]
-      simp [minFinFun, h]
+      simp [minFinFun]
       split
       next x_1 h_1 heq => simp_all only
       next x_1 h_1 heq => simp_all only
     case neg =>
       simp_all only [↓reduceIte]
-      simp [minFinFun, h]
+      simp [minFinFun]
       split
       next x_1 h_1 heq => simp_all only [not_true_eq_false]
       next x_1 h_1 heq => simp_all only [not_false_eq_true]
@@ -416,17 +421,27 @@ noncomputable instance lexLinearOrder: LinearOrder (Fin n → P) where
     by_cases h : x ≤ y
     case pos =>
       simp_all only [↓reduceIte]
-      simp [maxFinFun, h]
+      simp [maxFinFun]
       split
       next x_1 h_1 heq => simp_all only
       next x_1 h_1 heq => simp_all only
     case neg =>
       simp_all only [↓reduceIte]
-      simp [maxFinFun, h]
+      simp [maxFinFun]
       split
       next x_1 h_1 heq => simp_all only [not_true_eq_false]
       next x_1 h_1 heq => simp_all only [not_false_eq_true]
 
+  toDecidableLE := by
+    intro x y
+    by_cases h : x ≤ y
+    case pos =>
+      simp_all only
+      infer_instance
+    case neg =>
+      simp_all only
+      infer_instance
+/-
   decidableLE := by
     intro x y
     simp_all only
@@ -435,7 +450,8 @@ noncomputable instance lexLinearOrder: LinearOrder (Fin n → P) where
       infer_instance
     · simp_all only
       infer_instance
-
+-/
+/-
   decidableLT := by
     intro x y
     simp_all only
@@ -444,3 +460,4 @@ noncomputable instance lexLinearOrder: LinearOrder (Fin n → P) where
       infer_instance
     · simp_all only
       infer_instance
+-/

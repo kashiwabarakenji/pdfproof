@@ -91,7 +91,7 @@ by
     simp_all only [subset_refl]
     apply And.intro
     · constructor
-      · simp_all only [Finset.mem_filter, Finset.mem_sup, Finset.mem_powerset, id_eq]
+      · simp_all only
       · constructor
         · exact F.has_ground
         · simp_all only [Finset.mem_subtype, Finset.mem_filter, Finset.mem_sup]--
@@ -152,12 +152,12 @@ lemma finite_intersection_in_closureSystem
         apply Finset.ext
         intro x
         simp only [finsetIntersection, Finset.mem_filter, Finset.sup_singleton,
-                    Finset.mem_singleton, id_eq, and_assoc]
+          Finset.mem_singleton, id_eq]
         -- 「x ∈ T₀ ∧ ∀ f ∈ {T₀}, x ∈ f」は x ∈ T₀ と同値
         subst hM'_empty
-        simp_all only [Finset.not_mem_empty, not_false_eq_true, forall_eq, and_self]
+        simp_all only [Finset.notMem_empty, not_false_eq_true, forall_eq, and_self]
       subst hM'_empty
-      simp_all only [insert_emptyc_eq,Finset.mem_singleton]--
+      simp_all only [LawfulSingleton.insert_empty_eq,Finset.mem_singleton]--
 
     | inr hM'_nonempty =>
       -- M' が非空 => 帰納仮定 ih : F.sets (finsetIntersection M')
@@ -179,14 +179,14 @@ lemma finite_intersection_in_closureSystem
           --     すなわち (x ∈ T₀ ∪ M'.sup id) ∧ ...
           constructor -- x ∈ T₀ ∩ finsetIntersection M'
           · --x ∈ T₀を示す。
-            simp_all only [Finset.mem_insert, or_true, implies_true, imp_self, Finset.insert_nonempty, forall_eq_or_imp,
-              true_and, forall_const, exists_eq_or_imp]
+            simp_all only [Finset.mem_insert, or_true, implies_true, Finset.insert_nonempty,
+              forall_eq_or_imp, true_and, forall_const, exists_eq_or_imp]
           · --(∃ i ∈ M', x ∈ i) ∧ ∀ f ∈ M', x ∈ f
             obtain ⟨left, right⟩ := h
             obtain ⟨w, h⟩ := left
             by_cases h1 : w ∈ M'
             case pos =>
-              simp_all only [Finset.mem_insert, or_true, implies_true, imp_self, Finset.insert_nonempty,
+              simp_all only [Finset.mem_insert, or_true, implies_true, Finset.insert_nonempty,
                 forall_eq_or_imp, true_and, forall_const, and_self, and_true]
               obtain ⟨left, right⟩ := right
               apply Exists.intro
@@ -195,11 +195,12 @@ lemma finite_intersection_in_closureSystem
                 · simp_all only
             case neg =>
               have : w = T₀ := by
-                simp_all only [Finset.mem_insert, or_true, implies_true, imp_self, Finset.insert_nonempty,
+                simp_all only [Finset.mem_insert, or_true, implies_true, Finset.insert_nonempty,
                   forall_eq_or_imp, true_and, forall_const, or_false, not_false_eq_true]
               subst this
-              simp_all only [Finset.mem_insert, or_true, implies_true, imp_self, forall_const, not_false_eq_true,
-                Finset.insert_nonempty, forall_eq_or_imp, true_and, or_false, and_true]
+              simp_all only [Finset.mem_insert, or_true, implies_true, forall_const,
+                not_false_eq_true, Finset.insert_nonempty, forall_eq_or_imp, true_and, or_false,
+                and_true]
               have : Nonempty M' := by
                 simp_all only [nonempty_subtype]
                 exact hM'_nonempty
@@ -241,7 +242,7 @@ lemma closureOperator_image_in_sets
     simp_all only [ne_eq]
     apply Aesop.BuiltinRules.not_intro
     intro a
-    rw [Finset.eq_empty_iff_forall_not_mem] at a
+    rw [Finset.eq_empty_iff_forall_notMem] at a
     simp_all only [Finset.mem_filter, Finset.mem_powerset, not_and, subset_refl]
 
   -- 3. 補題 finite_intersection_in_closureSystem を使って
@@ -307,7 +308,7 @@ lemma mem_finsetIntersection_iff_of_nonempty
         contrapose! hne
         simp_all only [imp_false, IsEmpty.forall_iff, implies_true, Finset.not_nonempty_iff_eq_empty]
         ext a : 1
-        simp_all only [Finset.not_mem_empty]
+        simp_all only [Finset.notMem_empty]
       -- 以上で (x ∈ sup id ∧ ∀ f∈family, x∈f) が示せる
       ⟨x_in_union, hx⟩
     )
@@ -375,7 +376,7 @@ by
     simp_all only [Finset.mem_filter, Finset.mem_powerset, subset_refl, and_true, true_and]
     have : sval ∈ M :=
     by
-      simp_all only [Finset.mem_filter, Finset.mem_powerset, subset_refl, and_self, M, sval, mf]
+      simp_all only [Finset.mem_filter, Finset.mem_powerset, subset_refl, and_self, M, sval]
     let ms := mf sval this
     simp [sval] at ms
     simp_all only [Finset.mem_filter, Finset.mem_powerset, subset_refl, and_self, exists_true_left, M, sval]
@@ -428,7 +429,7 @@ by
   constructor
   · -- (→) x ∈ closureOperator F s ⇒ x ∈ s
     intro hx
-    simp only [Finset.mem_subtype] at hx
+    simp only at hx
     -- x.val ∈ I かつ I = s.map val
     simp_all only [Finset.mem_filter, Finset.mem_powerset, subset_refl, and_self, and_true, M, sval, I]
     obtain ⟨val, property⟩ := x

@@ -4,6 +4,7 @@ import Mathlib.Algebra.Ring.Hom.Defs
 import Mathlib.Algebra.Group.Units.Basic
 import Mathlib.Algebra.Group.Defs
 import Mathlib.Algebra.Field.Defs
+import Mathlib.Algebra.Field.ZMod
 import Mathlib.Data.Nat.Prime.Defs
 import Mathlib.Data.ZMod.Defs
 import Mathlib.Data.ZMod.Basic
@@ -41,9 +42,8 @@ by
      _ = 0 * x := by rw [neg_add_cancel]
      _ = 0 := by rw [zero_mul]
   have lem2:(-1) * x + x + (- x) = -x := by
-    have h := (@add_right_eq_self R _ (-x) (-1 * x + x)).mpr  this
-    rw [add_comm] at h
-    exact h
+    exact add_eq_right.mpr this
+
   rw [add_assoc] at lem2
   have lem3: x + (- x) = 0:= by
     exact add_neg_cancel x
@@ -193,13 +193,20 @@ by
 ---練習18-----
 ------------
 
-example (p : ℕ) [hp : Fact (Nat.Prime p)] : Field (ZMod p) :=
-by
-  -- ZMod p が整域である
-  --haveI : CommRing (ZMod p) := ZMod.commRing p
-  haveI : IsDomain (ZMod p) := inferInstance
-  -- ZMod p が有限体であることから、Field である
+example (p : ℕ) (hp : Nat.Prime p) : Field (ZMod p) := by
+  haveI : Fact (Nat.Prime p) := ⟨hp⟩
   exact ZMod.instField p
+
+  --infer_instance
+
+--example (p : ℕ) [hp : Fact (Nat.Prime p)] : Field (ZMod p) :=
+--by
+  -- ZMod p が整域である
+  --haveI : IsDomain (ZMod p) := by
+
+  -- ZMod p が有限体であることから、Field である
+
+  --exact ZMod.instField p
 
 ------------
 ---練習23-----

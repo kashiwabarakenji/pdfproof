@@ -22,21 +22,17 @@ import Mathlib.Data.Finset.Basic
 import Mathlib.Data.Fin.Basic
 import Mathlib.Data.Real.Sqrt
 import Mathlib.Order.Basic
-import Mathlib.Order.CompleteLattice
 import Mathlib.Order.ConditionallyCompleteLattice.Basic
 import Mathlib.Order.SetNotation
 import Mathlib.Data.Real.Archimedean
 import Mathlib.Data.Real.Basic
 import Mathlib.MeasureTheory.Measure.Haar.OfBasis
---import Mathlib.Analysis.NormedSpace.LpSpace
 import Mathlib.Topology.MetricSpace.Basic
-import Mathlib.MeasureTheory.Integral.SetIntegral
---import Mathlib.Data.Fintype.Basic
+import Mathlib.MeasureTheory.Integral.Bochner.ContinuousLinearMap
+import Mathlib.MeasureTheory.Integral.Bochner.FundThmCalculus
 import Mathlib.Analysis.InnerProductSpace.PiL2
-import Mathlib.Analysis.SpecialFunctions.Integrals
---import Mathlib.Analysis.Minkowski
+--import Mathlib.Analysis.SpecialFunctions.Integrals
 import LeanCopilot
---import MeasureTheory.Integral.SetIntegral
 
 ------------
 ----練習1---
@@ -119,7 +115,7 @@ example : ∀ x y z : X, d_2 x y ≥ 0 ∧ d_2 x y = d_2 y x ∧ (d_2 x y = 0 �
         subst h
         simp_all only [zero_add, le_refl]
       next h =>
-        simp [d_2, h]
+        simp [d_2]
         split
         next h_1 =>
           subst h_1
@@ -153,7 +149,7 @@ open Real --sqrtを使うため
 
 --下で使っている。
 lemma sum_sq_eq_zero_iff {n : ℕ} (x : Fin n → ℝ) :
-  (∑ i in Finset.univ, (x i) ^ 2) = 0 ↔ ∀ i, x i = 0 := by
+  (∑ i ∈ Finset.univ, (x i) ^ 2) = 0 ↔ ∀ i, x i = 0 := by
   apply Iff.intro
   · intro h
     have h_nonneg : ∀ i ∈ Finset.univ, (x i) ^ 2 ≥ 0 := fun i _ => sq_nonneg (x i)
@@ -181,11 +177,9 @@ lemma sum_sq_expand {n : ℕ} (x y z : Fin n → ℝ) :
     have : 2 * (x i - y i) * (y i - z i) ≤ 2 * |(x i - y i) * (y i - z i)| := by
       --have h_pos : 0 < 2 := by norm_num
       rw [mul_assoc]
-      apply @mul_le_mul_of_nonneg_left _ 2 ((x i - y i) * (y i - z i)) (|(x i - y i) * (y i - z i)|) _ _ _ _
-      simp_all only [Finset.mem_univ, Nat.ofNat_pos]
+      simp_all only [Finset.mem_univ, Nat.ofNat_pos, mul_le_mul_left]
       exact le_abs_self _
-      simp_all only [Finset.mem_univ, Nat.ofNat_nonneg]
-      -- (x i - y i)^2 + 2ab + (y i - z i)^2 ≤ (x i - y i)^2 + (y i - z i)^2 + 2|ab|
+
     simp_all only [Finset.mem_univ, ge_iff_le, f, g]
     linarith
 
@@ -249,16 +243,16 @@ lemma le_of_le_mul_of_nonneg {a b c : ℝ}
     nlinarith
 
 lemma finset_sum_abs_mul_le_sqrt_mul_sqrt {α : Type*} (s : Finset α) (f g : α → ℝ) :
-    ∑ i in s, |f i * g i| ≤ sqrt (∑ i in s, f i ^ 2) * sqrt (∑ i in s, g i ^ 2) := by
+    ∑ i ∈ s, |f i * g i| ≤ sqrt (∑ i ∈ s, f i ^ 2) * sqrt (∑ i ∈ s, g i ^ 2) := by
   -- 各項の絶対値付きのコーシー・シュワルツ不等式を用意
   have cauchy_schwarz := Finset.sum_mul_sq_le_sq_mul_sq s (fun i => |f i|) (fun i => |g i|)
   apply le_of_le_mul_of_nonneg
-  simp only [sq_abs, ge_iff_le, sqrt_nonneg]
-  simp only [sq_abs, ge_iff_le, sqrt_nonneg]
-  simp only [sq_abs, ge_iff_le]
+  simp only [ge_iff_le, sqrt_nonneg]
+  simp only [ge_iff_le, sqrt_nonneg]
+  simp only [ge_iff_le]
   positivity
   simp_all
-  have congr_sum: ∑ i in s, |f i * g i| = ∑ i in s, |f i| * |g i| := by
+  have congr_sum: ∑ i ∈ s, |f i * g i| = ∑ i ∈ s, |f i| * |g i| := by
     apply Finset.sum_congr rfl
     intros i _
     exact abs_mul (f i) (g i)
@@ -294,7 +288,7 @@ noncomputable instance : MetricSpace (Fin n → ℝ) where
     intro x y h
     unfold euclidean_dist at h
     have this_lem: (∑ i, (x i - y i) ^ 2) = 0 := by
-      dsimp [dist] at h
+      --dsimp [dist] at h
       rw [Real.sqrt_eq_zero] at h
       exact h
       positivity
@@ -308,7 +302,7 @@ noncomputable instance : MetricSpace (Fin n → ℝ) where
   dist_comm := by
     intro x y
     unfold euclidean_dist
-    simp_all only
+    --simp_all only
     congr
     ext1 x_1
     ring
@@ -340,11 +334,7 @@ noncomputable instance : MetricSpace (Fin n → ℝ) where
       norm_num
       rw [mul_assoc]
       rw [←Finset.mul_sum]
-      apply @mul_le_mul_of_nonneg_left _ 2  (∑ i :Fin n,|(x i - y i) * (y i - z i)|) (sqrt (∑ i :Fin n, (x i - y i) ^ 2) * sqrt (∑ i :Fin n, (y i - z i) ^ 2))
-      simp_all only [add_le_add_iff_left]
-      simp_all only [add_le_add_iff_left, Nat.ofNat_nonneg]
-
-    dsimp [dist]
+      simp_all only [Nat.ofNat_pos, mul_le_mul_left]
 
     apply @le_of_le_sum_of_nonneg √(∑ i : Fin n, (x i - y i) ^ 2)  √(∑ i : Fin n, (y i - z i) ^ 2) √(∑ i : Fin n, (x i - z i) ^ 2)
     simp_all only [sqrt_nonneg]
@@ -399,20 +389,20 @@ lemma d'_eq_zero {n : ℕ} (x y : MyEuclideanSpace n) : d' x y = 0 ↔ x = y := 
     have h_abs : ∀ i, |x i - y i| = 0 := by
       intro i
       have h_sup := (@Finset.sup'_le_iff  Real (Fin n) _ _ s_nonempty (λ i => abs (x i - y i)) (0:ℝ)).mp
-      simp [↓reduceDIte, s] at h
+      simp at h
       let hh := h n_pos
       simp_all only [s]
-      simp only [Finset.mem_univ, abs_nonpos_iff, true_implies, abs_zero, Finset.sup'_const, le_refl,
-        implies_true, abs_eq_zero] at hh
+      simp only at hh
       simp_all only [s]
       simp at h_sup
       exact abs_eq_zero.mpr (h_sup i)
 
     have h_eq : ∀ i, x i = y i := by
       intro i
-      simp_all only [gt_iff_lt, ↓reduceDIte, Finset.sup'_const, dite_eq_ite, ite_self, abs_eq_zero]
+      simp_all only [gt_iff_lt, Finset.sup'_const, dite_eq_ite, ite_self, abs_eq_zero]
       convert sub_eq_zero.1 (h_abs i)
-    simp_all only [gt_iff_lt, ↓reduceDIte, sub_self, abs_zero, Finset.sup'_const, dite_eq_ite, ite_self, implies_true]
+    simp_all only [gt_iff_lt, sub_self, abs_zero, Finset.sup'_const, dite_eq_ite, ite_self,
+      implies_true]
     funext i
     simp_all only
 
@@ -420,9 +410,9 @@ lemma d'_eq_zero {n : ℕ} (x y : MyEuclideanSpace n) : d' x y = 0 ↔ x = y := 
     subst h
     unfold d'
     by_cases h : n > 0
-    · simp_all only [gt_iff_lt, ↓reduceDIte, Finset.le_sup'_iff, Finset.mem_univ, and_self]
+    · simp_all only [gt_iff_lt, ↓reduceDIte]
       simp_all only [sub_self, abs_zero, Finset.sup'_const]
-    · simp_all only [gt_iff_lt, not_lt, nonpos_iff_eq_zero, lt_self_iff_false, ↓reduceDIte, le_refl]
+    · simp_all only [gt_iff_lt, not_lt, nonpos_iff_eq_zero, lt_self_iff_false, ↓reduceDIte]
 
 -- 対称性の証明
 lemma d'_symm {n : ℕ} (x y : MyEuclideanSpace n) : d' x y = d' y x :=
@@ -430,7 +420,7 @@ lemma d'_symm {n : ℕ} (x y : MyEuclideanSpace n) : d' x y = d' y x :=
     unfold d'
     by_cases h : n > 0
     · by_cases h : n > 0
-      · simp only [d', h, if_true]
+      · simp only [h]
         congr
         ext i
         simp_all only [gt_iff_lt]
@@ -443,14 +433,14 @@ lemma d'_triangle {n : ℕ} (x y z : MyEuclideanSpace n) : d' x z ≤ d' x y + d
   by
     unfold d'
     by_cases h : n > 0
-    · simp only [d', h, if_true]
+    · simp only [h]
       apply Finset.sup'_le
       simp_all only [gt_iff_lt]
       rw [Finset.univ_nonempty_iff]
       use 0
       intro i
       intro _
-      simp_all only [gt_iff_lt, ↓reduceDIte, Finset.le_sup', Finset.mem_univ, abs_sub]
+      simp_all only [↓reduceDIte, Finset.mem_univ]
       -- goal |x i - z i| ≤ (Finset.univ.sup' ⋯ fun i ↦ |x i - y i|) + Finset.univ.sup' ⋯ fun i ↦ |y i - z i|
       calc
         |x i - z i| = |(x i - y i) + (y i - z i)| := by rw [sub_add_sub_cancel]
@@ -492,7 +482,7 @@ lemma nonemptyIc: Nonempty Ic:= by
 
 --値域の非空性
 lemma nonemptyRange (f:Ic→Real): (f '' (Set.univ:Set Ic)).Nonempty:= by
-    simp_all only [Set.image_univ, Set.mem_univ]
+    simp_all only [Set.image_univ]
     use (f ⟨0, by simp [Ic]⟩)
     simp_all only [Set.Icc.mk_zero, Set.mem_range, exists_apply_eq_apply]
 
@@ -587,8 +577,8 @@ lemma supr_exists {f : Ic → ℝ}
     · --
       have upperb:f x0 ∈ upperBounds (f '' (Set.univ:Set Ic)):= by
         subst hh
-        simp_all only [Set.mem_univ, Set.image_univ, Set.mem_range, Subtype.exists, forall_exists_index,
-          exists_apply_eq_apply]
+        simp_all only [Set.mem_univ, Set.image_univ, Set.mem_range, Subtype.exists,
+          forall_exists_index]
         obtain ⟨val, property⟩ := x0
         rintro _ ⟨y, rfl⟩
         obtain ⟨val_1, property_1⟩ := y
@@ -654,7 +644,7 @@ noncomputable instance : MetricSpace C₀ where
     calc
       dist f f = ⨆ x : Set.Icc 0 1, |f.1 x - f.1 x| := by
         simp only [sub_self, abs_zero]
-        simp_all only [Set.mem_Icc,  ciSup_const]
+        simp_all only [ciSup_const]
         simp [dist]
           _ = ⨆ x ∈ Ic, 0 := by simp
           _ = 0 := by simp
@@ -710,11 +700,11 @@ noncomputable instance : MetricSpace C₀ where
 
     let fg := λ x => |f.1 x - g.1 x|
     have fg_cont: Continuous fg := by
-      simp_all only [zero_lt_one, ContinuousMap.toFun_eq_coe, Set.mem_univ, ciSup_unique, Set.image_univ,
+      simp_all only [ContinuousMap.toFun_eq_coe, Set.mem_univ, ciSup_unique, Set.image_univ,
         implies_true, fg]
       fun_prop
     have gh_cont: Continuous (λ x => |g.1 x - h.1 x|) := by
-      simp_all only [zero_lt_one, ContinuousMap.toFun_eq_coe, Set.mem_univ, ciSup_unique, Set.image_univ,
+      simp_all only [ContinuousMap.toFun_eq_coe, Set.mem_univ, ciSup_unique, Set.image_univ,
         implies_true]
       fun_prop
     let gh := λ x => |g.1 x - h.1 x|
@@ -728,14 +718,14 @@ noncomputable instance : MetricSpace C₀ where
         --#check triangle_mono2 (fun x => |f.1 x - h.1 x|) (fun x => |f.1 x - g.1 x| + |g.1 x - h.1 x|) bdd_fgh abs_all
         --⨆ x ∈ Set.univ, |f.toFun x - h.toFun x| ≤ ⨆ x ∈ Set.univ, |f.toFun x - g.toFun x| + |g.toFun x - h.toFun x|
         convert triangle_mono2 (fun x => |f.1 x - h.1 x|) (fun x => |f.1 x - g.1 x| + |g.1 x - h.1 x|) bdd_fgh abs_all
-        simp_all only [zero_lt_one, ContinuousMap.toFun_eq_coe, Set.mem_univ, ciSup_unique, Set.image_univ,
+        simp_all only [ContinuousMap.toFun_eq_coe, Set.mem_univ, ciSup_unique, Set.image_univ,
           implies_true]
-        simp_all only [zero_lt_one, ContinuousMap.toFun_eq_coe, Set.mem_univ, ciSup_unique, Set.image_univ,
+        simp_all only [ContinuousMap.toFun_eq_coe, Set.mem_univ, ciSup_unique, Set.image_univ,
           implies_true]
       _ =  |f.1 x_0.1 - g.1 x_0.1| + |g.1 x_0.1 - h.1 x_0.1| := by
-        simp_all only [zero_lt_one, ContinuousMap.toFun_eq_coe, Set.mem_univ, ciSup_unique, Set.image_univ,
+        simp_all only [ContinuousMap.toFun_eq_coe, Set.mem_univ, ciSup_unique, Set.image_univ,
           implies_true]
-        simp_all only [ContinuousMap.toFun_eq_coe, fg, fgh]
+        simp_all only [ContinuousMap.toFun_eq_coe, fg]
         obtain ⟨val, property⟩ := x_0
         obtain ⟨val, property⟩ := val
         simp_all only
@@ -806,7 +796,6 @@ noncomputable instance : MetricSpace C₀ where
         apply ContinuousMap.ext
         exact a
     intro x y a
-    simp_all only
     simpa [supDist, a] using dist0 a
 
 ---練習5の証明に使ってないもの。証明に使わなかったもの。
@@ -856,7 +845,7 @@ lemma closed_ssup {α : Type} [TopologicalSpace α] (ss : Set α) (s : Set ℝ) 
     dsimp [Nonempty]
     obtain ⟨val, property⟩ := non
     subst a
-    simp_all only [Set.image_univ, Subtype.range_coe_subtype, Set.setOf_mem_eq, Set.image_nonempty]
+    simp_all only [Subtype.range_coe_subtype, Set.setOf_mem_eq, Set.image_nonempty]
     use val
 
   have nonemp2: Nonempty s:= by
@@ -988,17 +977,18 @@ by
   use q
   -- q の評価
   calc
-    |x - q| = |x - (Int.floor (n * x) / n)| := by simp_all only [gt_iff_lt, one_div, Nat.ceil_pos, inv_pos,
-      Rat.cast_div, Rat.cast_intCast, Rat.cast_natCast, n, q]
-    _  = |x - ↑⌊↑n * x⌋ / ↑n| := by simp_all only [gt_iff_lt, one_div, Nat.ceil_pos, inv_pos, n]
-    _  = |(↑n * x) / ↑n - ↑(Int.floor (↑n * x)) / ↑n| := by simp_all only [gt_iff_lt, one_div, Nat.ceil_pos,
-      inv_pos, ne_eq, Nat.cast_eq_zero, Nat.ceil_eq_zero, inv_nonpos, not_le, mul_div_cancel_left₀, n]
+    |x - q| = |x - (Int.floor (n * x) / n)| := by simp_all only [gt_iff_lt, one_div, Rat.cast_div,
+      Rat.cast_intCast, Rat.cast_natCast, n, q]
+    _  = |x - ↑⌊↑n * x⌋ / ↑n| := by simp_all only [gt_iff_lt, one_div, n]
+    _  = |(↑n * x) / ↑n - ↑(Int.floor (↑n * x)) / ↑n| := by simp_all only [gt_iff_lt,
+      one_div, ne_eq, Nat.cast_eq_zero, Nat.ceil_eq_zero, inv_nonpos, not_le, mul_div_cancel_left₀,
+      n]
     _   = |(↑n * x - ↑(Int.floor (↑n * x))) / ↑n| := by rw [sub_div]
     _   = |↑n * x - ↑(Int.floor (↑n * x))| / |↑n| := abs_div _ _
-    _  = |n * x - Int.floor (n * x)| / n := by simp_all only [gt_iff_lt, one_div, Nat.ceil_pos, inv_pos,
+    _  = |n * x - Int.floor (n * x)| / n := by simp_all only [gt_iff_lt, one_div,
       Int.self_sub_floor, Nat.abs_cast, n]
     _ < 1 / n := by
-      simp_all only [gt_iff_lt, one_div, Nat.ceil_pos, inv_pos, Int.self_sub_floor, n]
+      simp_all only [gt_iff_lt, one_div, Int.self_sub_floor, n]
       rw [abs]
       simp_all only [neg_le_self_iff, Int.fract_nonneg, sup_of_le_left]
       apply lt_of_le_of_lt _
@@ -1011,7 +1001,7 @@ by
       · simp_all only [Nat.cast_pos, Nat.ceil_pos, inv_pos]
     _ ≤ ε := by
       rw [one_div]
-      simp_all only [gt_iff_lt, one_div, Nat.ceil_pos, inv_pos, n]
+      simp_all only [gt_iff_lt, one_div, n]
       rw [inv_le_comm₀]
       · exact Nat.le_ceil _
       · simp_all only [Nat.cast_pos, Nat.ceil_pos, inv_pos]

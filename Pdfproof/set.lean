@@ -253,7 +253,7 @@ by
     cases h with
     | inl hA =>
       unfold symmDiff -- 定義を展開
-      simp_all only [Set.sup_eq_union, Set.mem_union, Set.mem_diff, or_false, Set.mem_inter_iff]
+      simp_all only [Set.sup_eq_union, Set.mem_union, Set.mem_diff, Set.mem_inter_iff]
       tauto
 
     | inr hB =>
@@ -278,7 +278,7 @@ example {α : Type} (A B C: Set α) : (A ∆ B) ∆ C= A ∆ (B ∆ C) :=
 by
   apply Set.ext
   intro x
-  simp [symmDiff, Set.mem_diff, Set.mem_union, Set.mem_inter]
+  simp [symmDiff, Set.mem_diff, Set.mem_union]
 -- 2進論理を整理
 -- (x ∈ A ∆ B ∆ C) は、x が奇数回 A, B, C のどれかに含まれること
 -- これは排他的論理和 (XOR) と同じ

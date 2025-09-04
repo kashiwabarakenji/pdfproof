@@ -12,37 +12,40 @@ import LeanCopilot
 
 universe u
 
--- 集合の型を `MySet` として定義し、要素関係 `elem` を導入
-variable (MySetT : Type u)
-variable (elem : MySet → MySet → Prop)   -- `a ∈ b` の関係を表現
+section RussellParadox
+
+-- 集合の型と要素関係
+variable (MySet : Type u)
+variable (elem : MySet → MySet → Prop)
+
+-- ラッセルのパラドックス（一般形）
+axiom RussellParadox :
+  ∀ (MySet : Type u) (elem : MySet → MySet → Prop) (RussellSet : MySet),
+    elem RussellSet RussellSet ↔ ¬ elem RussellSet RussellSet
+
+-- 目標：背理の導出
+theorem RussellParadoxContradiction
+  {MySet : Type u} (elem : MySet → MySet → Prop) (RussellSet : MySet) : False := by
+  -- h : p ↔ ¬p
+  have h : elem RussellSet RussellSet ↔ ¬ elem RussellSet RussellSet :=
+    RussellParadox MySet elem RussellSet
+  -- ¬p を構成：hp : p と仮定すると h.mp hp : ¬p が得られ、矛盾
+  have hn : ¬ elem RussellSet RussellSet := by
+    intro hp
+    have : ¬ elem RussellSet RussellSet := h.mp hp
+    exact this hp
+  -- ところが h.mpr : (¬p) → p なので、hn から p も導けて矛盾
+  exact hn (h.mpr hn)
 
 -- 公理：外延性の公理 (Extensionality)
 axiom extensionality (A B : MySet) : (∀ x : MySet, elem x A ↔ elem x B) → A = B
 
+end RussellParadox
+
 -- 空集合の存在公理 (Empty Set)
-variable (emptySet : MySet)
-axiom emptySetAxiom : ∀ x : MySet, ¬ elem x emptySet
+--variable (emptySet : MySet)
+--axiom emptySetAxiom : ∀ x : MySet, ¬ elem x emptySet
 
--- ラッセル集合 Λ の定義： Λ は自分自身を要素に含まない集合を表す
-variable (RussellSet : MySet)
-
--- ラッセルのパラドックに相当する命題
-axiom RussellParadox : ∀ (MySet : Type u) (elem : MySet → MySet → Prop) (RussellSet : MySet), elem RussellSet RussellSet ↔ ¬ elem RussellSet RussellSet
-
--- ラッセルのパラドックから矛盾を導く定理
-theorem RussellParadoxContradiction (elem : MySet → MySet → Prop)(RussellSet : MySet): False :=
-  have h : elem RussellSet RussellSet ↔ ¬ elem RussellSet RussellSet := RussellParadox MySet elem RussellSet
-  by
-    -- elem RussellSet RussellSet が真である場合
-    by_cases h_elem : elem RussellSet RussellSet
-    · -- h_elem が真なので、h.mp h_elem により ¬ elem RussellSet RussellSet が成り立つ
-      have h_not_elem : ¬ elem RussellSet RussellSet := h.mp h_elem
-      -- しかし h_elem と h_not_elem が共に成り立つため矛盾
-      exact h_not_elem h_elem
-
-    · -- elem RussellSet RussellSet が偽である場合
-      have h_pos:elem RussellSet RussellSet := h.mpr h_elem
-      contradiction
 
 -------------
 ---練習2------
@@ -325,4 +328,4 @@ by
       rw [←left]
       exact a_1
   subst this
-  simp_all only [a]
+  simp_all only

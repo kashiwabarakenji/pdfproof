@@ -1,4 +1,4 @@
-import LeanCopilot
+--import LeanCopilot
 import Mathlib.Algebra.Group.Defs
 import Mathlib.Data.Set.Basic
 import Mathlib.Data.Set.Function
@@ -106,7 +106,7 @@ example (hM : is_partition M) : Equivalence (RR M):=
           simp only [Set.mem_inter_iff]
           exact ⟨hyA, hyB⟩
         rw [hABempty] at hABnonempty
-        exact Set.not_mem_empty y hABnonempty
+        exact Set.notMem_empty y hABnonempty
       rw [←hAB] at hzB
       dsimp [RR]
       subst hAB --以下はLean Copilotによる証明
@@ -350,7 +350,7 @@ lemma mul_eq_one_of_ge_one {a b : Nat} (h : a * b = 1) : a = 1 ∧ b = 1 := by
         simp_all only [Nat.mul_zero, Nat.zero_ne_one]
       case succ =>
         simp_all only [Nat.succ_mul]
-        simp_all only [Nat.add_left_eq_self]
+        simp_all only [Nat.add_eq_right]
         injection h
         rename_i n_eq
         --aesop_unfold at n_eq

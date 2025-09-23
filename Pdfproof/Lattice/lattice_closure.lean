@@ -15,8 +15,8 @@ import Init.Data.List.MinMax
 import Mathlib.Data.List.MinMax
 --import Mathlib.Algebra.BigOperators.Group.Finset
 import Init.Data.List.Lemmas
-import Pdfproof.closure_lemma
-import Pdfproof.lattice_common
+import Pdfproof.Lattice.closure_lemma
+import Pdfproof.Lattice.lattice_common
 
 --set_option maxHeartbeats 2000000
 
@@ -79,11 +79,9 @@ by
 lemma intersectioninground {α : Type} [DecidableEq α][Fintype α] (C: ClosureSystem α) [DecidablePred C.sets]:
   ∀ s ∈ C.ground.powerset,  finsetInter (C.ground.powerset.filter (fun (t:Finset α) => C.sets t ∧ s ⊆ t)) ⊆ C.ground :=
   by
-    intro s
-    intro hs
+    intro s hs
     simp_all only [Finset.mem_powerset]
-    intro X
-    intro hX
+    intro X hX
     --引数のひとつ
     have nonemp : (C.ground.powerset.filter (fun (t:Finset α) => C.sets t ∧ s ⊆ t)).Nonempty := by
       simp_all only [Finset.Nonempty]
@@ -108,11 +106,9 @@ lemma intersectioninground {α : Type} [DecidableEq α][Fintype α] (C: ClosureS
 lemma intersectionExtension {α : Type} [DecidableEq α][Fintype α] (F: SetFamily α) [DecidablePred F.sets]:
   ∀ s ∈ F.ground.powerset, s ⊆ finsetInter (F.ground.powerset.filter (fun (t:Finset α) => F.sets t ∧ s ⊆ t))  :=
   by
-    intro s
-    intro hs
+    intro s hs
     simp_all only [Finset.mem_powerset]
-    intro x
-    intro hx
+    intro x hx
     let A0 := F.ground.powerset.filter (fun (t:Finset α) => F.sets t ∧ s ⊆ t)
     have xall: ∀ X ∈ A0, s ⊆ X := by
       intro X
@@ -242,8 +238,7 @@ by
     ios.subtype (λ x => x ∈ F.ground)
   intro s
   let sval :=s.map ⟨Subtype.val, Subtype.val_injective⟩
-  intro x
-  intro h
+  intro x h
   --simp_all
   have h1 : s.map ⟨Subtype.val, Subtype.val_injective⟩ ⊆ F.ground := by
     obtain ⟨val, property⟩ := x

@@ -11,8 +11,7 @@ import Mathlib.Order.SymmDiff
 example {α : Type} {A B C : Set α} : A ⊆ B → B ⊆ C → A ⊆ C :=
 by
   intros hAB hBC --hAB : A ⊆ B , hBC : B ⊆ C
-  intro x --α : Type
-  intro hA --hA : x ∈ A
+  intro x hA --hA : x ∈ A
   apply hBC
   apply hAB
   exact hA
@@ -56,8 +55,12 @@ by
       | inr h_2 =>
         exact Or.inr ⟨h_1, h_2⟩
 
+---集合 練習2(前半) -- 既存の定理を使った例
+example {α : Type} (A B C : Set α) : A ∪ (B ∩ C) = (A ∪ B) ∩ (A ∪ C) := by
+  exact Set.union_inter_distrib_left A B C
+
 --集合 練習2(後半)
---simoを利用した証明の例
+--simpを利用した証明の例
 example {α : Type} (A B C : Set α) : A ∩ (B ∪ C) = (A ∩ B) ∪ (A ∩ C) :=
 by
   ext x --要素が含まれるかの議論に変換。
@@ -82,13 +85,16 @@ by
     | inl h => simp_all only [true_or, and_self]
     | inr h_1 => simp_all only [or_true, and_self]
 
+---集合 練習2(後半) -- 既存の定理を使った例
+example {α : Type} (A B C : Set α) : A ∩ (B ∪ C) = (A ∩ B) ∪ (A ∩ C) := by
+  exact Set.inter_union_distrib_left A B C
+
 --集合 練習3（前半）
 example {α : Type} {A B C : Set α} : (A ⊆ B ∧ A ⊆ C) ↔ A ⊆ (B ∩ C) :=
 by
   apply Iff.intro
   · show A ⊆ B ∧ A ⊆ C → A ⊆ B ∩ C
-    intro h
-    intro x hA
+    intro h x hA
     have hB := h.1 hA -- A ⊆ B から x ∈ B
     have hC := h.2 hA -- A ⊆ C から x ∈ C
     exact ⟨hB, hC⟩ -- よって x ∈ B ∩ C
@@ -108,9 +114,7 @@ example {α : Type} {A B C : Set α} : (A ⊆ C ∧ B ⊆ C) ↔ A ∪ B ⊆ C :
 by
   apply Iff.intro
   · show A ⊆ C ∧ B ⊆ C → A ∪ B ⊆ C
-    intro h
-    intro x
-    intro hx
+    intro h x hx
     cases hx with
     | inl hA => exact h.1 hA
     | inr hB => exact h.2 hB
@@ -128,14 +132,11 @@ by
       exact Or.inr hB
 
 --集合 練習4
---既存の定理のrwの例。
 example {α : Type} {A B : Set α} : A ⊆ B ↔ Bᶜ ⊆ Aᶜ :=
 by
   apply Iff.intro
   · show  A ⊆ B → Bᶜ ⊆ Aᶜ
-    intro h
-    intro x
-    intro hxB
+    intro h x hxB
     show x ∈ Aᶜ
     simp
     show x ∉ A
@@ -143,11 +144,13 @@ by
     exact hxB (h a) --h aは、x ∈ Bとなり、hxB:x ∈ Bᶜに矛盾。
 
   · show Bᶜ ⊆ Aᶜ → A ⊆ B
-    intro h
-    intro x
-    intro hxA
+    intro h x hxA
     by_contra hxB
     exact h hxB hxA
+
+--集合 練習4 -- 既存の定理を使った例。
+example {α : Type} {A B : Set α} : A ⊆ B ↔ Bᶜ ⊆ Aᶜ := by
+  exact Iff.symm Set.compl_subset_compl
 
 --集合 練習6 -- rwの例として使える。
 example {α : Type} {A B : Set α} : A ⊆ B ↔ A ∩ B = A :=
@@ -168,9 +171,7 @@ by
       exact ⟨hA, h hA⟩
 
   -- A ∩ B = A → A ⊆ B
-  · intro h
-    intro x
-    intro hA --goal : x ∈ B --hA: x ∈ A
+  · intro h x hA --goal : x ∈ B --hA: x ∈ A
     rw [← h] at hA -- hA : x ∈ A ∩ B
     exact hA.2
 
@@ -267,7 +268,7 @@ by
     simp_all only [Set.sup_eq_union, Set.mem_union, Set.mem_diff, Set.mem_inter_iff, not_and, not_or, not_not]
     cases h with
     | inl h_1 =>
-      obtain ⟨left, _⟩ := h_1 --使わない変数は_で表す。place holderと呼ぶ。
+      obtain ⟨left, _⟩ := h_1 --使わない変数は_で表す。placeholderと呼ぶ。
       cases left with
       | inl h => simp_all only [not_false_eq_true, imp_self, or_false]
       | inr h_1 => simp_all only [not_true_eq_false, false_implies, or_true]
@@ -279,31 +280,17 @@ by
   apply Set.ext
   intro x
   simp [symmDiff, Set.mem_diff, Set.mem_union]
--- 2進論理を整理
--- (x ∈ A ∆ B ∆ C) は、x が奇数回 A, B, C のどれかに含まれること
--- これは排他的論理和 (XOR) と同じ
--- ここでは、ブール論理を用いて証明
--- 具体的には、以下の等式を示す:
--- (x ∈ A ↔ x ∉ B ↔ x ∉ C) ↔ (x ∈ A ↔ (x ∉ B ↔ x ∉ C))
--- これはブール代数の結合律に従う
--- よって、両辺は同値
+  -- 2進論理を整理
+  -- (x ∈ A ∆ B ∆ C) は、x が奇数回 A, B, C のどれかに含まれること
+  -- これは排他的論理和 (XOR) と同じ
+  -- ここでは、ブール論理を用いて証明
+  -- 具体的には、以下の等式を示す:
+  -- (x ∈ A ↔ x ∉ B ↔ x ∉ C) ↔ (x ∈ A ↔ (x ∉ B ↔ x ∉ C))
+  -- これはブール代数の結合律に従う
+  -- よって、両辺は同値
   tauto --tautoを使えば、分解する必要なし。
-  /-
-  apply Iff.intro
-  · intro a
-    cases a with
-    | inl h =>
-      tauto
-    | inr h_1 =>
-      tauto
-  · intro a
-    cases a with
-    |
-      inl h =>
-      tauto
-    | inr h_1 =>
-      tauto
-  -/
+
+
 
 -- 集合 練習11
 example {α : Type} (A B C: Set α) : A ∩ (B ∆ C) = (A ∩ B) ∆ (A ∩ C) := by

@@ -1,4 +1,4 @@
---import LeanCopilot
+import LeanCopilot
 import Mathlib.Data.Set.Basic
 import Mathlib.Data.Set.Function
 
@@ -52,8 +52,7 @@ by
 -- f(A ∩ B) ⊆ f(A) ∩ f(B) を証明する
 example {X Y : Type} (f : X → Y) (A B : Set X) : f '' (A ∩ B) ⊆ (f '' A) ∩ (f '' B) :=
   by
-    intro y
-    intro h
+    intro y h
     show y ∈ f '' A ∩ f '' B
     cases h with --h : y ∈ f '' (A ∩ B)を分解
     | intro x hx =>
@@ -81,7 +80,7 @@ example {X Y : Type} (f : X → Y) (A B : Set X) : f '' (A ∪ B) = f '' A ∪ f
   by
     apply Set.ext -- 集合の等式を示すために extensionality を使用
     intro y
-    apply Iff.intro
+    apply Iff.intro --constructorでも同じ。
     · show y ∈ f '' (A ∪ B) → y ∈ f '' A ∪ f '' B
       intro h
       cases h with
@@ -159,13 +158,21 @@ example {X Y : Type} (f : X → Y) (A B : Set Y) : f ⁻¹' (A ∪ B) = f ⁻¹'
       | inr hB =>
         exact Or.inr hB
 
+--練習6 ChatGPT 5の解答
+example {X Y : Type} (f : X → Y) (A B : Set Y) :
+    f ⁻¹' (A ∩ B) = f ⁻¹' A ∩ f ⁻¹' B := by
+  ext x; simp
+
+example {X Y : Type} (f : X → Y) (A B : Set Y) :
+    f ⁻¹' (A ∪ B) = f ⁻¹' A ∪ f ⁻¹' B := by
+  ext x; simp
+
 --写像 練習7の補題
 --下の証明で使う補助補題。補題を用いる例になっている。
 lemma diff_empty {α : Type} {x₁ x₂ : α} (h : ¬(x₁ = x₂)) : {x₁} ∩ {x₂} = (∅ : Set α) :=
   by
     apply Set.eq_empty_iff_forall_notMem.mpr --mprは左から右の部分を取り出したもの。
-    intro y
-    intro hy
+    intro y hy
     cases hy with
     | intro hy₁ hy₂ =>
       apply h
@@ -179,9 +186,7 @@ example  {X Y : Type} (f : X → Y) :
     apply Iff.intro
 
     -- (→) 方向: f(A ∩ B) = f(A) ∩ f(B) → f が単射
-    · intro h_inj
-      -- x₁, x₂ ∈ X に対して、f(x₁) = f(x₂) のとき、x₁ = x₂ を示す
-      intro x₁ x₂ hfx
+    · intro h_inj x₁ x₂ hfx
       -- A を {x₁}、B を {x₂} として交差に関する条件を考える
       have h := h_inj {x₁} {x₂}
       simp at h
@@ -239,8 +244,7 @@ by
   apply Iff.intro
 
   -- (→) direction: f(A ∩ B) = f(A) ∩ f(B) → f is injective
-  · intro h_inj
-    intro x₁ x₂ hfx
+  · intro h_inj x₁ x₂ hfx
     -- Consider A = {x₁}, B = {x₂} and use the given condition on intersections
     have h := h_inj {x₁} {x₂}
     simp only [Set.image_singleton] at h
@@ -281,8 +285,7 @@ example {X Y : Type} (f : X → Y) :
   (∀ A B : Set X, f '' (A ∩ B) = f '' A ∩ f '' B) ↔ Function.Injective f := by
   classical
   constructor
-  · intro h
-    intro x₁ x₂ hfx
+  · intro h x₁ x₂ hfx
     -- A={x₁}, B={x₂} で等式を使う
     have h₀ := h ({x₁}) ({x₂})
     -- 右辺は {f x₁} ∩ {f x₂}
@@ -301,8 +304,7 @@ example {X Y : Type} (f : X → Y) :
     have hx1' : x = x₁ := by simpa [Set.mem_singleton_iff] using hx1
     have hx2' : x = x₂ := by simpa [Set.mem_singleton_iff] using hx2
     rw [←hx1', hx2']
-  · intro hinj
-    intro A B
+  · intro hinj A B
     -- 両包含で示す
     apply le_antisymm
     · intro y hy
@@ -343,32 +345,28 @@ by
     exact h2 (h Set.univ h1)
 
   -- (←) 方向: 任意の A ⊆ X について f(A)^c ⊆ f(A^c) ならば f が全射であることを示す
-  · intro h
-    intro A
+  · intro h A
     -- y が Y の任意の要素とする
     -- A = ∅ とすると f(∅) = ∅ なので補集合を考える
     rw [Function.Surjective] at h
 
     have sub1: (f '' A)ᶜ ⊆ f '' Aᶜ ↔ (f '' Aᶜ)ᶜ ⊆ (f '' A) := by
       apply Iff.intro
-      · intro h
-        intro x hxA
+      · intro h x hxA
         simp_all only [Set.mem_compl_iff, Set.mem_compl_iff]
         by_contra hnx
         let hnx2 :=(h hnx)
         contradiction
 
-      · intro h'
-        intro x hxA
+      · intro h' x hxA
         simp_all only [Set.mem_compl_iff, Set.mem_compl_iff]
         by_contra hnx
         let hnx2 :=(h' hnx)
         contradiction
 
     rw [sub1]
-    intro y
+    intro y hy
     -- 任意の y ∈ (f '' Aᶜ)ᶜ を取る
-    intro hy
     -- y ∉ f '' Aᶜ であることを仮定
     simp at hy
     -- 全射性 hf により、ある x ∈ α が存在して f x = y となる
@@ -431,7 +429,7 @@ example {α β : Type}  (f : α → β) :
       --
       by_contra hns
       -- 存在しない元yを取得
-      push_neg at hns
+      --push_neg at hns
       obtain ⟨a, ha⟩ := hsurj x
       subst ha  --代入
       simp_all only [not_exists, not_and, Set.mem_image, Set.mem_compl_iff]
@@ -468,20 +466,18 @@ example : (∀ A : Set α, (f '' A)ᶜ ⊆ f '' (Aᶜ)) ↔ Function.Surjective 
     }
     exact a
 
---練習8の別証明: 2025年9月 ChatGPT 5 Thinking (修正不要)
+--練習8の別証明: 2025年9月 ChatGPT 5 Thinking (修正なしで一発通った)
 example {α β : Type} (f : α → β) :
     (∀ A : Set α, (f '' A)ᶜ ⊆ f '' (Aᶜ)) ↔ Function.Surjective f := by
   classical
   constructor
-  · intro h
-    intro y
+  · intro h y
     have hU : (Set.univ : Set β) ⊆ Set.range f := by
       simpa [Set.image_univ] using h (∅ : Set α)
     have : y ∈ Set.range f := hU (Set.mem_univ y)
     rcases this with ⟨x, rfl⟩
     exact ⟨x, rfl⟩
-  · intro hsurj
-    intro A y hy
+  · intro hsurj A y hy
     rcases hsurj y with ⟨x, rfl⟩
     have hy' : f x ∈ (f '' A)ᶜ := by simpa using hy
     have hxnot : x ∉ A := by
@@ -528,7 +524,7 @@ example {X Y : Type} (f : X → Y) (B : Set Y) : B ∩ f '' Set.univ = f '' (f �
 by
   apply Set.ext
   intro y
-  apply Iff.intro
+  apply Iff.intro --constructorでも同じ。
   -- B ∩ f(X) ⊆ f(f⁻¹(B))
   · intro h
     cases h with
@@ -542,6 +538,16 @@ by
       obtain ⟨hB, rfl⟩ := hx
       exact ⟨hB, ⟨x, ⟨Set.mem_univ x, rfl⟩⟩⟩
 
+-- 練習12。Lean Copilotによる証明
+example {X Y : Type} (f : X → Y) (B : Set Y) :
+    B ∩ f '' Set.univ = f '' (f ⁻¹' B) := by
+  classical
+  -- image_preimage_eq_inter_range : f '' (f ⁻¹' s) = s ∩ Set.range f
+  -- range_eq_image_univ : Set.range f = f '' Set.univ
+  simp_all only [Set.image_univ]
+  rw [Set.image_preimage_eq_inter_range]
+
+
 --写像 練習13
 --写像 f : X → Y が与えられたとき、Xの部分集合AとYの部分集合Bに対して、
 -- f '' (A ∩ f ⁻¹' B) = f '' A ∩ B が成り⽴つことを⽰す。
@@ -549,7 +555,7 @@ theorem image_inter_preimage_eq {X Y : Type} (f : X → Y) (A : Set X) (B : Set 
 by
   ext y
   simp only [Set.mem_image, Set.mem_inter_iff, Set.mem_preimage]
-  apply Iff.intro
+  apply Iff.intro -- constructorでも同じ。
   · -- y ∈ f '' (A ∩ f ⁻¹' B) → y ∈ f '' A ∩ B
     intro h
     cases h with

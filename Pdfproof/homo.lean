@@ -282,9 +282,8 @@ theorem isomorphic_refl (G : BundledGroup) [Group G.α] : isomorphic G G := by
 theorem isomorphic_symm (G H : BundledGroup) [Group G.α] [Group H.α] :
     isomorphic G H → isomorphic H G := by
   intro hGH
-  cases' hGH with h h
-  constructor
-  exact h.symm
+  rcases hGH with ⟨e⟩
+  exact ⟨e.symm⟩
 
 theorem isomorphic_trans (A B C : BundledGroup)
     [Group A.α] [Group B.α] [Group C.α] (hAB : isomorphic A B) (hBC : isomorphic B C) :
@@ -348,8 +347,7 @@ theorem normal_iff_left_cosets_eq_right_cosets {G : Type*} [Group G] {H : Subgro
   by
   constructor
   · -- 正規部分群 H から ∀x, Set.image (λ h => x * h) H = Set.image (λ h => h * x) H を示す
-    intro h_normal
-    intro x
+    intro h_normal x
     -- 定義: f : H → H を h ↦ x * h * x⁻¹ とする
     --have elem: ∀ h ∈ H, x * h * x⁻¹ ∈ H := by
 
@@ -496,11 +494,9 @@ theorem normal_iff_left_cosets_eq_right_cosets {G : Type*} [Group G] {H : Subgro
   · intro h_cosets_eq
     -- H.Normal の定義を構築する
     constructor
-    intro hh hx
+    intro hh hx g
     -- Set.image (λ h => x * h) H = Set.image (λ h => h * x) H を利用する
     -- 定義: f : H → H を h ↦ x * h * x⁻¹ とする
-
-    intro g
 
     --一般的な補題なので、定理の外に出しても良かった。
     have lem0 {A B:Set G}:A=B → (Set.image (λ x=> g * x) A) = (Set.image (λ x => g * x) B):= by

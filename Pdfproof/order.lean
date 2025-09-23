@@ -1,25 +1,21 @@
---import LeanCopilot
+import LeanCopilot
 import Mathlib.Algebra.Group.Defs
 import Mathlib.Data.Set.Basic
 import Mathlib.Data.Set.Function
 import Mathlib.Algebra.Group.Basic
-import Mathlib.Algebra.Group.Units.Basic
 import Mathlib.Algebra.NeZero
-import Mathlib.Algebra.Order.Monoid.Unbundled.Basic
-import Mathlib.Algebra.Order.Monoid.Canonical.Defs
-import Init.Data.List.OfFn
-import Mathlib.Data.List.OfFn
-import Init.Data.Fin.Fold
-import Init.Data.List.Lemmas
 
 ----------------------
 -----2項関係と順序------
 ----------------------
 
+variable {X Y : Type} (f : X → Y)
+
 --2項関係と順序　練習1
 --variable {X Y : Type}
 -- 同値関係を定義します: x ~ y は f(x) = f(y) とする
-def rel (f :X → Y) (x y : X) : Prop := f x = f y
+def rel (x y : X) : Prop := f x = f y
+--def rel (f :X → Y) (x y : X) : Prop := f x = f y
 
 --2項関係と順序 練習1
 -- 同値関係であることの証明
@@ -295,6 +291,16 @@ by
   rw [Int.mul_neg, ←hk, Int.sub_eq_add_neg, Int.add_comm]
   omega
 
+--omegaのかわりにsimpを使った。
+example (n : ℤ) :
+    ∀ x y, equiv_rel n x y → equiv_rel n y x := by
+  intro x y ⟨k, hk⟩
+  refine ⟨-k, ?_⟩
+  -- y - x = -(x - y) = n * (-k)
+  rw [← Int.neg_sub]
+  simp_all only
+  rw [Int.neg_mul_eq_mul_neg]
+
 -- 推移性の証明
 theorem my_trans (n : ℤ) : ∀ x y z : ℤ, equiv_rel n x y → equiv_rel n y z → equiv_rel n x z :=
 by
@@ -306,6 +312,7 @@ by
     x - z = (x - y) + (y - z) := by simp_all only; omega--rw [←sub_add_sub_cancel x y z]
     _   = n * k1 + n * k2   := by rw [hk1, hk2]
     _   = n * (k1 + k2)     := by rw [Int.mul_add]
+
 
 -- 同値関係の証明
 theorem equiv_is_equiv (n : ℤ) : Equivalence (equiv_rel n) :=
@@ -536,11 +543,11 @@ instance Q_is_partial_order : PartialOrder X :=
 variable {α : Type}
 
 -- 部分集合間の包含関係を定義。Fは証明に使ってないが、F上の部分集合として定義。冪集合として証明されている。
-instance (_ : Set (Set α)): PartialOrder (Set α) where
-  le := Set.Subset
-  le_refl := fun A => Set.Subset.refl A
-  le_trans := fun A B C hab Hbc => Set.Subset.trans hab Hbc
-  le_antisymm := fun A B hab Hba => Set.Subset.antisymm hab Hba
+instance : PartialOrder (Set α) where
+  le := (· ⊆ ·)
+  le_refl := fun _ => Set.Subset.rfl
+  le_trans := fun _ _ _ => Set.Subset.trans
+  le_antisymm := fun _ _ => Set.Subset.antisymm
 
 /-
 反射律:任意の集合 A に対して、A は自分自身の部分集合であるため、A ⊆ A が成り立ちます。
@@ -665,8 +672,8 @@ def OrderFilter (F : Set P) : Prop :=
   ∀ ⦃x y : P⦄, x ∈ F → x ≤ y → y ∈ F
 
 omit [PartialOrder P] in
-theorem order_filter_intersecting_sets :
+theorem order_filter_intersecting_sets (A : Set P) :
     OrderFilter { X : Set P | (A ∩ X).Nonempty } := by
   intro X Y hX hXY
-  obtain ⟨x, hxA, hxX⟩ := hX
+  rcases hX with ⟨x, hxA, hxX⟩
   exact ⟨x, hxA, hXY hxX⟩

@@ -47,7 +47,7 @@ import Mathlib.MeasureTheory.Integral.Bochner.L1
 import Mathlib.MeasureTheory.Integral.Bochner.VitaliCaratheodory
 import Mathlib.MeasureTheory.Function.L1Space.HasFiniteIntegral
 import Mathlib.MeasureTheory.Order.Group.Lattice
-import Pdfproof.Ic_OpenPosMeasure
+import Pdfproof.Dis.Ic_OpenPosMeasure
 import LeanCopilot
 
 --01閉区間上の連続関数がL2ノルムで距離関数になる問題。無駄に01閉区間を実数全体の関数に拡張してしまったので、

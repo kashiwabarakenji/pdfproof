@@ -182,8 +182,7 @@ theorem subset_union_eq (A B : MySetType) : subset myElem A B ↔ myUnion A B = 
       rw [union_spec A B x]
       right
       exact hx
-  · intro h
-    intro x ha
+  · intro h x ha
     -- hより a ∪ b = b
     -- x ∈ a → x ∈ a ∪ b より、x ∈ b
     have eqSymm : myUnion A B = B := h

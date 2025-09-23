@@ -177,7 +177,7 @@ lemma sum_sq_expand {n : ℕ} (x y z : Fin n → ℝ) :
     have : 2 * (x i - y i) * (y i - z i) ≤ 2 * |(x i - y i) * (y i - z i)| := by
       --have h_pos : 0 < 2 := by norm_num
       rw [mul_assoc]
-      simp_all only [Finset.mem_univ, Nat.ofNat_pos, mul_le_mul_left]
+      simp_all only [Finset.mem_univ, Nat.ofNat_pos, mul_le_mul_iff_right₀]
       exact le_abs_self _
 
     simp_all only [Finset.mem_univ, ge_iff_le, f, g]
@@ -334,7 +334,8 @@ noncomputable instance : MetricSpace (Fin n → ℝ) where
       norm_num
       rw [mul_assoc]
       rw [←Finset.mul_sum]
-      simp_all only [Nat.ofNat_pos, mul_le_mul_left]
+      simp_all only [Nat.ofNat_pos, mul_le_mul_iff_right₀]
+      simp_all only [abs_mul]
 
     apply @le_of_le_sum_of_nonneg √(∑ i : Fin n, (x i - y i) ^ 2)  √(∑ i : Fin n, (y i - z i) ^ 2) √(∑ i : Fin n, (x i - z i) ^ 2)
     simp_all only [sqrt_nonneg]
@@ -438,8 +439,7 @@ lemma d'_triangle {n : ℕ} (x y z : MyEuclideanSpace n) : d' x z ≤ d' x y + d
       simp_all only [gt_iff_lt]
       rw [Finset.univ_nonempty_iff]
       use 0
-      intro i
-      intro _
+      intro i _
       simp_all only [↓reduceDIte, Finset.mem_univ]
       -- goal |x i - z i| ≤ (Finset.univ.sup' ⋯ fun i ↦ |x i - y i|) + Finset.univ.sup' ⋯ fun i ↦ |y i - z i|
       calc

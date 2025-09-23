@@ -1,13 +1,6 @@
 --pdf proof by Lean
 import LeanCopilot
 import Mathlib.Data.Real.Basic
---import Mathlib.Data.Set.Basic
---import Mathlib.Tactic.ByContra
---import Mathlib.Init.Data.Nat.Lemmas
---import Mathlib.Logic.Relation
---import Mathlib.Data.Set.Function
---import Mathlib.Logic.Function.Basic
-
 
 --命題論理 例1
 example {A:Prop} {B:Prop} {C:Prop} : (A → (B → C)) → (B → (A → C)) :=
@@ -132,13 +125,13 @@ example {A:Prop}: False ↔ (A ∧ ¬A) :=
     apply Iff.intro --goalを両方向に2つに分解。
     · intro hF --goal : A ∧ ¬A
       cases hF
-    · simp  -- 右から左への証明は簡単
+    · intro ⟨a, na⟩; exact na a  -- 右から左への証明は簡単
 
 --命題論理 例4
 example {A:Prop}: ¬¬A → A :=
   by
     intro hNNA --goal : A
-    by_contra hA -- goal : False　排中律を利用している。import Mathlib.Tactic.ByContraが必要。
+    by_contra hA -- goal : False　排中律を利用している。
     exact hNNA hA -- hNNA : ¬¬A  hA : ¬A
 
 --命題論理 練習8
@@ -150,8 +143,7 @@ example {A:Prop}: A→¬¬A := --この証明には排中律は必要ない。
 
 --命題論理 練習9
 example (A : Prop) : A → ¬¬A := by
-  intro a
-  intro h
+  intro a h
   exact h a
 
 --命題論理 練習10
@@ -169,8 +161,7 @@ example {A B : Prop} : ¬(A ∨ B) → (¬ A ∧ ¬ B) := by
 
 --命題論理 練習11
 example (A B : Prop) : (¬A ∧ ¬B) → ¬(A ∨ B) := by
-  intro h
-  intro hab
+  intro h hab
   cases hab with
   | inl ha => exact h.left ha
   | inr hb => exact h.right hb
@@ -188,14 +179,13 @@ example (A B : Prop) : (A → B) → (¬A ∨ B) := by
 
 --命題論理 練習13
 example (A B : Prop) : (¬A ∨ B) → (A → B) := by
-  intro h
-  intro ha
+  intro h ha
   cases h with
   | inl hna => exact False.elim (hna ha)
   | inr hb => exact hb
 
 --スライドの中の例
-example (a: (A : Prop))  (b: (B :Prop)):(A ∧ B:Prop):=
+example (a: A) (b: B) : (A ∧ B : Prop) :=
 by
   /- constructor -- goalはA ∧ B。「かつ」の証明を分岐。
   exact a -- 左側の証明が完了

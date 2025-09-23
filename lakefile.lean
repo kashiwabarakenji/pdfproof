@@ -13,9 +13,9 @@ package "pdfproof" where
 
 -- add any additional package configuration options here
 
-require "leanprover-community" / "mathlib" @  "git#v4.23.0-rc2"
+require "leanprover-community" / "mathlib" @  "git#v4.23.0"
 
-require LeanCopilot from git "https://github.com/lean-dojo/LeanCopilot.git" @ "v4.22.0"
+require LeanCopilot from git "https://github.com/lean-dojo/LeanCopilot.git" @ "v4.23.0"
 
 @[default_target]
 lean_lib «Pdfproof» where
@@ -23,7 +23,7 @@ lean_lib «Pdfproof» where
   srcDir := "."
   roots := #[`Pdfproof.set, `Pdfproof.map, `Pdfproof.order,
             `Pdfproof.prop,`Pdfproof.pred,
-            `Pdfproof.closure_lemma, `Pdfproof.lattice_common, `Pdfproof.lattice_closure_set, `Pdfproof.lattice_closure, `Pdfproof.lexorder,`Pdfproof.lattice,
+            `Pdfproof.Lattice.closure_lemma, `Pdfproof.Lattice.lattice_common, `Pdfproof.Lattice.lattice_closure_set, `Pdfproof.Lattice.lattice_closure, `Pdfproof.Lattice.lexorder,`Pdfproof.Lattice.lattice,
             `Pdfproof.zf,`Pdfproof.card,
-            `Pdfproof.dis_func_metric,`Pdfproof.dis, `Pdfproof.Ic_OpenPosMeasure,
+            `Pdfproof.Dis.dis_func_metric,`Pdfproof.Dis.dis, `Pdfproof.Dis.Ic_OpenPosMeasure,
             `Pdfproof.group,`Pdfproof.homo,`Pdfproof.ring]

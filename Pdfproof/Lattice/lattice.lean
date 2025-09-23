@@ -11,6 +11,7 @@ import Init.Data.Nat.Lcm
 import Init.Data.Nat.Gcd
 import Mathlib.Algebra.GCDMonoid.Basic
 import Mathlib.Algebra.GCDMonoid.Nat
+--import Mathlib.Algebra.MonoidWithZero.Defs
 
 -- 一般的なLattice αを仮定
 variable {α : Type*} [Lattice α]
@@ -155,38 +156,80 @@ instance : Lattice Divides where
 --以下がdistributive latticeを示す部分。
 
 --2025年9月 QwenとChatGPT5の合わせ技。
+
 theorem gcd_lcm_eq_lcm_gcd (a b c : ℕ) :
     Nat.gcd (Nat.lcm a b) (Nat.lcm a c) = Nat.lcm a (Nat.gcd b c) := by
-  classical
-  cases' a with a; · simp
-  cases' b with b; · simp
-  cases' c with c; · simp
-  apply Nat.eq_of_factorization_eq
-  intro p
-  · simp_all only [Nat.gcd_eq_zero_iff, Nat.lcm_eq_zero_iff, Nat.add_eq_zero, one_ne_zero, and_false, or_self, and_self]
-  · simp_all only [ne_eq, Nat.lcm_eq_zero_iff, Nat.add_eq_zero, one_ne_zero, and_false, Nat.gcd_eq_zero_iff, and_self,
-    or_self, not_false_eq_true]
-  · intro p
-    rw [Nat.factorization_lcm, Nat.factorization_gcd, Nat.factorization_lcm]
-    set x := (a+1).factorization p
-    set y := (b+1).factorization p
-    set z := (c+1).factorization p
-    -- 分配律： (x ⊔ y) ⊓ (x ⊔ z) = x ⊔ (y ⊓ z) を
-    -- ℕ の max/min に言い換えたもの
-    · have hx :
-        min (max x y) (max x z) = max x (min y z) := by
-        exact Eq.symm (Nat.max_min_distrib_left x y z)
-    -- 目標の等式は factorization を評価して hx に落ちます
-      simpa [x, y, z, Nat.factorization_lcm, Nat.factorization_gcd] using hx
-    · exact Ne.symm (Nat.zero_ne_add_one a)
-    · exact Ne.symm (Nat.zero_ne_add_one b)
-    · simp_all only [ne_eq, Nat.lcm_eq_zero_iff, Nat.add_eq_zero, one_ne_zero, and_false, or_self, not_false_eq_true]
-    · simp_all only [ne_eq, Nat.lcm_eq_zero_iff, Nat.add_eq_zero, one_ne_zero, and_false, or_self, not_false_eq_true]
-    · simp_all only [ne_eq, Nat.add_eq_zero, one_ne_zero, and_false, not_false_eq_true]
-    · simp_all only [ne_eq, Nat.gcd_eq_zero_iff, Nat.add_eq_zero, one_ne_zero, and_false, and_self, not_false_eq_true]
+classical
+  -- 0 が絡む簡単ケースは先に掃除
+  by_cases ha : a = 0
+  · -- a = 0 → 両辺とも lcm 0 _ = 0 なので 0
+    simp [ha]
+  by_cases hb : b = 0
+  · -- b = 0 → gcd (lcm a 0) (lcm a c) = gcd 0 (lcm a c) = lcm a c
+    --          lcm a (gcd 0 c) = lcm a c
+    simp [hb]
+  by_cases hc : c = 0
+  · -- c = 0 も同様
+    simp [hc]
 
+  -- ここから主ケース：a,b,c すべて ≠ 0
+  have hL0 : Nat.gcd (Nat.lcm a b) (Nat.lcm a c) ≠ 0 := by
+    -- gcd x y = 0 ↔ x=0 ∧ y=0 を使って背理
+    intro h
+    rcases (Nat.gcd_eq_zero_iff).mp h with ⟨h1, h2⟩
+    have : a = 0 ∨ b = 0 := (Nat.lcm_eq_zero_iff).mp h1
+    have : a = 0 ∨ c = 0 := (Nat.lcm_eq_zero_iff).mp h2
+    simp_all only [Nat.gcd_self, Nat.lcm_eq_zero_iff, or_self]
+  have hR0 : Nat.lcm a (Nat.gcd b c) ≠ 0 := by
+    -- lcm a d = 0 ↔ a=0 ∨ d=0、gcd b c = 0 ↔ b=0 ∧ c=0
+    intro h
+    rcases (Nat.lcm_eq_zero_iff).mp h with h' | h'
+    · exact ha h'
+    · have : b = 0 ∧ c = 0 := (Nat.gcd_eq_zero_iff).mp h'
+      exact hb this.1
 
-instance: GCDMonoid ℕ := instGCDMonoidNat --これを探すのも時間がかかった。
+  -- 以降、factorization の一致を示す
+  have hfac :
+      (Nat.gcd (Nat.lcm a b) (Nat.lcm a c)).factorization
+        = (Nat.lcm a (Nat.gcd b c)).factorization := by
+    -- lcm/gcd の factorization を展開して、座標ごとに sup_inf_left を適用
+    have h₁ : (a.lcm b).factorization = a.factorization ⊔ b.factorization :=
+      Nat.factorization_lcm ha hb
+    have h₂ : (a.lcm c).factorization = a.factorization ⊔ c.factorization :=
+      Nat.factorization_lcm ha hc
+    have h₃ : (b.gcd c).factorization = b.factorization ⊓ c.factorization := by
+      exact Nat.factorization_gcd hb hc
+    have h₄ : (a.lcm b) ≠ 0 := by
+      exact fun h0 => (Nat.lcm_eq_zero_iff.mp h0).elim ha (fun hb0 => hb hb0)
+    have h₅ : (a.lcm c) ≠ 0 := by
+      exact fun h0 => (Nat.lcm_eq_zero_iff.mp h0).elim ha (fun hc0 => hc hc0)
+    -- gcd の factorization も（上で非零を確保したので）展開できる
+    have hg : ((a.lcm b).gcd (a.lcm c)).factorization
+                = (a.lcm b).factorization ⊓ (a.lcm c).factorization :=
+      Nat.factorization_gcd h₄ h₅
+    -- ここから計算列。型詰まり回避のため ext p で座標化して sup_inf_left を使う
+    ext p
+    -- 左辺
+    have := congrArg (fun f => f p) hg
+    -- 右辺（lcm 側）
+    have hr : (Nat.lcm a (Nat.gcd b c)).factorization
+                = a.factorization ⊔ (b.gcd c).factorization := by
+      -- a ≠ 0 ∧ gcd b c ≠ 0 を示してから lcm の factorization を展開
+      have hg0 : Nat.gcd b c ≠ 0 := by
+        intro h0; exact hb ((Nat.gcd_eq_zero_iff.mp h0).1)
+      simpa using (Nat.factorization_lcm ha hg0)
+    -- 置換して座標ごとに分配律 silは必要。
+    let sil := sup_inf_left (a := a.factorization p)
+                            (b := b.factorization p)
+                            (c := c.factorization p)
+    simp [h₃, hr]
+    simp_all only [ne_eq, Nat.gcd_eq_zero_iff, and_self, not_false_eq_true, Nat.lcm_eq_zero_iff,
+      or_self, Finsupp.inf_apply, Finsupp.sup_apply]
+
+  -- 素因数指数の一致から＝を結論（両辺が非零であることは hL0, hR0）
+  exact Nat.eq_of_factorization_eq hL0 hR0 (fun p => congrArg (fun f => f p) hfac)
+
+--instance: GCDMonoid ℕ := instGCDMonoidNat --これを探すのも時間がかかった。
 
 --上の定理の2024年版の証明。大きくは違わないのかも。
 theorem gcd_lcm_eq_lcm_gcd.old (a b c : ℕ) :

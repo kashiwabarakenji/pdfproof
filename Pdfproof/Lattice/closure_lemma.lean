@@ -6,7 +6,7 @@ import Mathlib.Data.Finset.Card
 import Mathlib.Data.Fintype.Basic
 import Init.Data.List.BasicAux
 import Mathlib.Data.Finset.Dedup
-import Pdfproof.lattice_common
+import Pdfproof.Lattice.lattice_common
 import LeanCopilot
 
 variable {α : Type}  [DecidableEq α] [Fintype α]
@@ -107,8 +107,7 @@ lemma finset_inter_subset_iff {α : Type} [DecidableEq α][Fintype α] (A0 : Fin
     intro X a
     simp_all only [Finset.mem_toList, fl]
 
-    intro h
-    intro X hX
+    intro h X hX
     have : finsetInter A0 ⊆ X:= by
       dsimp [finsetInter]
       apply all_inters_subset_of_mem A0.toList

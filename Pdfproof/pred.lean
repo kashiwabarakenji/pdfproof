@@ -1,4 +1,5 @@
 import Mathlib.Data.Real.Basic
+import LeanCopilot
 --- 述語論理
 
 --述語論理 練習1
@@ -8,8 +9,8 @@ example : ∀ (x: Real),∃ (y :Real), x = y :=  -- Realとℝは同じ。実数
     exact ⟨x, rfl⟩ -- rflは、両辺が等しいことを示す。
 
 --述語論理 練習2
-def my_prime (n : ℕ) : Prop :=
-  n > 1 ∧ ∀ m : ℕ, m ∣ n → m = 1 ∨ m = n
+--def my_prime (n : ℕ) : Prop :=
+--  n > 1 ∧ ∀ m : ℕ, m ∣ n → m = 1 ∨ m = n
 
 
 example :∀ (x : ℝ), x*x ≥ 0 :=
@@ -22,13 +23,12 @@ example {y : ℝ} : (∀(x : ℝ), x*x ≥ y*y) ↔ y = 0 :=
   by
     apply Iff.intro
     · intro h --goal : y ≥ 0
-      simp_all only [ge_iff_le]
+      specialize h 0 -- h : 0 * 0 ≥ y * y
+      simp_all only [mul_zero, ge_iff_le]
       contrapose! h
-      use 0
-      simp_all only [mul_zero, mul_self_pos, ne_eq]
-      simp_all only [not_false_eq_true]
-    · intro h --goal : ∀ (x : ℝ), x * x ≥ y * y
-      intro x --goal : x * x ≥ y * y
+      simp_all only [ne_eq, mul_self_pos, not_false_eq_true]
+
+    · intro h x --goal : x * x ≥ y * y
       subst h
       simp_all only [mul_zero, ge_iff_le]
       apply mul_self_nonneg
@@ -55,8 +55,7 @@ example (y : ℝ) : (∀ x, x ^ 2 ≥ y ^ 2) ↔ y = 0 :=
 -- P(x)とは書かずに P xと書く。
 example {P: α → Prop} {Q: α → Prop}: (∀ x : α, P x → Q x) → ((∀ x : α, P x) → (∀ x : α, Q x)) :=
   by --ここで　α　は型変数
-    intro h1 h2 --h1 : ∀ (x : α), P x → Q x, h2 : ∀ (x : α), P x
-    intro x --allの除去・goalはQ x
+    intro h1 h2 x --h1 : ∀ (x : α), P x → Q x, h2 : ∀ (x : α), P x
     apply h1 --goalがP xに。
     apply h2 --h2を適用してゴールが得られるので証明完了。
 
@@ -67,8 +66,7 @@ example {α : Type} {P: α → Prop} {Q: α → Prop}:
 --述語論理 例2
 example {α : Type} {P: α → Prop}: (∀x, (A → P x)) → (A → ∀x, P x) :=
   by
-    intro a a_1 --a : ∀ (x : α), A → P x, a_1 : A
-    intro x
+    intro a a_1  x --a : ∀ (x : α), A → P x, a_1 : A
     apply a
     exact a_1
 
@@ -137,9 +135,7 @@ example {α : Type} {P: α → Prop}: ¬(∃x, P x) → ∀x,¬(P x) :=
 --例5を定理を使わずに証明。
 example {α : Type} {P : α → Prop} : ¬(∃ x, P x) → ∀ x, ¬(P x) :=
 by
-  intro h
-  intro x --ここでゴールは、¬P x
-  intro px --px：P xとなり、goalがFalseになる。
+  intro h x px --ここでゴールは、¬P x. px：P xとなり、goalがFalseになる。
   have ex : ∃ x, P x := ⟨x, px⟩ --補題を証明してexと命名
   exact h ex -- ¬A A  の順で並べることで矛盾Falseが得られる。
 
@@ -152,8 +148,7 @@ example {α : Type} {P: α → Prop}: (∀x, ¬P x) → (¬∃x, P x) :=
 
 example {α : Type} {P : α → Prop} : (∀x, ¬P x) → (¬∃x, P x) :=
 by
-  intro h -- Introduce the hypothesis that ∀x, ¬P x.
-  intro hp -- Introduce a new hypothesis for the negation of the existential quantifier.
+  intro h hp
   obtain ⟨x, px⟩ := hp -- Extract the witness `x` and `P x` from the existential statement.
   exact h x px -- Apply the universally quantified `h` to `x` and `P x` to reach a contradiction.
 
@@ -195,8 +190,7 @@ example (P Q : α → Prop) : (∀ x, P x) ∧ (∀ x, Q x) → (∀ x, P x ∧ 
 --述語論理 練習13
 example (P Q : α→Prop) :(∀x, P x) ∨ (∀x, Q x) → (∀x, P x ∨ Q x) :=
 by
- intro h
- intro x
+ intro h x
  cases h with
  | inl h1 =>
    exact Or.inl (h1 x)

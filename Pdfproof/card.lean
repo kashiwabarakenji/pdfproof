@@ -13,7 +13,7 @@ import Mathlib.SetTheory.Cardinal.Continuum
 import Mathlib.Order.Basic
 import Mathlib.Algebra.Order.Archimedean.Basic
 import Mathlib.Data.Real.Archimedean
-import Mathlib.Data.Real.Cardinality
+import Mathlib.Analysis.Real.Cardinality
 
 ------------
 ---練習1

@@ -1,0 +1,43 @@
+# lakefile.toml
+name = "pdfproof"
+defaultTargets = ["Pdfproof"]
+
+[leanOptions]
+# pretty-prints `fun a ↦ b`
+pp.unicode.fun = true
+
+# ---（任意）LeanCopilot のネイティブライブラリをリンクしたい場合 ---
+# 下の moreLinkArgs をアンコメントしてください。
+# moreLinkArgs = [
+#   "-L./.lake/packages/LeanCopilot/.lake/build/lib",
+#   "-lctranslate2"
+# ]
+
+[[require]]
+name = "mathlib"
+git  = "https://github.com/leanprover-community/mathlib4"
+rev  = "v4.23.0"
+
+[[require]]
+name = "LeanCopilot"
+git  = "https://github.com/lean-dojo/LeanCopilot.git"
+rev  = "v4.23.0"
+
+
+[[lean_lib]]
+name = "Pdfproof"
+globs = ["Pdfproof.+"]
+
+#[[lean_lib]]
+#name  = "Pdfproof"
+#srcDir = "."
+#roots = [
+#  "Pdfproof.set", "Pdfproof.map", "Pdfproof.order",
+#  "Pdfproof.prop", "Pdfproof.pred",
+#  "Pdfproof.Lattice.closure_lemma", "Pdfproof.Lattice.lattice_common",
+#  "Pdfproof.Lattice.lattice_closure_set", "Pdfproof.Lattice.lattice_closure",
+#  "Pdfproof.Lattice.lexorder", "Pdfproof.Lattice.lattice",
+#  "Pdfproof.zf", "Pdfproof.card",
+#  "Pdfproof.Dis.dis_func_metric", "Pdfproof.Dis.dis", "Pdfproof.Dis.Ic_OpenPosMeasure",
+#  "Pdfproof.group", "Pdfproof.homo", "Pdfproof.ring"
+#]

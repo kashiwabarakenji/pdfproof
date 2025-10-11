@@ -485,6 +485,25 @@ example {α β : Type} (f : α → β) :
       exact hy' ⟨x, hxA, rfl⟩
     exact ⟨x, by simpa using hxnot, rfl⟩
 
+--スライドにあったもの。
+example {α β : Type}  (f : α → β) : (∀ A : Set α, (f '' A)ᶜ ⊆ f '' (Aᶜ)) → Function.Surjective f := by
+
+    intro h
+    rw [Function.Surjective]
+    by_contra hns
+    push_neg at hns
+    obtain ⟨y, hy⟩ := hns
+
+    have h1 : y ∈ (f '' Set.univ)ᶜ := by
+      simp_all only [ne_eq, Set.image_univ, Set.mem_compl_iff, Set.mem_range, exists_false,
+        not_false_eq_true]
+
+    have h2 : y ∉ f '' (Set.univᶜ) := by
+      simp_all only [ne_eq, Set.image_univ, Set.mem_compl_iff, Set.mem_range, exists_false,
+        not_false_eq_true, Set.compl_univ, Set.image_empty, Set.mem_empty_iff_false]
+
+    exact h2 (h Set.univ h1)
+
 --写像 練習9
 --単射と単射の合成は単射
 example {A B C : Type} (f : A → B) (g : B → C)

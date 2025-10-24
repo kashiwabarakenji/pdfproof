@@ -190,3 +190,61 @@ by
       | inl h => rw [h]; unfold f; norm_num -- n = -3, f(n) = 3
       | inr h => rw [h]; unfold f; norm_num -- n = -7, f(n) = 7
 end Tokyo2024Q6
+
+example (a b : Nat) (h : a = b) :
+  a + 1 = b + 1 := by
+   rw [h]
+
+example {α : Type} {P: α → Prop}:
+¬(∃x, P x) → ∀x,
+¬(P x) := by
+intro a x
+rw [not_exists] at a --既存定理をそのまま利用して証明。
+
+exact a x
+
+example {α : Type} {P : α → Prop} :
+¬(∃ x, P x) → ∀ x,
+¬(P x) := by
+  intro h
+  intro x --ここでゴールは、
+  --(P x)。これはP(x) → Falseと思える。
+  intro px -- px：P xとなり、goalがFalseになる。
+  have ex : ∃ x, P x := ⟨x, px⟩ --補題を証明してexと命名
+  exact h ex -- ¬A A の順で並べることで矛盾Falseが得られる。
+
+example {α : Type} (A B C : Set α) :
+A ∩ (B ∪ C) = (A ∩ B) ∪ (A ∩ C) := by
+ext x --要素が含まれるかの議論に変換。
+--goal x ∈ A ∩ (B ∪ C) ↔ x ∈ A ∩ B ∪ A ∩ C
+simp only [Set.mem_inter_iff, Set.mem_union]
+
+--import Mathlib.Data.Set.Basicが必要
+apply Iff.intro --左から右の証明と右から左の証明に分解
+· intro a --左から右。goal: x ∈ A ∧ x ∈ B ∨ x ∈ A ∧ x ∈ C
+  cases a with
+  | intro hA hBC => --hA : x ∈ A, hBC : x ∈ B ∨ x ∈ C
+  cases hBC with
+  | inl hB => exact Or.inl ⟨hA, hB⟩ --hB : x ∈ B
+  | inr hC => exact Or.inr ⟨hA, hC⟩ --hC : x ∈ C
+· intro a --右から左。goal: x ∈ A ∧ x ∈ B ∨ x ∈ A ∧ x ∈ C
+  cases a with
+  | inl h => simp_all only [true_or, and_self]
+  | inr h_1 => simp_all only [or_true, and_self]
+
+example {α β : Type}  (f : α → β) :
+ (∀ A : Set α, (f '' A)ᶜ ⊆ f '' (Aᶜ)  )
+  → Function.Surjective f := by
+  intro h
+  rw [Function.Surjective]
+  by_contra hns
+  push_neg at hns
+  obtain ⟨y, hy⟩ := hns
+  have h1 : y ∈ (f '' Set.univ)ᶜ := by
+    simp_all only [ne_eq, Set.image_univ, Set.mem_compl_iff,
+    Set.mem_range, exists_false,not_false_eq_true]
+  have h2 : y ∉ f '' (Set.univᶜ) := by
+    simp_all only [ne_eq, Set.image_univ, Set.mem_compl_iff,
+    Set.mem_range, exists_false,not_false_eq_true,
+    Set.compl_univ, Set.image_empty, Set.mem_empty_iff_false]
+  exact h2 (h Set.univ h1)

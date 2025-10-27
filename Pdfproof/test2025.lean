@@ -613,7 +613,7 @@ theorem MyNat.mul_assoc (n m k : MyNat) :
 
 ---------
 
-theorem square_condition_implies_n_le_a (a n : ℕ) (ha : 1 ≤ a) (hn : 1 ≤ n)
+theorem square_condition_implies_n_le_a (a n : ℕ) (ha : 1 ≤ a) --(hn : 1 ≤ n)
 (h : ∃ k : ℕ, n^2 + n - a = k^2) : n ≤ a := by
   obtain ⟨k, hk⟩ := h
   by_contra hna
@@ -625,3 +625,17 @@ theorem square_condition_implies_n_le_a (a n : ℕ) (ha : 1 ≤ a) (hn : 1 ≤ n
   · nlinarith
   · have h3 : k ≥ n + 1 := Nat.succ_le_of_lt hkn
     nlinarith
+
+theorem Add_comm (a b : Nat) : a + b = b + a := by
+induction b with
+| zero =>
+  rw [Nat.add_zero, zero_add]
+| succ b ih =>
+  rw [Nat.add_succ, ih, Nat.succ_add]
+
+theorem Add_comm_nat (a b : ℕ) : a + b = b + a := by
+  induction a with
+  | zero =>
+    simp
+  | succ a ih =>
+    exact Add_comm (a + 1) b

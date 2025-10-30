@@ -7,7 +7,10 @@ import Mathlib.Data.Fin.Basic
 import Mathlib.Data.ZMod.Coprime
 import Mathlib.Algebra.Field.ZMod
 import Mathlib.Data.Nat.ModEq
-import Mathlib
+import Mathlib.Algebra.Group.Even
+import Mathlib.Algebra.Ring.Parity
+import LeanCopilot
+--import Mathlib
 open Finset
 open scoped BigOperators
 --import Mathlib.Data.Finset.Range
@@ -115,3 +118,62 @@ theorem distinct_multiples_of_coprime_mod_prime
   contradiction
   def main : IO Unit := do
   IO.println "Fermat's Little Theorem sublemma proved."
+
+------
+--import Mathlib.Data.Nat.Parity -- 偶数・奇数の定義を含むライブラリをインポート
+-- 命題: n^2 が偶数ならば n も偶数である
+theorem even_of_even_sq (n : ℕ) (h_even_sq : Even (n^2)) : Even n := by
+  by_contra hn_odd
+  simp at hn_odd
+  obtain ⟨k, hk⟩ := hn_odd
+  have : Odd (n^2) := by
+    have :∃ m : ℕ, n^2 = 2 * m + 1 := by
+      use 2 * k * k + 2 * k
+      calc
+        n^2 = (2 * k + 1)^2 := by rw [hk] -- n を 2k + 1 に置き換え
+          _ = 4 * k^2 + 4 * k + 1 := by ring -- 展開
+          _ = 2 * (2 * k^2 + 2 * k) + 1 := by ring -- 2 でくくる
+          _ = 2 * (2 * k * k + 2 * k) + 1 := by ring -- より⼀般的な形
+    exact this
+  cases h_even_sq with
+  | intro m h_eq =>
+    simp_all only
+    obtain ⟨x, hx⟩ := this
+    simp_all only
+    omega
+
+---
+
+example (n : ℕ) : ∃ m : ℕ, n ^ 2 - n = 2 * m := by
+by_cases n_even : Even n
+· -- n が偶数の時
+  obtain ⟨k, hk⟩ := n_even
+  rw [hk]
+  use (2 * k^2 - k)
+  calc
+  (k + k) ^ 2 - (k + k)
+  _ = (2 * k) ^ 2 - (2 * k) := by ring_nf
+  _ = 4 * k^2 - 2 * k := by ring_nf
+  _ = 2 * (2 * k^2 - k) := by omega
+· -- n が奇数の時
+  -- 奇数証人を自前で作る（Nat.* を使わない）
+  have : ∃ k, n = 2 * k + 1 := by
+  -- 簡易な構成：n をパターン分解
+    cases n with
+    | zero =>
+    -- n = 0 なら ¬Even n が矛盾（偶数そのもの）なのでこの枝は到達しない
+    exact (n_even ⟨0, by simp⟩).elim
+    | succ tt =>
+    -- n = t+1。もし t が偶数なら t+1 は 2k+1 の形、そうでなくても t+1 は 2k+1 の形
+    -- ここは “2k+1 の形”の存在を直接提示する：
+      simp at n_even
+      obtain ⟨t, ht⟩ := n_even
+      use t
+  obtain ⟨k, hk⟩ := this
+  --n(n-1)/2をmとして入れる。
+  --(2*k+1)(2*k)/2=(2*k+1)*k
+  use (2 * k + 1) * k
+  rw [hk]
+  simp_all only [not_even_bit1, not_false_eq_true]
+  ring_nf
+  omega

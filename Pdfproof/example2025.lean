@@ -8,19 +8,19 @@ import Mathlib.Data.ZMod.Basic
 import Mathlib.Data.ZMod.Coprime
 import Mathlib.Algebra.Field.ZMod
 import Mathlib.Data.Nat.ModEq
+import Mathlib.Algebra.Divisibility.Basic
 import Mathlib.Algebra.Group.Even
 import Mathlib.Algebra.Ring.Parity
 import Mathlib.Data.Nat.Basic
 import Mathlib.Data.Int.Basic
---import Mathlib.Data.Int.Modeq
+import Mathlib.Algebra.Group.Hom.Defs
+import Mathlib.Algebra.BigOperators.Fin
+
 import Mathlib.Tactic
 import LeanCopilot
---import Mathlib
 open Finset
 open Int
 open scoped BigOperators
---import Mathlib.Data.Finset.Range
---import Mathlib.Algebra.BigOperators.FinSupp.Basic
 
 open Finset
 open scoped BigOperators
@@ -343,3 +343,276 @@ theorem nine_dvd_nine_minus_three (n : ℤ) : 9 ∣ n^9 - n^3 := by
         ring
       rw [H]
       exact Dvd.dvd.mul_left h9 (n ^ 3 * (n - 1) * (n ^ 2 + n + 1))
+
+----
+
+theorem group_hom_map_inv {G G' : Type*} [Group G] [Group G']
+(f : G →* G') (x : G) : f (x⁻¹) = (f x)⁻¹ :=
+by
+  -- `(f x)⁻¹` の一意性から、`f x * f (x⁻¹) = 1` を示せば十分です。
+  -- `a * b = 1` ならば `b = a⁻¹` という定理 `eq_inv_of_mul_eq_one_right` を適用します。
+  apply eq_inv_of_mul_eq_one_right
+  -- ゴールは `f x * f (x⁻¹) = 1` となります。
+  -- f は群準同型なので `f a * f b = f (a * b)` が成り立ちます (map_mul)。
+  -- `← map_mul` で `f x * f (x⁻¹)` を `f (x * x⁻¹)` に書き換えます。
+  rw [← map_mul]
+  -- ゴールは `f (x * x⁻¹)` = 1 となります。
+  -- 群の公理から `x * x⁻¹ = 1` です (mul_inv_self)。
+  simp_all only [mul_inv_cancel, map_one]
+  -- ゴールは `f 1 = 1` となります。
+
+---
+
+--variable {G : Type _} [CommMonoid G] [Group G] [Fintype G] [DecidableEq G]
+
+/-- Fin p の積を  分解する標準補題 -/
+lemma fin_prod_eq_mul_prod_castSucc  {G : Type _} [CommMonoid G] {p : ℕ} (hp : 1 < p) (g : Fin p → G) :
+  ∏ i, g i
+    =
+  (∏ j : Fin (p - 1), g (Fin.cast (by omega : (p - 1) + 1 = p) (Fin.castSucc j))) *
+  g (Fin.cast (by omega : (p - 1) + 1 = p) (Fin.last (p - 1))) := by
+  classical
+  -- まず p = (p-1)+1 に直す
+  have h : (p - 1) + 1 = p := by omega
+  -- Fin (p) 上の関数 g を、型を (p-1)+1 に戻した関数 F に置き換える
+  let F : Fin ((p - 1) + 1) → G := fun i => g (Fin.cast h i)
+  -- 既存補題：∏_{i : Fin (n+1)} F i = (∏_{j : Fin n} F j.castSucc) * F (Fin.last n)
+  -- を n := p-1, F として適用し、最後に定義通りに戻すだけ
+
+  --simp [F, h]
+  let fp := (Fin.prod_univ_castSucc F)
+  simp only [F] at fp
+  convert fp
+  exact id (Eq.symm h)
+  simp_all only
+  ext : 1
+  simp_all only [Fin.coe_cast]
+  congr
+  simp_all only
+
+
+    /-- Cauchy の定理 -/
+theorem cauchy_theorem  {G : Type _} [CommGroup G]  [Fintype G] [DecidableEq G] {p : ℕ} (hp_prime : p.Prime) (hp_dvd : (Fintype.card G) % p = 0) :
+    ∃ g : G, orderOf g = p := by
+  have hp_pos : 1 < p := by
+    have : 0 < p := by exact hp_prime.pos--Nat.prime_pos (by assumption)
+    cases p
+    · simp at this
+    · simp
+      simp_all only [lt_add_iff_pos_left, add_pos_iff, zero_lt_one, or_true]
+      apply Nat.pos_of_ne_zero
+      simp_all only [ne_eq]
+      apply Aesop.BuiltinRules.not_intro
+      intro a
+      subst a
+      simp_all only [zero_add]
+      have fwd : False := prime_one_false hp_prime
+      clear hp_prime
+      simp_all only
+
+  let X := { f : Fin p → G // ∏ i, f i = 1 }
+
+  -- 同型 : (Fin (p-1) → G) ≃ X
+  let α := Fin (p - 1)
+  let toX : (α → G) → X := fun g =>
+    let f : Fin p → G := fun i =>
+      if h : i.val < p - 1 then
+        g ⟨i.val, h⟩
+      else
+        (∏ j : α, g j)⁻¹
+    ⟨f, by
+      dsimp [f]
+      -- Fin.prod を分解して最後の成分を取り出す
+      have hp1 : 1 < p := hp_pos
+      calc
+        ∏ i, f i = (∏ j : Fin (p - 1), f (⟨Fin.castSucc j,by
+          simp_all only [Fin.coe_castSucc]
+          omega
+        ⟩)) * f (⟨Fin.last (p - 1),by
+          simp_all only [Fin.val_last, tsub_lt_self_iff, zero_lt_one, and_true]
+          positivity
+        ⟩) := by
+          exact fin_prod_eq_mul_prod_castSucc hp1 f
+
+        _ = (∏ j : α, g j) * f (⟨Fin.last (p - 1),by
+          simp_all only [Fin.val_last, tsub_lt_self_iff, zero_lt_one, and_true]
+          positivity
+        ⟩) := by
+          -- castSucc j は i.val < p-1 の場合に対応するので f (castSucc j) = g j
+          simp [f]
+          simp_all only [mul_inv_cancel, α]
+        _ = (∏ j : α, g j) * (∏ j : α, g j)⁻¹ := by
+          -- Fin.last (p - 1) の場合は else 分岐なので (∏ g)⁻¹ が返る
+            have : f (⟨Fin.last (p - 1), by
+              simp_all only [Fin.val_last, tsub_lt_self_iff, zero_lt_one, and_true]
+              positivity
+            ⟩) = (∏ j : α, g j)⁻¹ := by simp [f]
+              --simp_all only [Fin.val_last, tsub_lt_self_iff, zero_lt_one, and_true]
+              --positivity
+            rw [this]
+
+        _ = 1 := by simp
+    ⟩
+
+
+  let ofX : X → (α → G) := fun ⟨f, hf⟩ => fun j => f (Fin.cast (by omega : (p - 1) + 1 = p) (Fin.castSucc j))
+  have left_inv : ∀ g, ofX (toX g) = g := by
+    intro g
+    simp_all only [Fin.coe_cast, Fin.coe_castSucc, Fin.is_lt, ↓reduceDIte, Fin.eta, α, ofX, X, toX]
+
+  have right_inv : ∀ x : X, toX (ofX x) = x := by
+    intro ⟨f, hf⟩
+    dsimp [toX, ofX]
+    ext i
+    dsimp [toX, ofX]
+    by_cases h : i.val < p - 1
+    · simp [h]
+    · simp [h]
+      have h_decomp := fin_prod_eq_mul_prod_castSucc hp_pos f
+      rw [hf] at h_decomp
+      have h' : (∏ j : Fin (p - 1), f (Fin.cast (by omega) (Fin.castSucc j))) * f (Fin.cast (by omega) (Fin.last (p - 1))) = 1 := by
+        rw [← h_decomp]
+      have : i = Fin.cast (by omega) (Fin.last (p - 1)) := by
+        apply Fin.ext
+        have : i.val = p - 1 := by omega
+        simp [Fin.cast, Fin.last, this]
+      rw [this]
+      exact (eq_inv_of_mul_eq_one_right h').symm
+  have e : (α → G) ≃ X := Equiv.ofBijective toX ⟨
+    fun a b h => by
+      have : ofX (toX a) = ofX (toX b) := congrArg ofX h
+      simp [left_inv] at this
+      exact this,
+    fun x => ⟨ofX x, by simp [right_inv]⟩⟩
+  -- build a Fintype instance for X from the equivalence, so we can talk about Fintype.card X
+  haveI : Fintype X := Fintype.ofEquiv (α → G) e
+  have hcard := Fintype.card_congr e
+  have card_X : Fintype.card X = (Fintype.card G) ^ (p - 1) := by
+    simp_all only [Fin.coe_cast, Fin.coe_castSucc, Fin.is_lt, ↓reduceDIte, Fin.eta, implies_true, Fin.castSucc_mk,
+    Fin.cast_mk, dite_eq_ite, Subtype.forall, Subtype.mk.injEq, Fintype.card_pi, prod_const, Finset.card_univ,
+    Fintype.card_fin, α, ofX, X, toX]
+
+  -- p ∣ |G| より p ∣ |X|
+  have cardG_mod_p : (Fintype.card G) % p = 0 := hp_dvd
+  have cardX_mod_p : (Fintype.card X) % p = 0 := by
+    rw [card_X]
+    have hdvd : p ∣ Fintype.card G := by
+      simpa using dvd_iff_mod_eq_zero.mpr cardG_mod_p
+    have : p ∣ (Fintype.card G) ^ (p - 1) := by
+      let dd := dvd_iff_mod_eq_zero.mpr cardG_mod_p
+      by_cases hp: p = 1
+      · simp at hp
+        rw [hp]
+        simp
+      · have : p - 1 ≠ 0 := by omega
+        exact dvd_pow dd  this
+
+    exact Nat.mod_eq_zero_of_dvd this
+
+  -- Cp = ZMod p の作用を定義 (shift)
+  let Cp := ZMod p
+  let actionFn : Cp → (Fin p → G) → Fin p → G := by
+    refine  fun k f i => f ⟨((i : ℕ) + (k.val : ℕ)) % p, Nat.mod_lt _ ?_⟩
+    exact zero_lt_of_lt hp_pos
+  have action_preserves_product : ∀ (k : Cp) (f : Fin p → G), ∏ i, actionFn k f i = ∏ i, f i := by
+    intro k f
+    let hb := fun i => i + k.val
+    have h_inj : Function.Injective hb := by
+      intro a b h
+
+      simp_all only [Fin.coe_cast, Fin.coe_castSucc, Fin.is_lt, ↓reduceDIte, Fin.eta, implies_true, Fin.castSucc_mk,
+        Fin.cast_mk, dite_eq_ite, Subtype.forall, Subtype.mk.injEq, Fintype.card_pi, prod_const, Finset.card_univ,
+        Fintype.card_fin, Nat.add_right_cancel_iff, α, ofX, X, toX, hb]
+    haveI : NeZero p := ⟨by
+      intro hp0
+      subst hp0
+      simp at hp_pos
+      ⟩
+
+    have m : Fin p := ⟨ZMod.val k, ZMod.val_lt k⟩
+    have σ : Fin p ≃ Fin p := Equiv.addRight m
+
+    apply Fintype.prod_bijective σ
+    exact Equiv.bijective σ
+    intro x
+    -- 両辺を同じ形にするだけ
+    -- `σ = Equiv.addRight m` の定義と `actionFn` の定義を展開
+    simp [actionFn]
+    sorry --証明が大変そう。
+
+  have action_on_X : ∀ (k : Cp) (x : X), (∏ i, actionFn k x.val i) = 1 := by
+    intro k ⟨f, hf⟩
+    calc
+      (∏ i, actionFn k f i) = ∏ i, f i := by apply action_preserves_product
+      _ = 1 := hf
+  let actionX : Cp → X → X :=
+    fun k ⟨f, hf⟩ => ⟨fun i => actionFn k f i, by simp [action_preserves_product k f, hf]⟩
+
+  -- Fix_X を定義し、Fix_X と {x : G | x^p = 1} は同型
+  let Fix_X := {x : X // ∀ k : Cp, actionX k x = x}
+
+  -- {x | x^p = 1} は 1 を含むので p で割れることから p 個以上の元を含む => 非自明元が存在
+  have exists_nontrivial_pow_one : ∃ x : G, x ≠ 1 ∧ x ^ p = 1 := by
+    let S := {x : G // x ^ p = 1}
+    have one_in : (⟨1, by simp⟩ : S) ∈ (univ : Finset S) := by simp
+    have cardS_pos: 0 < Fintype.card S := by
+      have ex: ∃ s :S, True:= by use ⟨1, by simp⟩;
+      apply Fintype.card_pos_iff.mpr
+      exact Exists.nonempty ex
+
+
+    have cardS_ge_p : Fintype.card S ≥ p := by
+      apply Nat.le_of_dvd
+      exact cardS_pos
+      sorry -- 証明が大変そう。
+    have : Fintype.card S > 1 := by linarith
+    --obtain ⟨a, b, hneq⟩ := Fintype.exists_ne_iff_card_gt_one.mpr this
+    -- pick `a` different from `b`; ensure one is not equal to 1
+    -- better: since cardS ≥ p ≥ 2 and 1 is one element, there must be another
+    have : ∃ s : S, s.val ≠ 1 := by
+      have : Fintype.card S > 1 := by linarith
+      by_contra! h
+      have : Fintype.card S = 1 := by
+        apply Fintype.card_eq_one_iff.mpr
+        refine ⟨⟨1, by simp⟩, ?_⟩
+        intro s
+        ext
+        simp [h s]
+      linarith
+      --exact Fintype.exists_ne_of_card_gt_one this
+    obtain ⟨s, hs⟩ := this
+    use s.val
+    constructor
+    · intro h
+      have : s.val = 1 := h
+      contradiction
+    · exact s.property
+
+  obtain ⟨x, x_ne, x_pow⟩ := exists_nontrivial_pow_one
+  -- x^p = 1 かつ x ≠ 1 => orderOf x divides p 且つ >1, 従って orderOf x = p
+  have ord_dvd : orderOf x ∣ p := by
+    apply orderOf_dvd_of_pow_eq_one
+    exact x_pow
+  have ord_gt_one : 1 < orderOf x := by
+    have ord_pos : 0 < orderOf x := orderOf_pos x
+    have ord_ne_one : orderOf x ≠ 1 := by
+      intro h
+      have : x = 1 := orderOf_eq_one_iff.mp h
+      contradiction
+    omega
+
+  have ord_eq_p : orderOf x = p := by
+    -- orderOf x > 1 and divides the prime p, so must equal p
+    have : orderOf x ∣ p := ord_dvd
+    have : orderOf x = 1 ∨ orderOf x = p := by
+      exact (dvd_prime hp_prime).mp ord_dvd
+    cases this
+    · exfalso
+      apply x_ne
+      --have := congrArg (fun n => x ^ n)
+      simp at this
+      rename_i h'
+      dsimp [orderOf] at h'
+      exact orderOf_eq_one_iff.mp h'
+    · (expose_names; exact h)
+  use x

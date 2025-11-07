@@ -514,31 +514,41 @@ theorem cauchy_theorem  {G : Type _} [CommGroup G]  [Fintype G] [DecidableEq G] 
   let actionFn : Cp → (Fin p → G) → Fin p → G := by
     refine  fun k f i => f ⟨((i : ℕ) + (k.val : ℕ)) % p, Nat.mod_lt _ ?_⟩
     exact zero_lt_of_lt hp_pos
-  have action_preserves_product : ∀ (k : Cp) (f : Fin p → G), ∏ i, actionFn k f i = ∏ i, f i := by
+
+  haveI : NeZero p := ⟨by
+    intro hp0
+    subst hp0
+    simp at hp_pos
+    ⟩
+  have action_preserves_product : ∀ (k : Cp) (f : Fin p → G),
+      ∏ i, actionFn k f i = ∏ i, f i := by
     intro k f
-    let hb := fun i => i + k.val
-    have h_inj : Function.Injective hb := by
-      intro a b h
-
-      simp_all only [Fin.coe_cast, Fin.coe_castSucc, Fin.is_lt, ↓reduceDIte, Fin.eta, implies_true, Fin.castSucc_mk,
-        Fin.cast_mk, dite_eq_ite, Subtype.forall, Subtype.mk.injEq, Fintype.card_pi, prod_const, Finset.card_univ,
-        Fintype.card_fin, Nat.add_right_cancel_iff, α, ofX, X, toX, hb]
-    haveI : NeZero p := ⟨by
-      intro hp0
-      subst hp0
-      simp at hp_pos
-      ⟩
-
-    have m : Fin p := ⟨ZMod.val k, ZMod.val_lt k⟩
+    set m : Fin p := ⟨ZMod.val k, ZMod.val_lt k⟩ with hm
     have σ : Fin p ≃ Fin p := Equiv.addRight m
+-- ゴール: ∏ i, actionFn k f i = ∏ i, f i
 
-    apply Fintype.prod_bijective σ
-    exact Equiv.bijective σ
-    intro x
-    -- 両辺を同じ形にするだけ
-    -- `σ = Equiv.addRight m` の定義と `actionFn` の定義を展開
-    simp [actionFn]
-    sorry --証明が大変そう。
+
+
+    calc
+      ∏ i, actionFn k f i = ∏ i, f (σ i) := by
+        congr 1
+        ext i
+        dsimp [actionFn]
+        congr 1
+        have :(↑i + ZMod.val k) % p = ↑(σ i) := by
+          calc
+            (↑i + ZMod.val k) % p = (i.val + m.val) % p := by
+              rw [hm]
+            _ = (i + m).val := by rw [← Fin.val_add]
+            _ = ↑(σ i) := by
+              congr 1
+              rw [hm]
+              sorry --このあたりが違うかも。
+        simp_all only [Fin.coe_cast, Fin.coe_castSucc, Fin.is_lt, ↓reduceDIte, Fin.eta, implies_true, Fin.castSucc_mk,
+         Fin.cast_mk, dite_eq_ite, Subtype.forall, Subtype.mk.injEq, Fintype.card_pi, prod_const, Finset.card_univ,
+         Fintype.card_fin, α, ofX, X, toX]
+      _ = ∏ i, f i := Equiv.prod_comp σ f
+
 
   have action_on_X : ∀ (k : Cp) (x : X), (∏ i, actionFn k x.val i) = 1 := by
     intro k ⟨f, hf⟩

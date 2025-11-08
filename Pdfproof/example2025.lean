@@ -18,6 +18,9 @@ import Mathlib.Algebra.BigOperators.Fin
 
 import Mathlib.Tactic
 import LeanCopilot
+
+set_option maxRecDepth 10000
+
 open Finset
 open Int
 open scoped BigOperators
@@ -447,8 +450,6 @@ theorem cauchy_theorem  {G : Type _} [CommGroup G]  [Fintype G] [DecidableEq G] 
               simp_all only [Fin.val_last, tsub_lt_self_iff, zero_lt_one, and_true]
               positivity
             ⟩) = (∏ j : α, g j)⁻¹ := by simp [f]
-              --simp_all only [Fin.val_last, tsub_lt_self_iff, zero_lt_one, and_true]
-              --positivity
             rw [this]
 
         _ = 1 := by simp
@@ -512,51 +513,172 @@ theorem cauchy_theorem  {G : Type _} [CommGroup G]  [Fintype G] [DecidableEq G] 
   -- Cp = ZMod p の作用を定義 (shift)
   let Cp := ZMod p
   let actionFn : Cp → (Fin p → G) → Fin p → G := by
-    refine  fun k f i => f ⟨((i : ℕ) + (k.val : ℕ)) % p, Nat.mod_lt _ ?_⟩
-    exact zero_lt_of_lt hp_pos
+    refine fun k f i => f ⟨((i : ℕ) + k.val) % p, Nat.mod_lt ((i : ℕ) + k.val) (zero_lt_of_lt hp_pos)⟩
 
   haveI : NeZero p := ⟨by
     intro hp0
     subst hp0
     simp at hp_pos
     ⟩
-  have action_preserves_product : ∀ (k : Cp) (f : Fin p → G),
-      ∏ i, actionFn k f i = ∏ i, f i := by
+
+  have action_preserves_product :
+  ∀ (k : Cp) (f : Fin p → G), ∏ i, actionFn k f i = ∏ i, f i := by
     intro k f
-    set m : Fin p := ⟨ZMod.val k, ZMod.val_lt k⟩ with hm
-    have σ : Fin p ≃ Fin p := Equiv.addRight m
--- ゴール: ∏ i, actionFn k f i = ∏ i, f i
 
 
-
+    -- Fin.prod を分解して最後の成分を取り出す
+    have hp1 : 1 < p := hp_pos
     calc
-      ∏ i, actionFn k f i = ∏ i, f (σ i) := by
-        congr 1
-        ext i
-        dsimp [actionFn]
-        congr 1
-        have :(↑i + ZMod.val k) % p = ↑(σ i) := by
-          calc
-            (↑i + ZMod.val k) % p = (i.val + m.val) % p := by
-              rw [hm]
-            _ = (i + m).val := by rw [← Fin.val_add]
-            _ = ↑(σ i) := by
-              congr 1
-              rw [hm]
-              sorry --このあたりが違うかも。
+      ∏ i, actionFn k f i = (∏ j : Fin (p - 1), actionFn k f (⟨Fin.castSucc j,by
+        simp_all only [Fin.coe_castSucc]
+        omega
+      ⟩)) * actionFn k f (⟨Fin.last (p - 1),by
+        simp_all only [Fin.val_last, tsub_lt_self_iff, zero_lt_one, and_true]
+        positivity
+      ⟩) := by
+        exact fin_prod_eq_mul_prod_castSucc hp1 (actionFn k f)
+
+      _ = (∏ j : Fin (p - 1), f (⟨(j.val + k.val) % p, Nat.mod_lt _ (zero_lt_of_lt hp1)⟩)) *
+          f (⟨((Fin.last (p - 1)).val + k.val) % p, Nat.mod_lt _ (zero_lt_of_lt hp1)⟩) := by
+            simp [actionFn]
+      _ = ∏ i, f i := by
+        -- 全射性を使って和集合を入れ替える
+
+        have : Function.Surjective (fun j : Fin p => (⟨(j.val + k.val) % p, Nat.mod_lt (j.val + k.val) (zero_lt_of_lt hp1)⟩ : Fin p)) := by
+          intro y
+          have hb_lt : (ZMod.val k) < p := by
+          -- [NeZero p] から ZMod.val k < p
+            simpa using ZMod.val_lt k
+
+          set a : ℕ := (↑y : ℕ)
+          set b : ℕ := ZMod.val k
+
+          -- (( (a + p - b) % p + b) % p) = ((a + p - b + b) % p)
+          have h1 :
+            (( (a + p - b) % p + b) % p) = ((a + p - b + b) % p) := by
+            -- Nat.add_mod の対称形と b % p = b（b < p）を使う
+            have h := (Nat.add_mod (a + p - b) b p).symm
+            have hbmod : b % p = b := Nat.mod_eq_of_lt hb_lt
+            -- 左辺・右辺ともに b % p を b に置換
+            -- （`simpa [hbmod] using h` と同等だが、`simpa` を避けて書く）
+            -- 右向きに書き換える
+            have : ((a + p - b) % p + b % p) % p = (a + p - b + b) % p := h
+            -- b % p を b に置換
+            exact by
+              -- 左辺を書き換え
+              have := congrArg (fun x => (( (a + p - b) % p + x) % p)) hbmod
+              -- 右辺はそのまま
+              -- これで目標と一致
+              simp
+
+          -- b ≤ a + p を示して (a + p - b) + b = a + p を得る
+          have hb_le_ap : b ≤ a + p := by
+            have hb_lt_ap : b < a + p := lt_of_lt_of_le hb_lt (Nat.le_add_left _ _)
+            exact le_of_lt hb_lt_ap
+
+          have h2 : (a + p - b) + b = a + p := Nat.sub_add_cancel hb_le_ap
+
+          -- (a + p) % p = a % p （p で 1 回の加算は剰余で消える）
+          have h3 : (a + p) % p = a % p := by
+            -- (a + p*1) % p = a % p
+            have h' := Nat.add_mul_mod_self_left a 1 p
+            -- p*1 を p に書き換え
+            simp
+
+          use (⟨(y.val + p - k.val) % p, Nat.mod_lt (y.val + p - k.val) (zero_lt_of_lt hp1)⟩ : Fin p)
+          apply Fin.ext
+          simp
+          dsimp [a,b] at h1
+          dsimp [b]
+          dsimp [a,b] at h2
+          rw [h2]
+          dsimp [a,b] at h3
+          rw [h3]
+          have hy : (↑y : ℕ) < p := Fin.is_lt y
+          exact Nat.mod_eq_of_lt hy
+        have hp0 : 0 < p := Nat.lt_trans Nat.zero_lt_one hp1
+
+        -- 回転後の関数を一旦 g と名付ける
+        let g : Fin p → G :=
+          fun i => f ⟨((↑i : ℕ) + ZMod.val k) % p, Nat.mod_lt _ hp0⟩
+
+        -- (1) Fin p の積を「castSucc 部分の積 × last の項」に分解（向きを合わせるために .symm）
+        have h_split :
+            (∏ j : Fin (p - 1), g (Fin.cast (by omega : (p - 1) + 1 = p) (Fin.castSucc j))) *
+            g (Fin.cast (by omega : (p - 1) + 1 = p) (Fin.last (p - 1))) = ∏ i : Fin p, g i :=
+          (fin_prod_eq_mul_prod_castSucc hp1 g).symm
+
+        -- (1) と (2) を連鎖してゴールそのものに書き戻す
         simp_all only [Fin.coe_cast, Fin.coe_castSucc, Fin.is_lt, ↓reduceDIte, Fin.eta, implies_true, Fin.castSucc_mk,
-         Fin.cast_mk, dite_eq_ite, Subtype.forall, Subtype.mk.injEq, Fintype.card_pi, prod_const, Finset.card_univ,
-         Fintype.card_fin, α, ofX, X, toX]
-      _ = ∏ i, f i := Equiv.prod_comp σ f
+          Fin.cast_mk, dite_eq_ite, Subtype.forall, Subtype.mk.injEq, Fintype.card_pi, prod_const, Finset.card_univ,
+          Fintype.card_fin, Fin.val_last, α, ofX, X, toX, g]
+
+        have hp : 0 < p := Nat.pos_of_ne_zero (NeZero.ne p)
+        -- removed unused equiv between ZMod p and Fin p to avoid referencing a missing constant
+
+        let e : ZMod p ≃ Fin p := (ZMod.finEquiv p).symm.toEquiv
+        -- ZMod 側での「+ k」による自己同型
+        let rotZ : ZMod p ≃ ZMod p :=
+          { toFun    := fun x => x + k
+            invFun   := fun x => x - k
+            left_inv := by intro x; simp
+            right_inv:= by intro x; simp
+          }
+
+        -- Fin 側に持ち上げた置換（これが i ↦ ((i + k) mod p) に一致）
+        -- σ を簡潔に定義
+        let σ : Fin p → Fin p :=
+          fun i => ⟨((i : ℕ) + (ZMod.val k)) % p, Nat.mod_lt _ hp⟩
+
+        -- これで hσ は自明
+        have hσ :
+            (fun i : Fin p =>
+              f ⟨((i : ℕ) + (ZMod.val k)) % p, Nat.mod_lt _ (Nat.succ_le_of_lt hp)⟩)
+          = (fun i => f (σ i)) := by
+          -- σ の定義により、両辺は定義上等しい
+          rfl
+
+        -- 置換 `σ` による再添字で有限積は不変
+        have h_perm : ∏ i : Fin p, f (σ i) = ∏ i : Fin p, f i := by
+          have σ_bij : Function.Bijective σ := Function.Surjective.bijective_of_finite this
+          apply Finset.prod_bij  (fun a _ => σ a)
+          exact fun a ha ↦ mem_univ (σ a)
+          · intro a ha b hb h
+            apply σ_bij.1
+            exact h
+          · intro b hb
+            obtain ⟨a, ha⟩ := σ_bij.2 b
+            use a
+            have : a ∈ Finset.univ := by exact Finset.mem_univ a
+            use this
+          · intro a ha
+            exact rfl
+
+        -- 仕上げ：左辺を (f ∘ σ) に書き換えてから、h_perm を適用
+        have : ∏ x : Fin p, f ⟨((x : ℕ) + ZMod.val k) % p, Nat.mod_lt _ hp⟩
+                = ∏ i : Fin p, f i := by
+          simpa [hσ]
+
+        -- これが欲しかったゴール
+        exact this
 
 
   have action_on_X : ∀ (k : Cp) (x : X), (∏ i, actionFn k x.val i) = 1 := by
     intro k ⟨f, hf⟩
     calc
-      (∏ i, actionFn k f i) = ∏ i, f i := by apply action_preserves_product
+      (∏ i, actionFn k f i) = ∏ i, f i := by
+        simp_all only [Fin.coe_cast, Fin.coe_castSucc, Fin.is_lt, ↓reduceDIte, Fin.eta, implies_true, Fin.castSucc_mk,
+         Fin.cast_mk, dite_eq_ite, Subtype.forall, Subtype.mk.injEq, Fintype.card_pi, prod_const, Finset.card_univ,
+         Fintype.card_fin, α, ofX, X, toX, Cp, actionFn]
+
+
       _ = 1 := hf
   let actionX : Cp → X → X :=
-    fun k ⟨f, hf⟩ => ⟨fun i => actionFn k f i, by simp [action_preserves_product k f, hf]⟩
+    fun k ⟨f, hf⟩ => ⟨fun i => actionFn k f i, by
+      simp_all only [Fin.coe_cast, Fin.coe_castSucc, Fin.is_lt, ↓reduceDIte, Fin.eta, implies_true, Fin.castSucc_mk,
+    Fin.cast_mk, dite_eq_ite, Subtype.forall, Subtype.mk.injEq, Fintype.card_pi, prod_const, Finset.card_univ,
+    Fintype.card_fin, α, ofX, X, toX, Cp, actionFn]
+    ⟩
 
   -- Fix_X を定義し、Fix_X と {x : G | x^p = 1} は同型
   let Fix_X := {x : X // ∀ k : Cp, actionX k x = x}
@@ -576,9 +698,6 @@ theorem cauchy_theorem  {G : Type _} [CommGroup G]  [Fintype G] [DecidableEq G] 
       exact cardS_pos
       sorry -- 証明が大変そう。
     have : Fintype.card S > 1 := by linarith
-    --obtain ⟨a, b, hneq⟩ := Fintype.exists_ne_iff_card_gt_one.mpr this
-    -- pick `a` different from `b`; ensure one is not equal to 1
-    -- better: since cardS ≥ p ≥ 2 and 1 is one element, there must be another
     have : ∃ s : S, s.val ≠ 1 := by
       have : Fintype.card S > 1 := by linarith
       by_contra! h
@@ -589,7 +708,6 @@ theorem cauchy_theorem  {G : Type _} [CommGroup G]  [Fintype G] [DecidableEq G] 
         ext
         simp [h s]
       linarith
-      --exact Fintype.exists_ne_of_card_gt_one this
     obtain ⟨s, hs⟩ := this
     use s.val
     constructor

@@ -11,6 +11,9 @@ import Mathlib.Topology.Bornology.Basic
 import Mathlib.Topology.Defs.Filter
 import Mathlib.Topology.MetricSpace.Bounded
 import Mathlib.Topology.Order.Monotone
+import Mathlib.Topology.Order.Compact
+import Mathlib.Topology.Order.Real
+import Mathlib.Topology.MetricSpace.Pseudo.Lemmas
 --import Mathlib.Topology.Instances.Real
 import Mathlib.Analysis.InnerProductSpace.Basic
 import Mathlib.Analysis.SpecialFunctions.Sqrt
@@ -151,7 +154,7 @@ lemma sum_sq_eq_zero_iff {n : ℕ} (x : Fin n → ℝ) :
     have h_nonneg : ∀ i ∈ Finset.univ, (x i) ^ 2 ≥ 0 := fun i _ => sq_nonneg (x i)
     have h_zero : ∀ i ∈ Finset.univ, (x i) ^ 2 = 0 := (Finset.sum_eq_zero_iff_of_nonneg h_nonneg).mp h
     intro i
-    exact pow_eq_zero (h_zero i (Finset.mem_univ i))
+    exact sq_eq_zero_iff.mp (h_zero i (Finset.mem_univ i))
   · intro h
     rw [Finset.sum_eq_zero]
     intro i _
@@ -294,7 +297,7 @@ noncomputable instance : MetricSpace (Fin n → ℝ) where
       simp_all only [sqrt_zero, ne_eq, OfNat.ofNat_ne_zero, not_false_eq_true, zero_pow, Finset.sum_const_zero,
         implies_true]
 
-    exact funext fun i => sub_eq_zero.mp (pow_eq_zero (eq_zero i))
+    exact funext fun i => sub_eq_zero.mp (sq_eq_zero_iff.mp (eq_zero i))
   dist_comm := by
     intro x y
     unfold euclidean_dist
@@ -440,7 +443,7 @@ lemma d'_triangle {n : ℕ} (x y z : MyEuclideanSpace n) : d' x z ≤ d' x y + d
       -- goal |x i - z i| ≤ (Finset.univ.sup' ⋯ fun i ↦ |x i - y i|) + Finset.univ.sup' ⋯ fun i ↦ |y i - z i|
       calc
         |x i - z i| = |(x i - y i) + (y i - z i)| := by rw [sub_add_sub_cancel]
-        _ ≤ |x i - y i| + |y i - z i| := abs_add _ _
+        _ ≤ |x i - y i| + |y i - z i| := abs_add_le _ _
       apply add_le_add
       · simp_all only [Finset.le_sup'_iff, Finset.mem_univ, true_and]
         simp_all only [gt_iff_lt]
@@ -467,6 +470,10 @@ instance EuclideanSpace_metric {n : ℕ} : MetricSpace (MyEuclideanSpace n) :=
 --------------------
 
 def Ic := Set.Icc (0:Real) 1
+
+noncomputable instance : CompactSpace Ic := by
+  dsimp [Ic]
+  exact isCompact_iff_compactSpace.mp isCompact_Icc
 
 ----非空性
 
@@ -522,7 +529,6 @@ lemma range_closed
   rw [←isOpen_compl_iff]
 
   have compact_Icc_s: IsCompact (Set.univ : Set Ic) := by
-    simp_all only [Ic]
     exact isCompact_univ
 
   have compact_image : IsCompact (fs '' (Set.univ:Set Ic)) := by
@@ -590,7 +596,6 @@ lemma supr_exists {f : Ic → ℝ}
 lemma sup_lem (x : Ic) (f : Ic → Real) (hf: Continuous f): f x ≤ sSup (f '' (Set.univ:Set Ic)):= by
 
   have compact_Icc_s: IsCompact (Set.univ : Set Ic) := by
-    simp_all only [Ic]
     exact isCompact_univ
 
   have compact_range_f : IsCompact (f '' (Set.univ:Set Ic)) := by
@@ -684,7 +689,7 @@ noncomputable instance : MetricSpace C₀ where
     have abs_ineq (a b c:Real) : |a - c| <= |a - b| + |b - c| := by
       calc
           |a - c| = |(a - b) + (b - c)| := by rw [sub_add_sub_cancel]
-         _ <= |a - b| + |b - c|  := abs_add (a - b) (b - c)
+         _ <= |a - b| + |b - c|  := abs_add_le (a - b) (b - c)
 
     have abs_all: ∀ x : Ic, |f.1 x - h.1 x| ≤ |f.1 x - g.1 x| + |g.1 x - h.1 x| := by
       intro x
@@ -739,7 +744,7 @@ noncomputable instance : MetricSpace C₀ where
           obtain ⟨val, property⟩ := val
           simp_all only
           rfl
-        exact add_le_add_right sup_fg _
+        exact add_le_add_left sup_fg _
 
       _ ≤ (⨆ x : Ic, |f.1 x - g.1 x|) + (⨆ x : Ic, |g.1 x - h.1 x|) := by
         have sup_gh: |g.1 x_0.1 - h.1 x_0.1| ≤ ⨆ x : Ic, |g.1 x - h.1 x| := by
@@ -752,7 +757,7 @@ noncomputable instance : MetricSpace C₀ where
           obtain ⟨val, property⟩ := val
           simp_all only
           rfl
-        exact add_le_add_left sup_gh _
+        exact add_le_add_right sup_gh _
       _ = dist f g + dist g h := by rw [dist_fg, dist_gh]
 
   -- ∀ {x y : α}, dist x y = 0 → x = y

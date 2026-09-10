@@ -23,6 +23,8 @@ import Mathlib.Topology.Defs.Filter
 import Mathlib.Topology.Defs.Induced
 import Mathlib.Topology.Order.Monotone
 import Mathlib.Topology.Order.Compact
+import Mathlib.Topology.Order.Real
+import Mathlib.Topology.MetricSpace.Pseudo.Lemmas
 import Mathlib.Topology.UniformSpace.HeineCantor
 import Mathlib.Analysis.SpecialFunctions.Sqrt
 --import Mathlib.Analysis.SpecialFunctions.Integrals
@@ -313,19 +315,7 @@ noncomputable instance : MeasureTheory.Measure.IsOpenPosMeasure (volume:Measure 
 noncomputable instance : CompactSpace Ic :=
 by
   dsimp [Ic]
-  infer_instance
-
-noncomputable instance: CompactIccSpace Ic :=
-by
-  apply CompactIccSpace.mk
-  refine fun {a b} ↦ ?_
-  refine Subtype.isCompact_iff.mpr ?_
-  dsimp [Ic]
-  simp_all only [image_subtype_val_Icc]
-  obtain ⟨val, property⟩ := a
-  obtain ⟨val_1, property_1⟩ := b
-  simp_all only
-  exact isCompact_Icc
+  exact isCompact_iff_compactSpace.mp isCompact_Icc
 
 def hIc:IsCompact Ic:=
 by
@@ -403,13 +393,7 @@ by
     · show ∀ (s : Set { x // x ∈ Ic }), MeasurableSet s → MeasurableSet (Subtype.val '' s)
       intro s hs
       apply MeasurableSet.subtype_image
-      · apply MeasurableSet.inter
-        · apply measurableSet_le
-          · simp_all only [measurable_const]
-          · exact measurable_id
-        · apply measurableSet_le
-          · exact measurable_id
-          · simp_all only [measurable_const]
+      · simpa [Ic] using measurableSet_Icc
       exact hs
 
     · show MeasurableSet K

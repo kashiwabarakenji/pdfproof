@@ -169,7 +169,7 @@ noncomputable def real_pos_real_equiv : ℝ ≃ pos_real :=
     -- g(f(x)) = ln(e^x) = x を証明
     simp [g, exp_to_pos_real, Real.log_exp],
 
-  right_inv := λ s => Subtype.eq (by
+  right_inv := λ s => Subtype.ext (by
     -- f(g(s)) = e^{ln(s)} = s を証明
     simp [exp_to_pos_real, g]
     exact Real.exp_log s.2
@@ -297,7 +297,7 @@ theorem countable_integers : #ℤ = aleph0 := by
           · simp_all only [zero_le, not_true_eq_false]
           · simp_all only [zero_le, not_true_eq_false]
           · simp_all only [zero_le, not_true_eq_false]
-      simp_all only [Int.ofNat_eq_coe]
+      simp_all only [Int.ofNat_eq_natCast]
       tauto
 
     right_inv := by
@@ -343,15 +343,15 @@ theorem natPos_countable : Countable NatPos := by
     -- 単射性の証明
     { intros a b h
       dsimp [f] at h
-      rw [Subtype.mk.injEq] at h
-      exact Nat.succ.inj h
+      have h' : a + 1 = b + 1 := congrArg Subtype.val h
+      exact Nat.succ.inj h'
     }
     -- 全射性の証明
     { intro p
       obtain ⟨m, hm⟩ := p
       use m - 1
       dsimp [f]
-      rw [Subtype.mk.injEq]
+      apply Subtype.ext
       exact Nat.succ_pred_eq_of_pos hm
     }
 

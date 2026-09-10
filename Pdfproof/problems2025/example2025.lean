@@ -249,7 +249,7 @@ theorem nine_dvd_nine_minus_three (n : ℤ) : 9 ∣ n^9 - n^3 := by
       -- そして全体の式がこの積を含むので、9で割り切れる
       rw [F]
       rw [show (3 : ℤ) * 3 = 9 by norm_num] at this
-      apply dvd_mul_of_dvd_left
+      apply _root_.dvd_mul_of_dvd_left
       have H : (n - 1) * (n ^ 2 + n + 1) * (n ^ 3 * (n + 1)) = n ^ 3 * (n - 1) * (n ^ 2 + n + 1) * (n + 1) := by ring
       rw [← H]
       exact dvd_mul_of_dvd_left h9 (n ^ 3 * (n + 1))

@@ -48,7 +48,6 @@ import Mathlib.MeasureTheory.Integral.Bochner.VitaliCaratheodory
 import Mathlib.MeasureTheory.Function.L1Space.HasFiniteIntegral
 import Mathlib.MeasureTheory.Order.Group.Lattice
 import Pdfproof.Dis.Ic_OpenPosMeasure
-import LeanCopilot
 
 --01閉区間上の連続関数がL2ノルムで距離関数になる問題。無駄に01閉区間を実数全体の関数に拡張してしまったので、
 --証明が長くなった。どういう選択をすればよいのか掴みきれずに証明に50時間以上かかっている。
@@ -65,53 +64,11 @@ open MeasureTheory Real Set Metric Function Filter TopologicalSpace ENNReal
 -----------------------------------------------------------------------------------
 --基本的な定義とinstanceの設定。Icに関する基本的な設定は、Pdfproof.Ic_OpenPosMeasure.leanで設定済み。
 
---実数空間に関する設定。
-instance : SeminormedAddCommGroup ℝ := by
-  constructor
-  simp_all only [norm_eq_abs]
-  simp [dist_eq]
+/-! The space of real-valued continuous functions on the closed unit interval. -/
+abbrev C₀ := ContinuousMap Ic ℝ
 
---連続関数に関する設定。
-def C₀ := ContinuousMap (Set.Icc (0 : ℝ) 1) ℝ
---def Ic := Set.Icc (0:Real) 1 --Pdfproof.Ic_OpenPosMeasure.leanで設定済み。
--- 連続関数は、引き算しても連続関数。ContinuousMap subtraction --これがないとHSub C₀ C₀ ?m.1384936が1500目ぐらいででる。
-instance : Sub C₀ where
-  sub f g := ⟨λ x => f.1 x - g.1 x, f.continuous_toFun.sub g.continuous_toFun⟩
-
-instance : AddGroup C₀ where
-  add := λ f g => ⟨λ x => f.1 x + g.1 x, f.continuous_toFun.add g.continuous_toFun⟩
-  zero := ⟨λ x => 0, continuous_const⟩
-  neg := λ f => ⟨λ x => -f.1 x, f.continuous_toFun.neg⟩
-  add_assoc := by
-    intros
-    rename_i a b c
-    dsimp [Add.add]
-    dsimp [C₀ ]
-    ext
-    ring_nf
-  zero_add := by
-    intros
-    dsimp [C₀]
-    ring_nf
-  add_zero := by
-    intros
-    dsimp [C₀]
-    ext x
-    ring_nf
-
-  nsmul := λ n f => ⟨λ x => n • f.1 x, f.continuous_toFun.nsmul n⟩
-  zsmul := λ n f => ⟨λ x => n • f.1 x, f.continuous_toFun.zsmul n⟩
-  neg_add_cancel := by
-    intros
-    dsimp [Add.add]
-    dsimp [C₀]
-    ext
-    ring_nf
-    simp_all only [ContinuousMap.add_apply, ContinuousMap.coe_mk, neg_add_cancel, ContinuousMap.zero_apply]
--------------------------------------------------------------------
---測度に関する設定
-instance : MeasurableSpace ℝ := borel ℝ
-instance : OpensMeasurableSpace ℝ := inferInstance
+-- `ContinuousMap` already carries the required additive structure, so no local
+-- instances are needed here.
 
 --使ってない。
 lemma measure_restrict_eq_measure {K : Set ℝ} (hK : MeasurableSet K) (hK_sub : K ⊆ Ic) :
@@ -122,16 +79,32 @@ by
   -- `K ⊆ Ic` なので `K ∩ Ic = K`
   rw [inter_eq_self_of_subset_left hK_sub]
 
---toFunの定義は、Function.extendを使った方がよかったのかも。
+/-- Extend a continuous function on `Ic` by zero to a function on `ℝ`. -/
 noncomputable def toFun (f : C₀) : ℝ → ℝ :=
   fun x => if hx:x ∈ Ic then f.1 ⟨x,hx⟩ else 0
 
---Icから実数全体に拡張した関数の可測性。主にセミノルムの設定に利用する。
---うまいMathlibの定理がなかなか見つからず、
---Measurable.iteやMeasurable.piecewiseを使って証明しようとしたが、全体で可測である仮定を求められてうまくいかず。
---キー定理として、MeasurableEmbedding.measurable_extendを使うが、テクニカルに難しい同値性のゴールに陥って
---最後はかなり強引で、なにをやっているのか不明な状態だが、AIの力を借りてエラーがないことをまで持って行った。
---ただし、もっと簡単に証明できる可能性あり。
+/-- The zero extension agrees with `f` on the closed unit interval. -/
+@[simp] lemma toFun_apply_of_mem (f : C₀) {x : ℝ} (hx : x ∈ Ic) :
+    toFun f x = f ⟨x, hx⟩ := by
+  simp [toFun, hx]
+
+/-- The zero extension vanishes outside the closed unit interval. -/
+@[simp] lemma toFun_apply_of_not_mem (f : C₀) {x : ℝ} (hx : x ∉ Ic) :
+    toFun f x = 0 := by
+  simp [toFun, hx]
+
+/-- The zero extension is supported on the closed unit interval. -/
+lemma support_toFun_subset_Ic (f : C₀) : Function.support (toFun f) ⊆ Ic := by
+  intro x hx
+  by_contra hxIc
+  exact hx (toFun_apply_of_not_mem f hxIc)
+
+/-- The `Lᵖ` norm of the zero extension is unchanged by restricting to `Ic`. -/
+lemma eLpNorm_toFun_restrict (f : C₀) (p : ℝ≥0∞) :
+    eLpNorm (toFun f) p (volume.restrict Ic) = eLpNorm (toFun f) p volume :=
+  eLpNorm_restrict_eq_of_support_subset (support_toFun_subset_Ic f)
+
+/-- The zero extension of a continuous function on `Ic` is measurable on `ℝ`. -/
 lemma toFun_measurable (f : C₀) : Measurable (toFun f) :=
 by
   --have mIc : MeasurableSet Ic := (isCompact_Icc).measurableSet
@@ -456,11 +429,9 @@ lemma zero_Ic_c_lem (f:C₀): (∫⁻ (x : ℝ) in Icᶜ, ENNReal.ofReal (‖toF
 by
   apply (lintegral_eq_zero_iff (measurable_pow_two_enn (toFun_measurable f))).mpr
   --apply Filter.Eventually
-  have : ∀ x, x ∉ Ic → ENNReal.ofReal (‖toFun f x‖ ^ (2:ℕ)) = 0 :=
-    by
-      intro x hx
-      dsimp [toFun]
-      simp [hx]
+  have : ∀ x, x ∉ Ic → ENNReal.ofReal (‖toFun f x‖ ^ (2:ℕ)) = 0 := by
+    intro x hx
+    simp [toFun_apply_of_not_mem f hx]
   have h_ae : (fun x:(Ic_c) => ENNReal.ofReal (‖toFun f x.val‖ ^ 2)) =ᶠ[ae (volume:Measure Ic_c)] 0 := by
     simp_all only [norm_eq_abs,  sq_abs, ofReal_eq_zero]
     filter_upwards with x

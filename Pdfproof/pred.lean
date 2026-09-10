@@ -1,5 +1,4 @@
 import Mathlib.Data.Real.Basic
-import LeanCopilot
 --- 述語論理
 
 --述語論理 練習1

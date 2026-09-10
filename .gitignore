@@ -1,0 +1,4 @@
+/.lake
+lean-toolchain~
+.DS_Store
+*.bak

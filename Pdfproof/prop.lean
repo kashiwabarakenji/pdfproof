@@ -1,5 +1,4 @@
 --pdf proof by Lean
-import LeanCopilot
 import Mathlib.Data.Real.Basic
 
 --命題論理 例1

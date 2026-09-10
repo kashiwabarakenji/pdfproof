@@ -6,7 +6,6 @@ import Mathlib.Data.Finset.Basic
 import Mathlib.Data.Finset.Card
 import Mathlib.SetTheory.Cardinal.Basic
 import Mathlib.Logic.Function.Basic
-import LeanCopilot
 import Mathlib.Data.Real.Basic
 import Mathlib.Analysis.SpecialFunctions.Log.Basic
 import Mathlib.SetTheory.Cardinal.Continuum

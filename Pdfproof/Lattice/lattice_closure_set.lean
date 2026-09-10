@@ -1,7 +1,6 @@
 --closure systemからclosure operatorを導入するために、extensiveとmonotoneとidempotentを証明したもの。
 --別のファイルでは、intersectionをListに変換した後にfoldrを使って定義して、言明を帰納法で証明したが、
 --ここでは、intersectionをFinsetのままで定義して(finsetIntersection M)、主に帰納法を使わずに証明した。こちらのほうが証明として良いと思われる。
-import LeanCopilot
 import Mathlib.Data.Finset.Basic
 import Mathlib.Data.Set.Basic
 import Mathlib.Data.Finset.Powerset

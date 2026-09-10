@@ -1,6 +1,5 @@
 import Mathlib.Tactic.Ring
 import Mathlib.Data.Finset.Sum
-import Mathlib.Data.ZMod.Basic
 import Mathlib.Data.Nat.Prime.Basic
 import Mathlib.Data.Fin.Basic
 import Mathlib.Data.ZMod.Basic
@@ -17,7 +16,6 @@ import Mathlib.Algebra.BigOperators.Fin
 import Mathlib.GroupTheory.Perm.Cycle.Type
 
 import Mathlib.Tactic
-import LeanCopilot
 
 set_option maxRecDepth 10000
 

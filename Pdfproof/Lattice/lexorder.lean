@@ -8,7 +8,6 @@
 --minとmaxを定義する問題。もともとはLatticeのminが定義されていたので、再定義する必要があったが、decidableな判定をする必要があり、エラー。
 --辞書式順序のdecidableの判定は難しいので、回避する必要があったが、定義の外で、Classical.decを使うことでうまく回避できた。
 
-import LeanCopilot
 import Mathlib.Algebra.Group.Defs
 import Mathlib.Data.Set.Basic
 import Mathlib.Data.List.OfFn

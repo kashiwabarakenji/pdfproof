@@ -9,7 +9,6 @@ import Lean.Elab.Tactic.Omega.Core
 import Mathlib.Order.MinMax
 import Mathlib.Data.Nat.ModEq
 import Mathlib.Algebra.Group.Basic
-import LeanCopilot
 
 -- 補題：この問題の核心となる代数変形
 -- n^2 + n - a = k^2 ↔ (2n+1)^2 - (2k)^2 = 4a + 1 を正当化する

@@ -1,12 +1,8 @@
 import Mathlib.Algebra.Group.Defs
---import Mathlib.Algebra.Group.Basic
 import Mathlib.Algebra.Group.Subgroup.Basic
 import Mathlib.GroupTheory.OrderOfElement
 import Mathlib.GroupTheory.Finiteness
---import Mathlib.Data.Finset.Lattice -- lcm を使うために必要なインポート
-import LeanCopilot
---import Mathlib.Algebra.BigOperators.Group.Finset
---import Mathlib.Data.Equiv.Basic
+
 
 -----------
 ---練習1----

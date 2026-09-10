@@ -1,7 +1,6 @@
 import Mathlib.Data.Nat.Factorization.Basic
 import Mathlib.Data.Finset.Card
 import Mathlib.Tactic
-import LeanCopilot
 
 open Nat
 

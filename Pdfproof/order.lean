@@ -1,4 +1,3 @@
-import LeanCopilot
 import Mathlib.Algebra.Group.Defs
 import Mathlib.Data.Set.Basic
 import Mathlib.Data.Set.Function

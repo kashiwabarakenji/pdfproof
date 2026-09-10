@@ -2,7 +2,6 @@
 import Mathlib.Data.Set.Basic
 import Mathlib.Logic.Function.Basic
 import Mathlib.Data.Real.Basic
-import LeanCopilot
 
 -------------
 ---練習1------

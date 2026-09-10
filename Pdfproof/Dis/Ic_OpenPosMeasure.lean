@@ -36,16 +36,12 @@ import Mathlib.MeasureTheory.Measure.Lebesgue.EqHaar
 import Mathlib.MeasureTheory.Measure.OpenPos
 import Mathlib.MeasureTheory.MeasurableSpace.Basic
 import Mathlib.MeasureTheory.MeasurableSpace.Defs
-import Mathlib.MeasureTheory.Integral.Bochner.ContinuousLinearMap
-import Mathlib.MeasureTheory.Integral.Bochner.FundThmCalculus
-import Mathlib.MeasureTheory.Integral.Bochner.Set
 import Mathlib.MeasureTheory.Integral.BoundedContinuousFunction
 import Mathlib.MeasureTheory.Integral.Bochner.ContinuousLinearMap
 import Mathlib.MeasureTheory.Integral.Bochner.FundThmCalculus
 import Mathlib.MeasureTheory.Integral.Bochner.Set
 import Mathlib.MeasureTheory.Function.L1Space.HasFiniteIntegral
 import Mathlib.MeasureTheory.Order.Group.Lattice
-import LeanCopilot
 
 open Classical
 open MeasureTheory Real Set Metric Function Filter TopologicalSpace ENNReal
@@ -314,16 +310,6 @@ noncomputable instance : MeasureTheory.Measure.IsOpenPosMeasure (volume:Measure 
     intro a
     simp [a] at os
 
-noncomputable instance : MeasureSpace ℝ := Real.measureSpace  --これはもともと設定されているかも。
---Ic上のMeasureSpaceの定義。これがないと01上の積分がうまく定義できない。
-noncomputable instance : MeasureTheory.MeasureSpace Ic := --(Set.Icc (0 : ℝ) 1) :=
-  MeasureTheory.Measure.Subtype.measureSpace
-noncomputable instance : MeasurableSpace Ic := by infer_instance
---noncomputable instance : MeasureSpace Ic where
---  volume := @MeasureTheory.Measure.restrict ℝ _ (MeasureTheory.MeasureSpace.volume : Measure ℝ) (Set.univ : Set Ic)
---noncomputable instance : MeasureSpace Ic where
---  volume := MeasureTheory.Measure.restrict MeasureTheory.MeasureSpace.volume (Set.univ:Set Ic)
-
 noncomputable instance : CompactSpace Ic :=
 by
   dsimp [Ic]
@@ -362,8 +348,6 @@ def measurableSet_Ic_c: MeasurableSet Ic_c := by
     · apply measurableSet_Icc
     · intro a
       simp_all only
-
-instance : TopologicalSpace Ic := inferInstance
 
 --インスタンスの証明でつかっている。
 lemma compact_set_has_finite_measure {K : Set Ic} (hK : IsCompact K) :
@@ -519,11 +503,13 @@ noncomputable instance : IsFiniteMeasureOnCompacts (volume : Measure Ic) where
 
 
 
-------------------------------------------------------
-----古いものや、証明に使ってないもの。保存しているものなど。
-------------------------------------------------------
+/-
+Archived exploratory lemmas.  They are not used by the library and are kept here
+only as a reference; excluding them keeps the production module quick to build.
+-/
 
---これは頑張って証明した。現在は使ってないかも。OpenPosiの証明に使えるかもしれないと思ったが使ってない。
+/-
+Historical proof attempt; retained for reference only.
 lemma open_ball_lemma {U : Set ℝ} (hU : IsOpen U) {x : ℝ} (hxU : x ∈ U) :
     ∃ ε > 0, Ioo (x - ε) (x + ε) ⊆ U :=
 by
@@ -702,3 +688,4 @@ lemma open_ball_lemma_strong {U : Set ℝ} (hU : IsOpen U) {x : ℝ} (hxU : x �
         obtain ⟨left_1, right_1⟩ := hy
         apply le_of_lt
         simp_all only
+-/

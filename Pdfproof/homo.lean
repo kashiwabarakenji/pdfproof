@@ -2,11 +2,9 @@ import Mathlib.Algebra.Group.Defs
 import Mathlib.Algebra.Group.Basic
 import Mathlib.Algebra.Group.Subgroup.Basic
 import Mathlib.Algebra.Group.Hom.Defs
---import Mathlib.Deprecated.Subgroup
 import Mathlib.GroupTheory.Coset.Basic
 import Mathlib.Algebra.Group.Subsemigroup.Basic
 
-import LeanCopilot
 
 -- 群の準同型写像が単位元を単位元に写すことを示す定理
 theorem group_hom_maps_one {G G' : Type _} [Group G] [Group G']

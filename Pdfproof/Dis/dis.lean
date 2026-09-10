@@ -1,9 +1,7 @@
-import Mathlib.Topology.MetricSpace.Basic
 import Mathlib.MeasureTheory.Measure.MeasureSpaceDef
 import Mathlib.MeasureTheory.MeasurableSpace.Basic
 --import Mathlib.MeasureTheory.MeasureSpace
 --import Mathlib.Data.Set.Intervals.Basic
-import Mathlib.Order.ConditionallyCompleteLattice.Basic
 import Mathlib.Topology.Basic
 import Mathlib.Topology.MetricSpace.Defs
 import Mathlib.Topology.MetricSpace.Pseudo.Defs
@@ -27,12 +25,10 @@ import Mathlib.Order.SetNotation
 import Mathlib.Data.Real.Archimedean
 import Mathlib.Data.Real.Basic
 import Mathlib.MeasureTheory.Measure.Haar.OfBasis
-import Mathlib.Topology.MetricSpace.Basic
 import Mathlib.MeasureTheory.Integral.Bochner.ContinuousLinearMap
 import Mathlib.MeasureTheory.Integral.Bochner.FundThmCalculus
 import Mathlib.Analysis.InnerProductSpace.PiL2
 --import Mathlib.Analysis.SpecialFunctions.Integrals
-import LeanCopilot
 
 ------------
 ----練習1---

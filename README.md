@@ -7,9 +7,9 @@
 pdfproofのフォルダの下にLeanのコードがあります。
 lakefile.leanやlean-toolchainも含まれています。
 
-## Lean Copilotの使用について
+## 使用する Lean のバージョン
 
-本リポジトリでは、**Lean Copilot**を使用するために、Lean 4.16.0の環境で実行できるように`lakefile.lean`と`lean-toolchain`が設定されています。Lean Copilotを利用することで、より効率的にLeanのコードを書くことが可能です。Lean Copilotが使えない環境では適宜、lakefile.leanやimport文からのぞいてください。
+このリポジトリは Lean **4.30.0** と対応する mathlib を使用します。LeanCopilot は Lean の更新に追従する安定版が未提供のため、現在の構成からは外しています。
 
 ## プロジェクトのセットアップ
 
@@ -17,17 +17,27 @@ lakefile.leanやlean-toolchainも含まれています。
 
 ```bash
 git clone https://github.com/kashiwabarakenji/pdfproof.git
+cd pdfproof
+lake update
+lake exe cache get
+```
 
 ## 注意点
 
-- **Lean CopilotはWindowsでは基本的にサポートされていません**。そのため、Windows環境でリポジトリを開いてLean 4のコードを検証する場合、`lakefile.lean`の設定を変更する必要があります。
-- MacやLinux環境では、現在の設定でLean Copilotが利用できますが、Windowsユーザーの方は`lakefile.lean`の書き換えを行ってください。import LeanCopilotの部分もコメントアウトするとよいでしょう。
+- `lake build Pdfproof.Lattice.lattice` のように、対象モジュールを指定してビルドできます。
+- 全ファイルを順に検証するには、次を実行します。
+
+```bash
+rg --files Pdfproof -g '*.lean' |
+  sed 's#/#.#g; s#\.lean$##' |
+  xargs -n 1 lake build
+```
 
 lake buildですべてのファイルがbuildできるようには設定されていません。一部をのぞいて、各ファイルは依存せず、独立にコンパイルできるようになっているので、VS Code内でファイルを開いて、Restart Fileでコンパイルしてください。
 
 ## 最近の変更
 2025年1月 closure systemからclosure operatorが導けることを証明。
-2025年2月 Lean 4.16.0にバージョンアップ。
+2026年9月 Lean 4.30.0 にバージョンアップ。
 
 ##大変だった証明 ベスト5
 - closure operatorとclosure systemの同値性。lattice-closure.leanなど。

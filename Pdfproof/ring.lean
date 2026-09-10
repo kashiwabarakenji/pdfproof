@@ -1,5 +1,4 @@
 import Mathlib.Algebra.Ring.Basic
-import Mathlib.RingTheory.Ideal.Basic
 import Mathlib.Algebra.Ring.Hom.Defs
 import Mathlib.Algebra.Group.Units.Basic
 import Mathlib.Algebra.Group.Defs

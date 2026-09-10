@@ -7,7 +7,6 @@ import Mathlib.Data.Fintype.Basic
 import Init.Data.List.BasicAux
 import Mathlib.Data.Finset.Dedup
 import Pdfproof.Lattice.lattice_common
-import LeanCopilot
 
 variable {α : Type}  [DecidableEq α] [Fintype α]
 

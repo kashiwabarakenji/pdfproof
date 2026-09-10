@@ -1,6 +1,5 @@
 --閉包システムの定義から閉包作用素を示す。つまりextensiveやmonotoneやindempotentを示した。
 --ここではclosureシステムを有限の台集合で帰納的に考えた。Setに持ち込んで証明するともっと簡単だと思われる。
-import LeanCopilot
 import Mathlib.Data.Finset.Basic
 import Mathlib.Data.Set.Basic
 import Mathlib.Data.Finset.Powerset

@@ -12,7 +12,6 @@ import Mathlib.Data.ZMod.Coprime
 import Mathlib.Algebra.Field.ZMod
 import Mathlib.Data.Nat.ModEq
 import Mathlib.Tactic
-import LeanCopilot
 open Int
 open Nat
 
